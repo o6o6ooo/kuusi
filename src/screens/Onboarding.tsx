@@ -73,7 +73,7 @@ export default function Onboarding({ navigation }: any) {
                 onPress={handleNext}
             >
                 <Text style={tw`text-center text-white text-lg font-semibold`}>
-                    {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                    {currentIndex === slides.length - 1 ? 'Get Started' : 'Continue'}
                 </Text>
             </TouchableOpacity>
         </View>
