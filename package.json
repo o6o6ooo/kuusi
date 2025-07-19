@@ -1,6 +1,6 @@
 {
   "name": "kuusi",
-  "main": "index.ts",
+  "main": "index.js",
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
