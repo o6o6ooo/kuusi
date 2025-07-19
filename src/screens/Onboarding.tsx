@@ -1,21 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { Dimensions, FlatList, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import tw from 'twrnc';
-import { DarkTheme, LightTheme } from '../constants/theme'; // パスは調整
+import { DarkTheme, LightTheme } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
 
 const slides = [
-    { id: '1', title: 'Welcome to Kuusi', description: 'Your personal finance companion.' },
-    { id: '2', title: 'Track Your Spending', description: 'Easily monitor your daily expenses.' },
-    { id: '3', title: 'Stay in Control', description: 'Get insights and manage your savings.' },
+    { id: '1', title: 'Welcome to Kuusi', description: 'A cozy place to share memories with your beloved ones.' },
+    { id: '2', title: 'Create or join groups', description: 'Bring your cherished ones together.' },
+    { id: '3', title: 'Organise your photos', description: 'Put hashtags and years to keep everything in order.' },
 ];
 
 export default function Onboarding({ navigation }: any) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef<FlatList<any>>(null);
 
-    // ダーク/ライトテーマを判定
     const scheme = useColorScheme();
     const theme = scheme === 'dark' ? DarkTheme : LightTheme;
 
@@ -34,7 +33,7 @@ export default function Onboarding({ navigation }: any) {
 
     return (
         <View style={[tw`flex-1`, { backgroundColor: theme.background }]}>
-            {/* スライド */}
+            {/* tutorial */}
             <FlatList
                 ref={flatListRef}
                 data={slides}
@@ -55,20 +54,20 @@ export default function Onboarding({ navigation }: any) {
                 keyExtractor={(item) => item.id}
             />
 
-            {/* インジケータ */}
+            {/* dots */}
             <View style={tw`flex-row justify-center mb-6`}>
                 {slides.map((_, index) => (
                     <View
                         key={index}
                         style={[
                             tw`w-2 h-2 rounded-full mx-1`,
-                            { backgroundColor: currentIndex === index ? theme.primary : '#ccc' },
+                            { backgroundColor: currentIndex === index ? theme.primary : theme.gray },
                         ]}
                     />
                 ))}
             </View>
 
-            {/* Next/Get Started ボタン */}
+            {/* Next/Get Started*/}
             <TouchableOpacity
                 style={[tw`mx-8 mb-8 p-4 rounded-xl`, { backgroundColor: theme.primary }]}
                 onPress={handleNext}
