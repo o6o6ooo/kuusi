@@ -1,20 +1,81 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
-import { RootStackParamList } from "../navigation/RootNavigator";
+import React, { useRef, useState } from 'react';
+import { Dimensions, FlatList, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import tw from 'twrnc';
+import { DarkTheme, LightTheme } from '../constants/theme'; // パスは調整
 
-type Props = NativeStackScreenProps<RootStackParamList, "Onboarding">;
+const { width } = Dimensions.get('window');
 
-export default function OnboardingScreen({ navigation }: Props) {
+const slides = [
+    { id: '1', title: 'Welcome to Kuusi', description: 'Your personal finance companion.' },
+    { id: '2', title: 'Track Your Spending', description: 'Easily monitor your daily expenses.' },
+    { id: '3', title: 'Stay in Control', description: 'Get insights and manage your savings.' },
+];
+
+export default function Onboarding({ navigation }: any) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const flatListRef = useRef<FlatList<any>>(null);
+
+    // ダーク/ライトテーマを判定
+    const scheme = useColorScheme();
+    const theme = scheme === 'dark' ? DarkTheme : LightTheme;
+
+    const handleNext = () => {
+        if (currentIndex < slides.length - 1) {
+            flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+        } else {
+            navigation.replace('SignIn');
+        }
+    };
+
+    const handleScroll = (e: any) => {
+        const index = Math.round(e.nativeEvent.contentOffset.x / width);
+        setCurrentIndex(index);
+    };
+
     return (
-        <View style={tw`flex-1 items-center justify-center bg-white`}>
-            <Text style={tw`text-2xl font-bold`}>Welcome to Family App</Text>
+        <View style={[tw`flex-1`, { backgroundColor: theme.background }]}>
+            {/* スライド */}
+            <FlatList
+                ref={flatListRef}
+                data={slides}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                renderItem={({ item }) => (
+                    <View style={[tw`flex-1 items-center justify-center px-6`, { width }]}>
+                        <Text style={[tw`text-2xl font-bold`, { color: theme.text }]}>
+                            {item.title}
+                        </Text>
+                        <Text style={[tw`mt-4 text-base text-center`, { color: theme.secondary }]}>
+                            {item.description}
+                        </Text>
+                    </View>
+                )}
+                keyExtractor={(item) => item.id}
+            />
+
+            {/* インジケータ */}
+            <View style={tw`flex-row justify-center mb-6`}>
+                {slides.map((_, index) => (
+                    <View
+                        key={index}
+                        style={[
+                            tw`w-2 h-2 rounded-full mx-1`,
+                            { backgroundColor: currentIndex === index ? theme.primary : '#ccc' },
+                        ]}
+                    />
+                ))}
+            </View>
+
+            {/* Next/Get Started ボタン */}
             <TouchableOpacity
-                style={tw`mt-5 px-5 py-3 bg-blue-500 rounded-lg`}
-                onPress={() => navigation.replace("SignIn")}
+                style={[tw`mx-8 mb-8 p-4 rounded-xl`, { backgroundColor: theme.primary }]}
+                onPress={handleNext}
             >
-                <Text style={tw`text-white text-base`}>Get Started</Text>
+                <Text style={tw`text-center text-white text-lg font-semibold`}>
+                    {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                </Text>
             </TouchableOpacity>
         </View>
     );
