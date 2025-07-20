@@ -1,5 +1,4 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
@@ -18,12 +17,16 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignInScreen({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
+    // const redirectUri = makeRedirectUri({
+    //     // @ts-ignore
+    //     useProxy: true
+    // });
+    const redirectUri = "https://auth.expo.io/@o6o6ooo/kuusi";
+    console.log("Redirect URI:", redirectUri);
+
     const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
         clientId: GOOGLE_WEB_CLIENT_ID,
-        redirectUri: makeRedirectUri({
-            // @ts-ignore
-            useProxy: true, // Use proxy for development
-        }),
+        redirectUri
     });
 
     useEffect(() => {
