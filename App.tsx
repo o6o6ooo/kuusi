@@ -1,7 +1,9 @@
 import { DefaultTheme, NavigationContainer, DarkTheme as NavigationDarkTheme } from '@react-navigation/native';
+import * as WebBrowser from "expo-web-browser";
 import { useColorScheme } from 'react-native';
-import { DarkTheme, LightTheme } from './src/constants/theme'; // テーマ定義をインポート
-import RootNavigator from './src/navigation/RootNavigator'; // StackNavigatorをまとめたコンポーネント
+import { DarkTheme, LightTheme } from './src/constants/theme';
+import RootNavigator from './src/navigation/RootNavigator';
+WebBrowser.maybeCompleteAuthSession();
 
 export default function App() {
     const scheme = useColorScheme();

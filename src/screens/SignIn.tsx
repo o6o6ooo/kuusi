@@ -1,45 +1,37 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import React, { useEffect } from "react";
 import { Text, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { GOOGLE_WEB_CLIENT_ID } from "../config/authConfig";
 import { DarkTheme, LightTheme } from "../constants/theme";
-import { auth } from "../firebase";
 import { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
-WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
-    // const redirectUri = makeRedirectUri({
-    //     // @ts-ignore
-    //     useProxy: true
-    // });
-    const redirectUri = "https://auth.expo.io/@o6o6ooo/kuusi";
-    console.log("Redirect URI:", redirectUri);
+    const redirectUri = __DEV__
+        ? "https://auth.expo.io/@o6o6ooo/kuusi"
+        : AuthSession.makeRedirectUri({ scheme: "kuusi" });
+    console.log("Redirect URI used in request:", redirectUri);
 
     const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
         clientId: GOOGLE_WEB_CLIENT_ID,
-        redirectUri
+        redirectUri,
+        // @ts-ignore
+        useProxy: true,
+        scopes: ["openid", "profile", "email"]
     });
 
     useEffect(() => {
         if (response?.type === "success") {
+            console.log("Google Auth response:", response);
             const { id_token } = response.params;
-            const credential = GoogleAuthProvider.credential(id_token);
-            signInWithCredential(auth, credential)
-                .then(userCredential => {
-                    console.log("Firebaseログイン成功:", userCredential.user);
-                })
-                .catch(err => {
-                    console.error("Firebaseログイン失敗:", err);
-                });
+            console.log("ID Token:", id_token);
         }
     }, [response]);
 
@@ -60,7 +52,11 @@ export default function SignInScreen({ navigation }: Props) {
 
             {/* Google */}
             <TouchableOpacity
-                onPress={() => promptAsync()}
+                onPress={() => {
+                    console.log("Executing promptAsync...");
+                    promptAsync().then(r => console.log("Prompt result:", r));
+                    console.log("AuthRequest:", request);
+                }}
                 style={[tw`w-60 flex-row items-center justify-center px-5 py-3 rounded-lg`, { backgroundColor: theme.card }]}
             >
                 <GoogleLogo size={20} color="#DB4437" weight="bold" style={tw`mr-2`} />
