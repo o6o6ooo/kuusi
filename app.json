@@ -2,6 +2,7 @@
   "expo": {
     "name": "kuusi",
     "slug": "kuusi",
+    "owner": "o6o6ooo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
