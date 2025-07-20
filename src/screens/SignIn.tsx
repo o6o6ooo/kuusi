@@ -22,8 +22,6 @@ export default function SignInScreen({ navigation }: Props) {
     const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
         clientId: GOOGLE_WEB_CLIENT_ID,
         redirectUri,
-        // @ts-ignore
-        useProxy: true,
         scopes: ["openid", "profile", "email"]
     });
 
