@@ -10,13 +10,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sakura.kuusi"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.sakura.kuusi",
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -34,6 +36,11 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "599e723d-3245-4813-beaf-864884a8ae29"
+      }
+    }
   }
 }
