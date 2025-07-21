@@ -8,7 +8,7 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
-export default function SignInScreen({ navigation }: Props) {
+export default function SignIn({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
 
@@ -41,7 +41,7 @@ export default function SignInScreen({ navigation }: Props) {
             {/* Home */}
             <TouchableOpacity
                 style={[tw`mt-8 px-5 py-3 rounded-lg`, { backgroundColor: theme.primary }]}
-                onPress={() => navigation.replace("Home")}
+                onPress={() => navigation.replace("MainTabs")}
             >
                 <Text style={tw`text-white text-center`}>Go to Home</Text>
             </TouchableOpacity>
