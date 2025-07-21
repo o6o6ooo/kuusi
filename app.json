@@ -35,6 +35,14 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-auth-session",
+        {
+          "schemes": [
+            "kuusi"
+          ]
+        }
+      ],
       "expo-secure-store"
     ],
     "extra": {
