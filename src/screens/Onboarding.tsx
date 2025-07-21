@@ -17,7 +17,7 @@ const OnboardingCard = ({ theme }: { theme: any }) => {
 
     return (
         <View style={tw`mb-8 justify-center items-center`}>
-            <View style={[tw`relative`, { width: width * 0.25, height: width * 0.25 }]}>
+            <View style={[tw`relative`, { width: width * 0.2, height: width * 0.2 }]}>
                 {cards.map((_, idx) => (
                     <View
                         key={idx}
