@@ -14,24 +14,107 @@ type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 export default function SignInScreen({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
+
     const redirectUri = __DEV__
         ? "https://auth.expo.io/@o6o6ooo/kuusi"
         : AuthSession.makeRedirectUri({ scheme: "kuusi" });
+
     console.log("Redirect URI used in request:", redirectUri);
 
-    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        clientId: GOOGLE_WEB_CLIENT_ID,
+    // useAuthRequestを使用（codeを取得）
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        expoClientId: GOOGLE_WEB_CLIENT_ID,
+        webClientId: GOOGLE_WEB_CLIENT_ID,
         redirectUri,
-        scopes: ["openid", "profile", "email"]
+        scopes: ["openid", "profile", "email"],
     });
 
     useEffect(() => {
-        if (response?.type === "success") {
-            console.log("Google Auth response:", response);
-            const { id_token } = response.params;
-            console.log("ID Token:", id_token);
+        if (response) {
+            console.log("=== RESPONSE RECEIVED ===");
+            console.log("Response type:", response.type);
+            console.log("Full response:", JSON.stringify(response, null, 2));
+
+            if (response.type === "success") {
+                console.log("✅ SUCCESS");
+                console.log("Authorization code:", response.params.code);
+
+                // Authorization codeを使ってGoogle APIからトークンを取得
+                (async () => { await exchangeCodeForTokens(response.params.code); })();
+
+            } else if (response.type === "error") {
+                console.error("❌ ERROR:", response.error);
+                console.error("❌ Error description:", response.params?.error_description);
+                console.error("❌ Full error params:", response.params);
+            } else if (response.type === "dismiss") {
+                console.log("⚠️ USER DISMISSED");
+            }
         }
     }, [response]);
+
+    const exchangeCodeForTokens = async (code: string) => {
+        try {
+            console.log("Exchanging authorization code for tokens...");
+
+            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    client_id: GOOGLE_WEB_CLIENT_ID,
+                    code: code,
+                    grant_type: 'authorization_code',
+                    redirect_uri: redirectUri,
+                }).toString(),
+            });
+
+            if (!tokenResponse.ok) {
+                throw new Error(`Token exchange failed: ${tokenResponse.status}`);
+            }
+
+            const tokens = await tokenResponse.json();
+            console.log("Tokens received:", tokens);
+
+            if (tokens.id_token) {
+                // Firebase Authで使用
+                await signInWithGoogle(tokens.id_token);
+            }
+
+        } catch (error) {
+            console.error("Token exchange error:", error);
+        }
+    };
+
+    const signInWithGoogle = async (idToken: string) => {
+        try {
+            console.log("Signing in with Firebase...");
+            // Firebase認証の実装
+            // const credential = GoogleAuthProvider.credential(idToken);
+            // const result = await signInWithCredential(auth, credential);
+            console.log("Firebase auth would happen here with ID token");
+        } catch (error) {
+            console.error("Firebase sign in error:", error);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        console.log("Starting Google Sign In...");
+        console.log("Request object:", request);
+
+        if (!request) {
+            console.error("Request is not ready yet");
+            return;
+        }
+
+        try {
+            console.log("Executing promptAsync...");
+            const result = await promptAsync();
+            console.log("Prompt result:", result);
+        } catch (error) {
+            console.error("Error during promptAsync:", error);
+        }
+    };
 
     return (
         <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.background }]}>
@@ -50,15 +133,17 @@ export default function SignInScreen({ navigation }: Props) {
 
             {/* Google */}
             <TouchableOpacity
-                onPress={() => {
-                    console.log("Executing promptAsync...");
-                    promptAsync().then(r => console.log("Prompt result:", r));
-                    console.log("AuthRequest:", request);
-                }}
-                style={[tw`w-60 flex-row items-center justify-center px-5 py-3 rounded-lg`, { backgroundColor: theme.card }]}
+                onPress={handleGoogleSignIn}
+                disabled={!request}
+                style={[
+                    tw`w-60 flex-row items-center justify-center px-5 py-3 rounded-lg`,
+                    { backgroundColor: theme.card, opacity: !request ? 0.5 : 1 }
+                ]}
             >
                 <GoogleLogo size={20} color="#DB4437" weight="bold" style={tw`mr-2`} />
-                <Text style={tw`text-[#DB4437] text-center text-base`}>Continue with Google</Text>
+                <Text style={tw`text-[#DB4437] text-center text-base`}>
+                    {!request ? 'Loading...' : 'Continue with Google'}
+                </Text>
             </TouchableOpacity>
 
             {/* Home */}
