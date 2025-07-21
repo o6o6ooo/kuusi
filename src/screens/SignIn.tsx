@@ -24,7 +24,7 @@ export default function SignInScreen({ navigation }: Props) {
     // useAuthRequestを使用（codeを取得）
     const [request, response, promptAsync] = Google.useAuthRequest({
         expoClientId: GOOGLE_WEB_CLIENT_ID,
-        webClientId: GOOGLE_WEB_CLIENT_ID,
+        // webClientId: GOOGLE_WEB_CLIENT_ID,
         redirectUri,
         scopes: ["openid", "profile", "email"],
     });
