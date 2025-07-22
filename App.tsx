@@ -1,3 +1,6 @@
+import * as WebBrowser from "expo-web-browser";
+WebBrowser.maybeCompleteAuthSession();
+
 import { DefaultTheme, NavigationContainer, DarkTheme as NavigationDarkTheme } from '@react-navigation/native';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, LightTheme } from './src/constants/theme'; // テーマ定義をインポート
