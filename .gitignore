@@ -37,3 +37,21 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# CocoaPods
+ios/Pods/
+
+# Ignore Xcode build
+ios/build/
+
+# Android build
+android/build/
+
+# Xcode local settings
+ios/.xcode.env.local
+ios/**/xcuserdata/
+ios/**/xcshareddata/
+ios/**/UserInterfaceState.xcuserstate
+ios/**/kuusi.xcworkspace/contents.xcworkspacedata
+ios/**/kuusi.xcworkspace/
+ios/kuusi.xcodeproj/project.xcworkspace/contents.xcworkspacedata
