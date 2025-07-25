@@ -1,3 +1,5 @@
+import { GoogleAuthProvider, getAuth, signInWithCredential } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import React from "react";
@@ -11,6 +13,24 @@ type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 export default function SignIn({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
+
+    async function signInWithGoogle() {
+        try {
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+            const signInResult = await GoogleSignin.signIn();
+            const idToken = signInResult.data?.idToken;
+            if (!idToken) {
+                // if you are using older versions of google-signin, try old style result
+                throw new Error('No ID token found');
+            }
+            const googleCredential = GoogleAuthProvider.credential(idToken);
+            await signInWithCredential(getAuth(), googleCredential);
+            navigation.replace("MainTabs");
+
+        } catch (error) {
+            console.error('Google Sign-In error:', error);
+        }
+    }
 
     return (
         <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.background }]}>
@@ -29,6 +49,7 @@ export default function SignIn({ navigation }: Props) {
 
             {/* Google */}
             <TouchableOpacity
+                onPress={signInWithGoogle}
                 style={[
                     tw`w-60 flex-row items-center justify-center px-5 py-3 rounded-lg`,
                     { backgroundColor: theme.card },
