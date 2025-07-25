@@ -18,6 +18,7 @@ export default function SignIn({ navigation }: Props) {
         try {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
             const signInResult = await GoogleSignin.signIn();
+            console.log('Sign in result:', signInResult)
             const idToken = signInResult.data?.idToken;
             if (!idToken) {
                 // if you are using older versions of google-signin, try old style result
