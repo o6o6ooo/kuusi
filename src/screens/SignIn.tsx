@@ -1,3 +1,6 @@
+import { GoogleAuthProvider, getAuth, signInWithCredential } from '@react-native-firebase/auth';
+import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import React from "react";
@@ -11,6 +14,51 @@ type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 export default function SignIn({ navigation }: Props) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
+
+    async function signInWithGoogle() {
+        try {
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+            const signInResult = await GoogleSignin.signIn();
+            console.log('Sign in result:', signInResult)
+            const idToken = signInResult.data?.idToken;
+            if (!idToken) {
+                throw new Error('No ID token found');
+            }
+            const googleCredential = GoogleAuthProvider.credential(idToken);
+            await signInWithCredential(getAuth(), googleCredential);
+
+            // save user info to Firestore
+            async function saveUserToFirestore() {
+                const user = getAuth().currentUser;
+                if (!user) return;
+                const db = getFirestore();
+                const userRef = doc(db, 'users', user.uid);
+                const docSnap = await getDoc(userRef);
+
+                if (!docSnap.exists()) {
+                    try {
+                        await setDoc(userRef, {
+                            name: user.displayName,
+                            email: user.email,
+                            icon: '🌸',
+                            bgColour: '#A5C3DE',
+                            createdAt: serverTimestamp(),
+                        });
+                        console.log('✅ User saved to Firestore');
+                    } catch (error) {
+                        console.error('❌ Firestore save error:', error);
+                    }
+                } else {
+                    console.log('ℹ️ User already exists in Firestore');
+                }
+            }
+            await saveUserToFirestore();
+            navigation.replace("MainTabs");
+
+        } catch (error) {
+            console.error('Google Sign-In error:', error);
+        }
+    }
 
     return (
         <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.background }]}>
@@ -29,6 +77,7 @@ export default function SignIn({ navigation }: Props) {
 
             {/* Google */}
             <TouchableOpacity
+                onPress={signInWithGoogle}
                 style={[
                     tw`w-60 flex-row items-center justify-center px-5 py-3 rounded-lg`,
                     { backgroundColor: theme.card },
