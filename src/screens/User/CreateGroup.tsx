@@ -42,6 +42,7 @@ export default function CreateGroup() {
             setGroupName('');
             setPassword('');
             setSuccess("Group created successfully!");
+            setTimeout(() => setSuccess(''), 3000);
         } catch (error) {
             console.error("❌ Failed to create group:", error);
             setError("Failed to create group. Please try again.");
