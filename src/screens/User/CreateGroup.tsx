@@ -9,20 +9,21 @@ export default function CreateGroup() {
     const [groupId, setGroupId] = useState('');
     const [groupName, setGroupName] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
 
     const handleCreateGroup = async () => {
-        setError('');
-        setSuccess('');
+        setMessage('');
+        setMessageType('');
         const rawGroupId = groupId.trim().toLowerCase();
         const rawGroupName = groupName.trim();
         const rawPassword = password.trim();
 
         if (!rawGroupId || !rawGroupName || !rawPassword) {
-            setError("All fields are required.");
+            setMessageType('error');
+            setMessage("All fields are required.");
             return;
         }
 
@@ -41,11 +42,16 @@ export default function CreateGroup() {
             setGroupId('');
             setGroupName('');
             setPassword('');
-            setSuccess("Group created successfully!");
-            setTimeout(() => setSuccess(''), 3000);
+            setMessageType('success');
+            setMessage("Group created successfully!");
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
         } catch (error) {
             console.error("❌ Failed to create group:", error);
-            setError("Failed to create group. Please try again.");
+            setMessageType('error');
+            setMessage("Failed to create group. Please try again.");
         }
     };
 
@@ -72,12 +78,17 @@ export default function CreateGroup() {
                 secureTextEntry
             />
 
-            {error ? (
-                <Text style={tw`text-red-500 mb-2`}>{error}</Text>
-            ) : null}
-            {success ? (
-                <Text style={[tw`text-green-500 mb-2`, { color: theme.primary }]}>{success}</Text>
-            ) : null}
+            {/* messages */}
+            {message !== '' && (
+                <Text
+                    style={[
+                        tw`mb-2 text-center font-medium`,
+                        messageType === 'success' ? { color: theme.primary } : { color: 'tomato' }
+                    ]}
+                >
+                    {message}
+                </Text>
+            )}
 
             <TouchableOpacity
                 style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]}
