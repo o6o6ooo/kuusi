@@ -84,10 +84,7 @@ export default function User() {
                                 <TouchableOpacity
                                     key={index}
                                     onPress={() => setBgColour(color)}
-                                    style={[
-                                        tw`w-8 h-8 rounded-full border-2 shadow-md`,
-                                        { backgroundColor: color, borderColor: 'white' }
-                                    ]}
+                                    style={[tw`w-8 h-8 rounded-full border-2 shadow-md`, { backgroundColor: color, borderColor: 'white' }]}
                                 />
                             ))}
                         </View>
@@ -96,24 +93,51 @@ export default function User() {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </ScrollView>
-            {/* アイコン */}
-            <View
-                style={[
-                    tw`mt-10 relative w-24 h-24 rounded-full border-2 shadow-md items-center justify-center`,
-                    { backgroundColor: bgColour, borderColor: 'white' },
-                ]}
-            >
-                <Text style={tw`text-5xl`}>{icon}</Text>
-            </View>
 
-            {/* Sign Out ボタン */}
-            <TouchableOpacity
-                onPress={handleSignOut}
-                style={[tw`mt-10 px-5 py-3 rounded-lg`, { backgroundColor: theme.primary }]}
-            >
-                <Text style={tw`text-white text-center`}>Sign Out</Text>
-            </TouchableOpacity>
+                {/* Your groups section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Create a groups section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a groups</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Invite your beloved ones.</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Your storage section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>You've posted so far.</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Your hashtags section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your hashtags</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Display your hashtags.</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Subscription section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Subscription</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Upgrade to premium, cancel anytime.</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Link to your accounts section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Link tou your accounts</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+
+                </View>
+                {/* Footer */}
+                <Text style={[tw`underline my-8`, { color: theme.primary }]} onPress={handleSignOut}>Sign Out</Text>
+                <Text style={[tw`text-xs mb-1`, { color: theme.grayText }]}>Contact to get help</Text>
+                <Text style={[tw`text-xs mb-1`, { color: theme.grayText }]}>Privacy policy</Text>
+                <Text style={[tw`text-xs mb-1`, { color: theme.grayText }]}>Terms of service</Text>
+                <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Made with love by{' '}
+                    <Text style={[tw`text-xs`, { color: theme.primary }]}>Sakura Wallace</Text>
+                </Text>
+            </ScrollView>
 
         </View>
     );
