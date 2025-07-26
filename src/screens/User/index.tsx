@@ -8,6 +8,7 @@ import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 import type { RootStackParamList } from "../../navigation/RootNavigator";
 import CreateGroup from './CreateGroup';
+import EditGroup from './EditGroup';
 import Profile from "./Profile";
 
 export default function User() {
@@ -44,34 +45,6 @@ export default function User() {
         fetchUser();
     }, []);
 
-
-    const handleSaveProfile = () => {
-        // update firestore
-    };
-
-    const handleSwitchGroup = (groupId: string) => {
-        const selectedGroup = groups.find(group => group.id === groupId);
-        if (!selectedGroup) return;
-
-        setCurrentGroupId(groupId);
-        setGroupName(selectedGroup.name || '');
-        setGroupLink(selectedGroup.shareLink || '');
-        setMembers(selectedGroup.membersData || []);
-    };
-
-    const handleSaveGroup = async () => {
-    };
-
-    const handleCreateGroup = () => {
-        if (!groupId.trim() || !newGroupName.trim()) {
-            // set error message 'Please fill in all fields.'
-            return;
-        }
-        setGroupId('');
-        setGroupName('');
-        // create group process
-    };
-
     async function handleSignOut() {
         try {
             await signOut(getAuth());
@@ -90,12 +63,11 @@ export default function User() {
                 <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
             </View>
             <ScrollView style={tw`px-4`}>
-                <Profile onSave={handleSaveProfile} />
+                <Profile />
                 {/* Your groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl`, { backgroundColor: theme.card }]}>
-                </View>
+                <EditGroup />
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a group</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Invite your beloved ones.</Text>
                 <CreateGroup />
