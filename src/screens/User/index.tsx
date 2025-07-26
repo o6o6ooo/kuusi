@@ -3,10 +3,11 @@ import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
+import { ScrollView, Text, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 import type { RootStackParamList } from "../../navigation/RootNavigator";
+import CreateGroup from './CreateGroup';
 import Profile from "./Profile";
 
 export default function User() {
@@ -94,25 +95,10 @@ export default function User() {
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
                 <View style={[tw`mb-4 p-4 rounded-xl`, { backgroundColor: theme.card }]}>
-
                 </View>
-                {/* Create a groups section */}
-                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a groups</Text>
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a group</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Invite your beloved ones.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-col`, { backgroundColor: theme.card }]}>
-                    <TextInput
-                        style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
-                        placeholder="group ID"
-                    />
-                    <TextInput
-                        style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
-                        placeholder="group name"
-                    />
-                    <Text style={[tw`text-center text-xs self-start mb-1 underline`, { color: theme.grayText }]}>Group link</Text>
-                    <TouchableOpacity style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]} onPress={handleSaveProfile}>
-                        <Text style={tw`text-white font-medium`}>Create</Text>
-                    </TouchableOpacity>
-                </View>
+                <CreateGroup />
                 {/* Your storage section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>You've posted so far.</Text>
