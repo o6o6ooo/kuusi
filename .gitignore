@@ -1,57 +1,38 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Node.js dependencies
 node_modules/
 
-# Expo
+# Expo / React Native build
 .expo/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+# Build artifacts
+ios/build/
+android/build/
 
-# Metro
-.metro-health-check*
+# CocoaPods
+ios/Pods/
 
-# debug
+# Logs and debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
+# TypeScript
+*.tsbuildinfo
 
 # macOS
 .DS_Store
 *.pem
 
-# local env files
+# Local env
 .env*.local
 
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# CocoaPods
-ios/Pods/
-
-# Ignore Xcode build
-ios/build/
-
-# Android build
-android/build/
-
-# Xcode local settings
-ios/.xcode.env.local
+# Xcode - user-specific files
 ios/**/xcuserdata/
 ios/**/xcshareddata/
 ios/**/UserInterfaceState.xcuserstate
-ios/**/kuusi.xcworkspace/contents.xcworkspacedata
-ios/**/kuusi.xcworkspace/
-ios/kuusi.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+# Optional: if kuusi.xcworkspace is generated via CocoaPods
+ios/kuusi.xcworkspace/
