@@ -86,13 +86,9 @@ export default function SignIn({ navigation }: Props) {
                 <Text style={tw`text-[#DB4437] text-center text-base`}>Continue with Google</Text>
             </TouchableOpacity>
 
-            {/* Home */}
-            <TouchableOpacity
-                style={[tw`mt-8 px-5 py-3 rounded-lg`, { backgroundColor: theme.primary }]}
-                onPress={() => navigation.replace("MainTabs")}
-            >
-                <Text style={tw`text-white text-center`}>Go to Home</Text>
-            </TouchableOpacity>
+            <Text style={[tw`text-xs mt-4 mb-8`, { color: theme.grayText }]}>Having trouble to sign in?{' '}
+                <Text style={[tw`text-xs`, { color: theme.primary }]}>Contact to get help</Text>
+            </Text>
 
             {/* Terms */}
             <View style={tw`px-10`}>
