@@ -5,8 +5,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
-import { DarkTheme, LightTheme } from "../constants/theme";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import { DarkTheme, LightTheme } from "../../constants/theme";
+import type { RootStackParamList } from "../../navigation/RootNavigator";
 
 export default function User() {
     const [displayName, setDisplayName] = useState('');
@@ -14,7 +14,13 @@ export default function User() {
     const [icon, setIcon] = useState('');
     const [bgColour, setBgColour] = useState('#ccc');
     const avatarColors = ['#A5C3DE', '#C7E9F1', '#C8E3D4', '#D9E5FF', '#DCD6F7', '#FADADD', '#FBE7A1', '#FFB3C1', '#FFD6A5', '#FFF9B1'];
-
+    const [newGroupName, setNewGroupName] = useState('');
+    const [groupName, setGroupName] = useState('');
+    const [groupId, setGroupId] = useState('');
+    const [groups, setGroups] = useState<any[]>([]);
+    const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
+    const [groupLink, setGroupLink] = useState('');
+    const [members, setMembers] = useState<any[]>([]);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -40,6 +46,34 @@ export default function User() {
 
         fetchUser();
     }, []);
+
+
+    const handleSaveProfile = () => {
+        // update firestore
+    };
+
+    const handleSwitchGroup = (groupId: string) => {
+        const selectedGroup = groups.find(group => group.id === groupId);
+        if (!selectedGroup) return;
+
+        setCurrentGroupId(groupId);
+        setGroupName(selectedGroup.name || '');
+        setGroupLink(selectedGroup.shareLink || '');
+        setMembers(selectedGroup.membersData || []);
+    };
+
+    const handleSaveGroup = async () => {
+    };
+
+    const handleCreateGroup = () => {
+        if (!groupId.trim() || !newGroupName.trim()) {
+            // set error message 'Please fill in all fields.'
+            return;
+        }
+        setGroupId('');
+        setGroupName('');
+        // create group process
+    };
 
     async function handleSignOut() {
         try {
@@ -75,7 +109,7 @@ export default function User() {
                     {/* name input & bg color buttons */}
                     <View style={tw`w-2/3 justify-center px-2 gap-4`}>
                         <TextInput
-                            style={[tw`rounded-lg px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
+                            style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
                             value={displayName}
                             onChangeText={setDisplayName}
                         />
@@ -88,7 +122,7 @@ export default function User() {
                                 />
                             ))}
                         </View>
-                        <TouchableOpacity style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]}>
+                        <TouchableOpacity style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]} onPress={handleSaveProfile}>
                             <Text style={tw`text-white font-medium`}>Save</Text>
                         </TouchableOpacity>
                     </View>
@@ -97,14 +131,25 @@ export default function User() {
                 {/* Your groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+                <View style={[tw`mb-4 p-4 rounded-xl`, { backgroundColor: theme.card }]}>
 
                 </View>
                 {/* Create a groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Invite your beloved ones.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
+                <View style={[tw`mb-4 p-4 rounded-xl flex-col`, { backgroundColor: theme.card }]}>
+                    <TextInput
+                        style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
+                        placeholder="group ID"
+                    />
+                    <TextInput
+                        style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
+                        placeholder="group name"
+                    />
+                    <Text style={[tw`text-center text-xs self-start mb-1 underline`, { color: theme.grayText }]}>Group link</Text>
+                    <TouchableOpacity style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]} onPress={handleSaveProfile}>
+                        <Text style={tw`text-white font-medium`}>Create</Text>
+                    </TouchableOpacity>
                 </View>
                 {/* Your storage section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
