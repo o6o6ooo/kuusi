@@ -24,6 +24,10 @@ export default function CreateGroup() {
         if (!rawGroupId || !rawGroupName || !rawPassword) {
             setMessageType('error');
             setMessage("All fields are required.");
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
             return;
         }
 

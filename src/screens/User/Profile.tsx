@@ -47,6 +47,10 @@ export default function Profile() {
         if (!displayName.trim()) {
             setMessageType('error');
             setMessage('Display name cannot be empty');
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
             return;
         }
 
@@ -61,6 +65,10 @@ export default function Profile() {
             });
             setMessageType('success');
             setMessage('Profile saved successfully!');
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
         } catch (error) {
             console.error('❌ Failed to save profile:', error);
             setMessageType('error');
