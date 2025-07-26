@@ -5,10 +5,14 @@ import { Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-n
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 
-export default function Profile({ onSave }: { onSave: (displayName: string, bgColour: string) => void }) {
+export default function Profile() {
     const [displayName, setDisplayName] = useState('');
     const [icon, setIcon] = useState('');
     const [bgColour, setBgColour] = useState('#ccc');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+
     const avatarColors = ['#A5C3DE', '#C7E9F1', '#C8E3D4', '#D9E5FF', '#DCD6F7', '#FADADD', '#FBE7A1', '#FFB3C1', '#FFD6A5', '#FFF9B1'];
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
@@ -33,14 +37,43 @@ export default function Profile({ onSave }: { onSave: (displayName: string, bgCo
         fetchUser();
     }, []);
 
-    const handleSave = () => {
-        onSave(displayName, bgColour);
+    const handleSave = async () => {
+        const uid = getAuth().currentUser?.uid;
+        if (!uid) {
+            setMessageType('error');
+            setMessage('User not logged in');
+            return;
+        }
+        if (!displayName.trim()) {
+            setMessageType('error');
+            setMessage('Display name cannot be empty');
+            return;
+        }
+
+        setLoading(true);
+        setMessage('');
+        try {
+            await firestore().collection('users').doc(uid).update({
+                name: displayName,
+                icon: icon,
+                bgColour: bgColour,
+                updatedAt: firestore.FieldValue.serverTimestamp(),
+            });
+            setMessageType('success');
+            setMessage('Profile saved successfully!');
+        } catch (error) {
+            console.error('❌ Failed to save profile:', error);
+            setMessageType('error');
+            setMessage('Failed to save profile');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <View style={[tw`mb-8 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-            {/* current icon */}
-            <View style={tw`items-center justify-center w-1/3`}>
+        <View style={[tw`mb-8 p-4 rounded-xl`, { backgroundColor: theme.card }]}>
+            <View style={tw`flex-row items-center mb-4`}>
+                {/* icon */}
                 <View
                     style={[
                         tw`w-20 h-20 rounded-full items-center border-2 justify-center shadow-md`,
@@ -49,31 +82,49 @@ export default function Profile({ onSave }: { onSave: (displayName: string, bgCo
                 >
                     <Text style={tw`text-4xl`}>{icon}</Text>
                 </View>
-            </View>
-
-            {/* name input & bg color buttons */}
-            <View style={tw`w-2/3 justify-center px-2 gap-4`}>
+                {/* display name */}
                 <TextInput
-                    style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
+                    style={[tw`flex-1 ml-4 rounded-xl px-4 py-3`, { backgroundColor: theme.background, color: theme.text }]}
                     value={displayName}
                     onChangeText={setDisplayName}
+                    editable={!loading}
                 />
-                <View style={tw`flex-row flex-wrap gap-3`}>
-                    {avatarColors.map((color, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            onPress={() => setBgColour(color)}
-                            style={[tw`w-8 h-8 rounded-full border-2 shadow-md`, { backgroundColor: color, borderColor: "white" }]}
-                        />
-                    ))}
-                </View>
+            </View>
+
+            {/* bg colours */}
+            <View style={tw`flex-row flex-wrap mb-4`}>
+                {avatarColors.map((color, index) => (
+                    <TouchableOpacity
+                        key={index}
+                        onPress={() => setBgColour(color)}
+                        style={[tw`w-8 h-8 rounded-full border-2 shadow-md mr-3 mb-3`, { backgroundColor: color, borderColor: "white" }]}
+                        disabled={loading}
+                    />
+                ))}
+            </View>
+
+            {/* Save */}
+            <View style={tw`flex-row justify-end mb-3`}>
                 <TouchableOpacity
-                    style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]}
+                    style={[tw`px-4 py-2 rounded-full`, { backgroundColor: theme.primary, opacity: loading ? 0.6 : 1 }]}
                     onPress={handleSave}
+                    disabled={loading}
                 >
-                    <Text style={tw`text-white font-medium`}>Save</Text>
+                    <Text style={tw`text-white font-medium`}>{loading ? "Saving..." : "Save"}</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* message */}
+            {message !== '' && (
+                <Text
+                    style={[
+                        tw`text-center font-medium`,
+                        messageType === 'success' ? { color: theme.primary } : { color: 'tomato' }
+                    ]}
+                >
+                    {message}
+                </Text>
+            )}
         </View>
     );
 }
