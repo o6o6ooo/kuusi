@@ -7,13 +7,11 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View, useColorScheme } f
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 import type { RootStackParamList } from "../../navigation/RootNavigator";
+import Profile from "./Profile";
 
 export default function User() {
     const [displayName, setDisplayName] = useState('');
     const [email, setEmail] = useState('');
-    const [icon, setIcon] = useState('');
-    const [bgColour, setBgColour] = useState('#ccc');
-    const avatarColors = ['#A5C3DE', '#C7E9F1', '#C8E3D4', '#D9E5FF', '#DCD6F7', '#FADADD', '#FBE7A1', '#FFB3C1', '#FFD6A5', '#FFF9B1'];
     const [newGroupName, setNewGroupName] = useState('');
     const [groupName, setGroupName] = useState('');
     const [groupId, setGroupId] = useState('');
@@ -35,8 +33,6 @@ export default function User() {
                 const data = doc.data();
                 if (data) {
                     setDisplayName(data.name);
-                    setIcon(data.icon);
-                    setBgColour(data.bgColour);
                     setEmail(data.email);
                 }
             } catch (error) {
@@ -93,41 +89,7 @@ export default function User() {
                 <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
             </View>
             <ScrollView style={tw`px-4`}>
-                {/* Edit Profile Section */}
-                <View style={[tw`mb-8 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
-                    {/* current icon */}
-                    <View style={tw`items-center justify-center w-1/3`}>
-                        <View style={[
-                            tw`w-20 h-20 rounded-full items-center border-2 justify-center shadow-md`,
-                            { backgroundColor: bgColour, borderColor: 'white' }
-                        ]}>
-                            <Text style={tw`text-4xl`}>{icon}</Text>
-                        </View>
-                    </View>
-
-                    {/* name input & bg color buttons */}
-                    <View style={tw`w-2/3 justify-center px-2 gap-4`}>
-                        <TextInput
-                            style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
-                            value={displayName}
-                            onChangeText={setDisplayName}
-                        />
-                        <View style={tw`flex-row flex-wrap gap-3`}>
-                            {avatarColors.map((color, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    onPress={() => setBgColour(color)}
-                                    style={[tw`w-8 h-8 rounded-full border-2 shadow-md`, { backgroundColor: color, borderColor: 'white' }]}
-                                />
-                            ))}
-                        </View>
-                        <TouchableOpacity style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]} onPress={handleSaveProfile}>
-                            <Text style={tw`text-white font-medium`}>Save</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
+                <Profile onSave={handleSaveProfile} />
                 {/* Your groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
