@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Calendar, Camera, HouseLine, SlidersHorizontal } from "phosphor-react-native";
-import React, { useEffect, useRef } from "react";
-import { Animated, useColorScheme } from "react-native";
+import React from "react";
+import { useColorScheme } from "react-native";
 import { DarkTheme, LightTheme } from "../constants/theme";
 import Browse from "../screens/Browse";
 import Home from "../screens/Home";
@@ -10,24 +10,9 @@ import User from "../screens/User";
 
 const Tab = createBottomTabNavigator();
 
-function AnimatedIcon({ focused, color, size, Icon }: { focused: boolean; color: string; size: number; Icon: any }) {
-    const scale = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        Animated.spring(scale, {
-            toValue: focused ? 1.2 : 1,
-            friction: 4,
-            useNativeDriver: true,
-        }).start();
-    }, [focused]);
-
-    return (
-        <Animated.View style={{ transform: [{ scale }] }}>
-            <Icon size={size} color={color} weight="bold" />
-        </Animated.View>
-    );
+function TabIcon({ color, size, Icon }: { color: string; size: number; Icon: any }) {
+    return <Icon size={size} color={color} weight="regular" />;
 }
-
 export default function BottomTabNavigator() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
@@ -54,7 +39,7 @@ export default function BottomTabNavigator() {
                         User: SlidersHorizontal,
                     };
                     const Icon = icons[route.name];
-                    return <AnimatedIcon focused={focused} color={color} size={size} Icon={Icon} />;
+                    return <TabIcon color={color} size={size} Icon={Icon} />;
                 },
             })}
         >

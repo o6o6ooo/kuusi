@@ -19,7 +19,6 @@ export default function SignIn({ navigation }: Props) {
         try {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
             const signInResult = await GoogleSignin.signIn();
-            console.log('Sign in result:', signInResult)
             const idToken = signInResult.data?.idToken;
             if (!idToken) {
                 throw new Error('No ID token found');
