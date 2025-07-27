@@ -41,6 +41,7 @@ export default function SignIn({ navigation }: Props) {
                             email: user.email,
                             icon: '🌸',
                             bgColour: '#A5C3DE',
+                            premium: false,
                             createdAt: serverTimestamp(),
                         });
                         console.log('✅ User saved to Firestore');
