@@ -1,12 +1,12 @@
 import { format } from "date-fns";
-import { getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { doc, getDoc, getFirestore, Timestamp } from "firebase/firestore";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { Calendar, CalendarDots, Check } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import { Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
+import { auth, db } from "../../lib/firebase";
+
 
 export default function Subscription() {
     const [user, setUser] = useState<{ premium: boolean; plan?: string; nextBillingDate?: Timestamp }>({
@@ -17,10 +17,6 @@ export default function Subscription() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const app = getApp();
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-
             const uid = auth.currentUser?.uid;
             if (!uid) return;
 
