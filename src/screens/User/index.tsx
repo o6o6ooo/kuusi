@@ -16,13 +16,6 @@ import Subscription from './Subscription';
 export default function User() {
     const [displayName, setDisplayName] = useState('');
     const [email, setEmail] = useState('');
-    const [newGroupName, setNewGroupName] = useState('');
-    const [groupName, setGroupName] = useState('');
-    const [groupId, setGroupId] = useState('');
-    const [groups, setGroups] = useState<any[]>([]);
-    const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
-    const [groupLink, setGroupLink] = useState('');
-    const [members, setMembers] = useState<any[]>([]);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
