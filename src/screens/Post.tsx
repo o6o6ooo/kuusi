@@ -52,7 +52,7 @@ export default function Post() {
         const result = await ImagePicker.launchImageLibraryAsync({
             allowsMultipleSelection: true,
             quality: 0.5,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ["images"],
         });
         if (!result.canceled) {
             setImages(result.assets);
