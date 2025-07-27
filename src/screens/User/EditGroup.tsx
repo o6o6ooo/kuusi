@@ -120,7 +120,7 @@ export default function EditGroup() {
             </ScrollView>
 
             {selectedGroupId && (
-                <View style={tw`p-4 rounded-xl`}>
+                <View style={[tw`mt-4`]}>
                     <Text style={[tw`text-xs m-2`, { color: theme.text }]}>
                         Group ID:{' '}
                         <Text style={[tw`mb-2 font-semibold`, { color: theme.primary }]}>
