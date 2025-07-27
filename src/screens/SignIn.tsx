@@ -1,12 +1,13 @@
-import { GoogleAuthProvider, getAuth, signInWithCredential } from '@react-native-firebase/auth';
-import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
+import { auth, db } from '../lib/firebase';
 import { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
@@ -20,39 +21,31 @@ export default function SignIn({ navigation }: Props) {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
             const signInResult = await GoogleSignin.signIn();
             const idToken = signInResult.data?.idToken;
-            if (!idToken) {
-                throw new Error('No ID token found');
-            }
+            if (!idToken) throw new Error('No ID token found');
+
             const googleCredential = GoogleAuthProvider.credential(idToken);
-            await signInWithCredential(getAuth(), googleCredential);
+            await signInWithCredential(auth, googleCredential);
 
-            // save user info to Firestore
-            async function saveUserToFirestore() {
-                const user = getAuth().currentUser;
-                if (!user) return;
-                const db = getFirestore();
-                const userRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(userRef);
+            const user = auth.currentUser;
+            if (!user) return;
 
-                if (!docSnap.exists()) {
-                    try {
-                        await setDoc(userRef, {
-                            name: user.displayName,
-                            email: user.email,
-                            icon: '🌸',
-                            bgColour: '#A5C3DE',
-                            premium: false,
-                            createdAt: serverTimestamp(),
-                        });
-                        console.log('✅ User saved to Firestore');
-                    } catch (error) {
-                        console.error('❌ Firestore save error:', error);
-                    }
-                } else {
-                    console.log('ℹ️ User already exists in Firestore');
-                }
+            const userRef = doc(db, 'users', user.uid);
+            const docSnap = await getDoc(userRef);
+
+            if (!docSnap.exists()) {
+                await setDoc(userRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    icon: '🌸',
+                    bgColour: '#A5C3DE',
+                    premium: false,
+                    createdAt: serverTimestamp(),
+                });
+                console.log('✅ User saved to Firestore');
+            } else {
+                console.log('ℹ️ User already exists in Firestore');
             }
-            await saveUserToFirestore();
+
             navigation.replace("MainTabs");
 
         } catch (error) {
