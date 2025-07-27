@@ -1,6 +1,6 @@
-import { MaterialIcons } from "@expo/vector-icons";
 import { getAuth } from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
+import { Check } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import { Text, useColorScheme, View } from "react-native";
 import tw from "twrnc";
@@ -51,35 +51,23 @@ export default function Subscription() {
     return (
         <View>
             {plans.map((plan) => (
-                <View
-                    key={plan.name}
-                    style={[
-                        tw`mb-4 p-4 rounded-xl`,
-                        { backgroundColor: theme.card },
-                    ]}
-                >
-                    <View style={tw`flex-row items-center`}>
+                <View key={plan.name} style={[tw`mb-2 p-2 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
+                    <View style={tw`w-1/5 justify-center items-center pt-1`}>
                         {plan.selected && (
-                            <MaterialIcons
-                                name="check-circle"
-                                size={20}
-                                color={theme.primary}
-                                style={tw`mr-2`}
-                            />
+                            <Check size={20} color={theme.text} weight="bold" />
                         )}
-                        <Text style={[tw`text-lg font-semibold`, { color: theme.text }]}>
-                            {plan.name}
-                        </Text>
                     </View>
 
-                    {plan.features.map((feature, idx) => (
-                        <Text
-                            key={idx}
-                            style={[tw`ml-6 text-xs`, { color: theme.text }]}
-                        >
-                            • {feature}
+                    <View style={tw`w-4/5`}>
+                        <Text style={[tw`font-semibold mb-1`, { color: theme.text }]}>
+                            {plan.name}
                         </Text>
-                    ))}
+                        {plan.features.map((feature, idx) => (
+                            <Text key={idx} style={[tw`text-xs`, { color: theme.text }]}>
+                                • {feature}
+                            </Text>
+                        ))}
+                    </View>
                 </View>
             ))}
         </View>
