@@ -1,5 +1,6 @@
-import { getAuth } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { getApp } from "firebase/app";
+import { getAuth } from 'firebase/auth';
+import { arrayUnion, doc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
@@ -17,6 +18,7 @@ export default function CreateGroup() {
     const handleCreateGroup = async () => {
         setMessage('');
         setMessageType('');
+
         const rawGroupId = groupId.trim().toLowerCase();
         const rawGroupName = groupName.trim();
         const rawPassword = password.trim();
@@ -32,15 +34,20 @@ export default function CreateGroup() {
         }
 
         try {
-            await firestore().collection("groups").doc(rawGroupId).set({
+            const app = getApp();
+            const db = getFirestore(app);
+            const uid = getAuth(app).currentUser?.uid;
+            if (!uid) throw new Error("User not authenticated");
+
+            await setDoc(doc(db, "groups", rawGroupId), {
                 name: rawGroupName,
                 password: rawPassword,
-                members: [getAuth().currentUser?.uid],
-                createdAt: firestore.FieldValue.serverTimestamp(),
+                members: [uid],
+                createdAt: serverTimestamp(),
             });
 
-            await firestore().collection("users").doc(getAuth().currentUser?.uid).set({
-                groups: firestore.FieldValue.arrayUnion(rawGroupId),
+            await setDoc(doc(db, "users", uid), {
+                groups: arrayUnion(rawGroupId),
             }, { merge: true });
 
             setGroupId('');
