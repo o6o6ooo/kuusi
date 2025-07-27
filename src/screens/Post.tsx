@@ -1,11 +1,11 @@
-import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
+import { doc, getDoc } from "firebase/firestore";
 import { FolderOpen } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
+import { auth, db } from "../lib/firebase";
 
 export default function Post() {
     const colorScheme = useColorScheme();
@@ -16,8 +16,8 @@ export default function Post() {
     const [hashtagInput, setHashtagInput] = useState("");
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [images, setImages] = useState<any[]>([]);
+    const currentUser = auth.currentUser;
 
-    const currentUser = auth().currentUser;
     useEffect(() => {
         setSelectedGroup(null);
     }, []);
@@ -26,14 +26,14 @@ export default function Post() {
         const fetchUserGroups = async () => {
             if (!currentUser) return;
             try {
-                const userDoc = await firestore().collection("users").doc(currentUser.uid).get();
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
                 const groupIds = userDoc.data()?.groups ?? [];
 
                 if (groupIds.length > 0) {
                     const groupNames: string[] = [];
 
                     for (const groupId of groupIds) {
-                        const groupDoc = await firestore().collection("groups").doc(groupId).get();
+                        const groupDoc = await getDoc(doc(db, "groups", groupId));
                         const name = groupDoc.data()?.name;
                         if (name) groupNames.push(name);
                     }
@@ -46,7 +46,7 @@ export default function Post() {
         };
 
         fetchUserGroups();
-    }, []);
+    }, [currentUser]);
 
     const pickImages = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -120,6 +120,7 @@ export default function Post() {
                     onChangeText={setHashtagInput}
                     onSubmitEditing={handleTagKeyDown}
                 />
+
                 <View style={tw`flex-row flex-wrap gap-2 mb-4`}>
                     {hashtags.map((tag, i) => (
                         <View key={i} style={[tw`flex-row items-center px-2 py-1 rounded-full`, { backgroundColor: theme.primary }]}>
