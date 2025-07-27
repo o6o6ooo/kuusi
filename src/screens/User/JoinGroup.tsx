@@ -139,9 +139,7 @@ export default function JoinGroup() {
                 style={[
                     tw`px-4 py-2 rounded-full self-end`,
                     {
-                        backgroundColor: canJoin ? theme.primary : theme.card,
-                        borderWidth: 1,
-                        borderColor: canJoin ? theme.primary : theme.grayText,
+                        backgroundColor: canJoin ? theme.primary : theme.gray,
                     }
                 ]}
                 onPress={handleJoinGroup}
