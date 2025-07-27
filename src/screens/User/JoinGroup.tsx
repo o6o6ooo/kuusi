@@ -1,61 +1,108 @@
 import { getAuth } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 
+let debounceTimer: NodeJS.Timeout;
+
 export default function JoinGroup() {
     const [groupId, setGroupId] = useState('');
-    const [groupName, setGroupName] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+    const [canJoin, setCanJoin] = useState(false);
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
 
-    const handleCreateGroup = async () => {
-        setMessage('');
-        setMessageType('');
-        const rawGroupId = groupId.trim().toLowerCase();
-        const rawGroupName = groupName.trim();
-        const rawPassword = password.trim();
-
-        if (!rawGroupId || !rawGroupName || !rawPassword) {
-            setMessageType('error');
-            setMessage("All fields are required.");
-            setTimeout(() => {
-                setMessage('');
-                setMessageType('');
-            }, 3000);
+    useEffect(() => {
+        // 入力が揃っていない場合はメッセージと状態をクリア
+        if (!groupId.trim() || !password.trim()) {
+            setMessage('');
+            setMessageType('');
+            setCanJoin(false);
             return;
         }
 
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            handleSearchGroup();
+        }, 300);
+    }, [groupId, password]);
+
+    const handleSearchGroup = async () => {
+        const rawGroupId = groupId.trim().toLowerCase();
+        const rawPassword = password.trim();
+
         try {
-            await firestore().collection("groups").doc(rawGroupId).set({
-                name: rawGroupName,
-                password: rawPassword,
-                members: [getAuth().currentUser?.uid],
-                createdAt: firestore.FieldValue.serverTimestamp(),
-            });
+            const doc = await firestore().collection("groups").doc(rawGroupId).get();
+            if (!doc.exists) {
+                setMessageType('error');
+                setMessage("No matching group found. Please check the ID and password.");
+                setCanJoin(false);
+                return;
+            }
 
-            await firestore().collection("users").doc(getAuth().currentUser?.uid).set({
-                groups: firestore.FieldValue.arrayUnion(rawGroupId),
-            }, { merge: true });
+            const data = doc.data();
+            if (data?.password === rawPassword) {
+                setMessageType('success');
+                setMessage("Found a group!");
+                setCanJoin(true);
+            } else {
+                setMessageType('error');
+                setMessage("No matching group found. Please check the ID and password.");
+                setCanJoin(false);
+            }
 
-            setGroupId('');
-            setGroupName('');
-            setPassword('');
-            setMessageType('success');
-            setMessage("Group created successfully!");
             setTimeout(() => {
                 setMessage('');
                 setMessageType('');
             }, 3000);
         } catch (error) {
-            console.error("❌ Failed to create group:", error);
+            console.error("❌ Failed to search group:", error);
             setMessageType('error');
-            setMessage("Failed to create group. Please try again.");
+            setMessage("Failed to search group. Please try again.");
+            setCanJoin(false);
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
+        }
+    };
+
+    const handleJoinGroup = async () => {
+        const uid = getAuth().currentUser?.uid;
+        const rawGroupId = groupId.trim().toLowerCase();
+
+        if (!uid || !canJoin) return;
+
+        try {
+            await firestore().collection("users").doc(uid).set({
+                groups: firestore.FieldValue.arrayUnion(rawGroupId),
+            }, { merge: true });
+
+            await firestore().collection("groups").doc(rawGroupId).update({
+                members: firestore.FieldValue.arrayUnion(uid),
+            });
+
+            setGroupId('');
+            setPassword('');
+            setCanJoin(false);
+            setMessageType('success');
+            setMessage("Joined the group!");
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
+        } catch (error) {
+            console.error("❌ Failed to join group:", error);
+            setMessageType('error');
+            setMessage("Failed to join group. Please try again.");
+            setTimeout(() => {
+                setMessage('');
+                setMessageType('');
+            }, 3000);
         }
     };
 
@@ -63,20 +110,20 @@ export default function JoinGroup() {
         <View style={[tw`mb-4 p-4 rounded-xl flex-col`, { backgroundColor: theme.card }]}>
             <TextInput
                 style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
-                placeholder="group ID"
+                placeholder="Group ID"
                 autoCapitalize="none"
                 value={groupId}
                 onChangeText={setGroupId}
             />
             <TextInput
                 style={[tw`rounded-xl px-4 py-3 mb-2`, { backgroundColor: theme.background, color: theme.text }]}
-                placeholder="password"
+                placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
             />
 
-            {/* messages */}
+            {/* メッセージ表示 */}
             {message !== '' && (
                 <Text
                     style={[
@@ -89,10 +136,23 @@ export default function JoinGroup() {
             )}
 
             <TouchableOpacity
-                style={[tw`text-white px-4 py-2 rounded-full self-end`, { backgroundColor: theme.primary }]}
-                onPress={handleCreateGroup}
+                style={[
+                    tw`px-4 py-2 rounded-full self-end`,
+                    {
+                        backgroundColor: canJoin ? theme.primary : theme.card,
+                        borderWidth: 1,
+                        borderColor: canJoin ? theme.primary : theme.grayText,
+                    }
+                ]}
+                onPress={handleJoinGroup}
+                disabled={!canJoin}
             >
-                <Text style={tw`text-white font-medium`}>Create</Text>
+                <Text style={[
+                    tw`font-medium`,
+                    { color: canJoin ? "#fff" : theme.grayText }
+                ]}>
+                    Join
+                </Text>
             </TouchableOpacity>
         </View>
     );
