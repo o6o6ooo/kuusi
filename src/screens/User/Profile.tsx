@@ -1,9 +1,9 @@
-import { getAuth } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
+import { auth, db } from "../../lib/firebase";
 
 export default function Profile() {
     const [displayName, setDisplayName] = useState('');
@@ -19,12 +19,13 @@ export default function Profile() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const uid = getAuth().currentUser?.uid;
+            const uid = auth.currentUser?.uid;
             if (!uid) return;
 
             try {
-                const doc = await firestore().collection('users').doc(uid).get();
-                const data = doc.data();
+                const docRef = doc(db, 'users', uid);
+                const docSnap = await getDoc(docRef);
+                const data = docSnap.data();
                 if (data) {
                     setDisplayName(data.name);
                     setIcon(data.icon);
@@ -38,7 +39,7 @@ export default function Profile() {
     }, []);
 
     const handleSave = async () => {
-        const uid = getAuth().currentUser?.uid;
+        const uid = auth.currentUser?.uid;
         if (!uid) {
             setMessageType('error');
             setMessage('User not logged in');
@@ -57,11 +58,11 @@ export default function Profile() {
         setLoading(true);
         setMessage('');
         try {
-            await firestore().collection('users').doc(uid).update({
+            await updateDoc(doc(db, 'users', uid), {
                 name: displayName,
                 icon: icon,
                 bgColour: bgColour,
-                updatedAt: firestore.FieldValue.serverTimestamp(),
+                updatedAt: serverTimestamp(),
             });
             setMessageType('success');
             setMessage('Profile saved successfully!');
