@@ -11,6 +11,7 @@ import CreateGroup from './CreateGroup';
 import EditGroup from './EditGroup';
 import JoinGroup from './JoinGroup';
 import Profile from "./Profile";
+import Subscription from './Subscription';
 
 export default function User() {
     const [displayName, setDisplayName] = useState('');
@@ -98,8 +99,7 @@ export default function User() {
                 {/* Subscription section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Subscription</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Upgrade to premium, cancel anytime.</Text>
-                <View style={[tw`p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-                </View>
+                <Subscription />
                 <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Already got premium?{' '}
                     <Text style={[tw`text-xs`, { color: theme.primary }]}>Restore purchase.</Text>
                 </Text>
