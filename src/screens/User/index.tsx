@@ -9,6 +9,7 @@ import { DarkTheme, LightTheme } from "../../constants/theme";
 import type { RootStackParamList } from "../../navigation/RootNavigator";
 import CreateGroup from './CreateGroup';
 import EditGroup from './EditGroup';
+import JoinGroup from './JoinGroup';
 import Profile from "./Profile";
 
 export default function User() {
@@ -57,20 +58,28 @@ export default function User() {
 
     return (
         <View style={[tw`flex-1 items-center px-4 pt-10`, { backgroundColor: theme.background }]}>
-            {/* Header */}
-            <View style={tw`flex flex-row px-4 pt-12 pb-4 gap-3`}>
-                <Text style={[tw`text-xl font-semibold`, { color: theme.text }]}>Hi, {displayName}</Text>
-                <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
-            </View>
             <ScrollView style={tw`px-4`}>
+                {/* Header */}
+                <View style={tw`flex flex-row px-4 pt-12 pb-4 gap-3`}>
+                    <Text style={[tw`text-xl font-semibold`, { color: theme.text }]}>Hi, {displayName}</Text>
+                    <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
+                </View>
                 <Profile />
                 {/* Your groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Manage your groups.</Text>
                 <EditGroup />
+
+                {/* Create group section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Create a group</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Invite your beloved ones.</Text>
                 <CreateGroup />
+
+                {/* Join a group section */}
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Join a group</Text>
+                <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Search for a group with ID and password.</Text>
+                <JoinGroup />
+
                 {/* Your storage section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>You've posted so far.</Text>
