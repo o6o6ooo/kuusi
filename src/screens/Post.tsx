@@ -1,8 +1,8 @@
 import auth from "@react-native-firebase/auth";
-import { useNavigation } from "@react-navigation/native";
+import firestore from "@react-native-firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { FolderOpen } from "phosphor-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
@@ -10,16 +10,43 @@ import { DarkTheme, LightTheme } from "../constants/theme";
 export default function Post() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
-    const navigation = useNavigation();
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [userGroups, setUserGroups] = useState<string[]>([]);
     const [year, setYear] = useState("");
     const [hashtagInput, setHashtagInput] = useState("");
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [images, setImages] = useState<any[]>([]);
-    const [showPreviewRow, setShowPreviewRow] = useState(false);
 
     const currentUser = auth().currentUser;
+    useEffect(() => {
+        setSelectedGroup(null);
+    }, []);
+
+    useEffect(() => {
+        const fetchUserGroups = async () => {
+            if (!currentUser) return;
+            try {
+                const userDoc = await firestore().collection("users").doc(currentUser.uid).get();
+                const groupIds = userDoc.data()?.groups ?? [];
+
+                if (groupIds.length > 0) {
+                    const groupNames: string[] = [];
+
+                    for (const groupId of groupIds) {
+                        const groupDoc = await firestore().collection("groups").doc(groupId).get();
+                        const name = groupDoc.data()?.name;
+                        if (name) groupNames.push(name);
+                    }
+
+                    setUserGroups(groupNames);
+                }
+            } catch (err) {
+                console.warn("Failed to fetch groups:", err);
+            }
+        };
+
+        fetchUserGroups();
+    }, []);
 
     const pickImages = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -32,7 +59,7 @@ export default function Post() {
         }
     };
 
-    const handleHashtagSubmit = () => {
+    const handleTagKeyDown = () => {
         if (hashtagInput.trim()) {
             const clean = hashtagInput.trim().toLowerCase().replace(/^#/, "");
             if (!hashtags.includes(clean)) setHashtags([...hashtags, clean]);
@@ -71,13 +98,11 @@ export default function Post() {
                 </TouchableOpacity>
 
                 {images.length > 0 && (
-                    <TouchableOpacity onPress={() => setShowPreviewRow(!showPreviewRow)}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`mb-4`}>
-                            {images.map((img, idx) => (
-                                <Image key={idx} source={{ uri: img.uri }} style={tw`w-16 h-16 rounded-lg mr-2`} />
-                            ))}
-                        </ScrollView>
-                    </TouchableOpacity>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`mb-4`}>
+                        {images.map((img, idx) => (
+                            <Image key={idx} source={{ uri: img.uri }} style={tw`w-24 h-24 rounded-lg mr-2`} />
+                        ))}
+                    </ScrollView>
                 )}
 
                 <TextInput
@@ -93,31 +118,48 @@ export default function Post() {
                     placeholder="Hashtags"
                     value={hashtagInput}
                     onChangeText={setHashtagInput}
-                    onSubmitEditing={handleHashtagSubmit}
+                    onSubmitEditing={handleTagKeyDown}
                 />
                 <View style={tw`flex-row flex-wrap gap-2 mb-4`}>
                     {hashtags.map((tag, i) => (
-                        <Text key={i} style={[tw`text-xs px-2 py-1 rounded-full font-medium text-white`, { backgroundColor: theme.primary }]}>
-                            #{tag}
-                        </Text>
+                        <View key={i} style={[tw`flex-row items-center px-2 py-1 rounded-full`, { backgroundColor: theme.primary }]}>
+                            <Text style={[tw`text-xs font-medium text-white`]}>#{tag}</Text>
+                            <TouchableOpacity onPress={() => { setHashtags(prev => prev.filter((_, index) => index !== i)); }}>
+                                <Text style={[tw`text-xs font-bold ml-1`, { color: 'white' }]}>×</Text>
+                            </TouchableOpacity>
+                        </View>
                     ))}
                 </View>
 
                 <View style={tw`flex-row items-center justify-end gap-4`}>
-                    <TouchableOpacity onPress={openGroupPicker}>
-                        <Text style={[tw`text-sm underline`, { color: theme.text }]}>
-                            {selectedGroup || "Choose a group"}
+                    {userGroups.length === 0 ? (
+                        <Text style={[tw`text-xs`, { color: theme.text }]}>
+                            Join a group to post photos.
                         </Text>
-                    </TouchableOpacity>
-                    <Pressable
-                        onPress={() => console.log("Upload pressed")}
-                        disabled={!selectedGroup || images.length === 0}
-                        style={({ pressed }) => [tw`px-4 py-2 rounded-xl`,
-                        { backgroundColor: !selectedGroup || images.length === 0 ? theme.gray : theme.primary, opacity: pressed ? 0.8 : 1, },]}>
-                        <Text style={[tw`text-sm font-semibold`, { color: !selectedGroup || images.length === 0 ? theme.grayText : 'text-white' }]}>
-                            Upload
-                        </Text>
-                    </Pressable>
+                    ) : (
+                        <>
+                            <TouchableOpacity onPress={openGroupPicker}>
+                                <Text style={[tw`text-sm underline`, { color: theme.text }]}>
+                                    {selectedGroup || "Pick a group to post"}
+                                </Text>
+                            </TouchableOpacity>
+                            <Pressable
+                                onPress={() => console.log("Upload pressed")}
+                                disabled={!selectedGroup || images.length === 0}
+                                style={({ pressed }) => [
+                                    tw`px-4 py-2 rounded-full`,
+                                    {
+                                        backgroundColor: !selectedGroup || images.length === 0 ? theme.gray : theme.primary,
+                                        opacity: pressed ? 0.8 : 1,
+                                    },
+                                ]}
+                            >
+                                <Text style={[tw`text-sm font-semibold`, { color: !selectedGroup || images.length === 0 ? theme.grayText : 'white' }]}>
+                                    Upload
+                                </Text>
+                            </Pressable>
+                        </>
+                    )}
                 </View>
             </View>
         </View>
