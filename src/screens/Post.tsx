@@ -100,7 +100,20 @@ export default function Post() {
                 {images.length > 0 && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`mb-4`}>
                         {images.map((img, idx) => (
-                            <Image key={idx} source={{ uri: img.uri }} style={tw`w-24 h-24 rounded-lg mr-2`} />
+                            <View key={idx} style={tw`relative mr-2`}>
+                                <Image
+                                    source={{ uri: img.uri }}
+                                    style={tw`w-24 h-24 rounded-lg`}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setImages(prev => prev.filter((_, i) => i !== idx));
+                                    }}
+                                    style={[tw`absolute top-1 right-1 rounded-full w-4 h-4 items-center justify-center`, { backgroundColor: theme.background, opacity: 0.6 }]}
+                                >
+                                    <Text style={[tw`text-xs font-bold`, { color: theme.text }]}>×</Text>
+                                </TouchableOpacity>
+                            </View>
                         ))}
                     </ScrollView>
                 )}
