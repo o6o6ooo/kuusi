@@ -1,9 +1,9 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
 import tw from 'twrnc';
-import { DarkTheme, LightTheme } from "../../constants/theme";
+import { DarkTheme, LightTheme } from '../../constants/theme';
+import { auth, db } from '../../lib/firebase';
 
 type Group = {
     id: string;
@@ -19,21 +19,25 @@ export default function EditGroup() {
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
     const colorScheme = useColorScheme();
-    const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
+    const theme = colorScheme === 'dark' ? DarkTheme : LightTheme;
 
     useEffect(() => {
         const fetchGroups = async () => {
-            const uid = auth().currentUser?.uid;
+            const uid = auth.currentUser?.uid;
             if (!uid) return;
 
             try {
-                const userDoc = await firestore().collection('users').doc(uid).get();
-                const groupIds: string[] = userDoc.data()?.groups || [];
+                const userDocRef = doc(db, 'users', uid);
+                const userSnap = await getDoc(userDocRef);
+                const groupIds: string[] = userSnap.data()?.groups || [];
 
                 const groupDocs = await Promise.all(
-                    groupIds.map(id => firestore().collection('groups').doc(id).get())
+                    groupIds.map(id => getDoc(doc(db, 'groups', id)))
                 );
-                const fetchedGroups = groupDocs.map(doc => ({ id: doc.id, ...doc.data() })) as Group[];
+                const fetchedGroups = groupDocs
+                    .filter(doc => doc.exists())
+                    .map(doc => ({ id: doc.id, ...doc.data() })) as Group[];
+
                 setGroups(fetchedGroups);
 
                 if (fetchedGroups.length > 0) {
@@ -43,7 +47,7 @@ export default function EditGroup() {
                     setPassword(first.password);
                 }
             } catch (error) {
-                console.error("❌ Failed to fetch groups:", error);
+                console.error('❌ Failed to fetch groups:', error);
                 setMessageType('error');
                 setMessage('Failed to load groups.');
             }
@@ -74,7 +78,8 @@ export default function EditGroup() {
         }
 
         try {
-            await firestore().collection('groups').doc(selectedGroupId).update({
+            const groupRef = doc(db, 'groups', selectedGroupId);
+            await updateDoc(groupRef, {
                 name: groupName.trim(),
                 password: password.trim(),
             });
@@ -86,7 +91,7 @@ export default function EditGroup() {
                 setMessageType('');
             }, 3000);
         } catch (error) {
-            console.error("❌ Failed to update group:", error);
+            console.error('❌ Failed to update group:', error);
             setMessageType('error');
             setMessage('Failed to update group. Please try again.');
         }
@@ -108,10 +113,10 @@ export default function EditGroup() {
                                     backgroundColor: isSelected ? theme.primary : theme.card,
                                     borderWidth: 1,
                                     borderColor: theme.primary,
-                                }
+                                },
                             ]}
                         >
-                            <Text style={[tw`text-xs font-medium`, { color: isSelected ? "#ffffff" : theme.primary }]}>
+                            <Text style={[tw`text-xs font-medium`, { color: isSelected ? '#ffffff' : theme.primary }]}>
                                 {group.name}
                             </Text>
                         </TouchableOpacity>
@@ -150,12 +155,11 @@ export default function EditGroup() {
                         <Text style={tw`text-white font-medium`}>Save</Text>
                     </TouchableOpacity>
 
-                    {/* メッセージ表示 */}
                     {message !== '' && (
                         <Text
                             style={[
                                 tw`mt-2 text-sm text-center font-medium`,
-                                messageType === 'success' ? { color: theme.primary } : { color: 'tomato' }
+                                messageType === 'success' ? { color: theme.primary } : { color: 'tomato' },
                             ]}
                         >
                             {message}

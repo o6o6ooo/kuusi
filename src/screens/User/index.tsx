@@ -1,17 +1,18 @@
-import { getAuth, signOut } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
+import { auth, db } from "../../lib/firebase";
 import type { RootStackParamList } from "../../navigation/RootNavigator";
-import CreateGroup from './CreateGroup';
-import EditGroup from './EditGroup';
-import JoinGroup from './JoinGroup';
+import CreateGroup from "./CreateGroup";
+import EditGroup from "./EditGroup";
+import JoinGroup from "./JoinGroup";
 import Profile from "./Profile";
-import Subscription from './Subscription';
+import Subscription from "./Subscription";
 
 export default function User() {
     const [displayName, setDisplayName] = useState('');
@@ -22,18 +23,19 @@ export default function User() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const uid = getAuth().currentUser?.uid;
+            const uid = auth.currentUser?.uid;
             if (!uid) return;
 
             try {
-                const doc = await firestore().collection('users').doc(uid).get();
-                const data = doc.data();
+                const userRef = doc(db, "users", uid);
+                const docSnap = await getDoc(userRef);
+                const data = docSnap.data();
                 if (data) {
-                    setDisplayName(data.name);
-                    setEmail(data.email);
+                    setDisplayName(data.name || '');
+                    setEmail(data.email || '');
                 }
             } catch (error) {
-                console.error('❌ Failed to fetch user:', error);
+                console.error("❌ Failed to fetch user:", error);
             }
         };
 
@@ -42,11 +44,11 @@ export default function User() {
 
     async function handleSignOut() {
         try {
-            await signOut(getAuth());
-            console.log('✅ Signed out');
+            await signOut(auth);
+            console.log("✅ Signed out");
             navigation.replace("SignIn");
         } catch (error) {
-            console.error('❌ Sign-out error:', error);
+            console.error("❌ Sign-out error:", error);
         }
     }
 
@@ -58,6 +60,7 @@ export default function User() {
                     <Text style={[tw`text-xl font-semibold`, { color: theme.text }]}>Hi, {displayName}</Text>
                     <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
                 </View>
+
                 <Profile />
                 {/* Your groups section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your groups</Text>
@@ -77,8 +80,7 @@ export default function User() {
                 {/* Your storage section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>You've posted so far.</Text>
-                <View style={[tw`p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-                </View>
+                <View style={[tw`p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]} />
                 <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Need more storage?{' '}
                     <Text style={[tw`text-xs`, { color: theme.primary }]}>Get premium.</Text>
                 </Text>
@@ -86,8 +88,7 @@ export default function User() {
                 {/* Your hashtags section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your hashtags</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Display your hashtags.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-                </View>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]} />
 
                 {/* Subscription section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Subscription</Text>
@@ -96,11 +97,9 @@ export default function User() {
                 <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Already got premium?{' '}
                     <Text style={[tw`text-xs`, { color: theme.primary }]}>Restore purchase.</Text>
                 </Text>
-
                 {/* Link to your accounts section */}
-                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Link tou your accounts</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-                </View>
+                <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Link to your accounts</Text>
+                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]} />
 
                 {/* Footer */}
                 <Text style={[tw`underline my-8`, { color: theme.primary }]} onPress={handleSignOut}>Sign Out</Text>
@@ -111,7 +110,6 @@ export default function User() {
                     <Text style={[tw`text-xs`, { color: theme.primary }]}>Sakura Wallace</Text>
                 </Text>
             </ScrollView>
-
         </View>
     );
 }
