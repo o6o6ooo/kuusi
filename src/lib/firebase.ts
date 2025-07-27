@@ -1,5 +1,6 @@
-import { initializeApp } from 'firebase/app';
+import { getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAcTyKsmLxrcc-YkWdLf_ChElevPlhJ0l0",
@@ -10,7 +11,11 @@ const firebaseConfig = {
     appId: "1:898290307420:android:e2f7519aadda9bf530f199",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// すでに初期化済みなら再初期化しないように
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-export { auth };
+// Firebaseサービスをエクスポート
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { app, auth, db };
