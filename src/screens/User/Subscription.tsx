@@ -93,6 +93,7 @@ export default function Subscription() {
                                     <Text style={[tw`text-xs`, { color: theme.text }]}>Next billing date:{' '}
                                         <Text style={[tw`text-xs font-medium`, { color: theme.primary }]}>{user.nextBillingDate ? format(user.nextBillingDate.toDate(), "dd MMM yyyy") : "--"}</Text>
                                     </Text>
+                                    <Text style={[tw`text-xs font-medium underline`, { color: theme.primary }]}>Cancel subscription</Text>
                                 </View>
                             ) : (
                                 <View style={tw`flex-row mt-3`}>
