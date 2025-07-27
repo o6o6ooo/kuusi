@@ -83,26 +83,32 @@ export default function User() {
                 {/* Your storage section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your storage</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>You've posted so far.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
+                <View style={[tw`p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
                 </View>
+                <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Need more storage?{' '}
+                    <Text style={[tw`text-xs`, { color: theme.primary }]}>Get premium.</Text>
+                </Text>
+
                 {/* Your hashtags section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Your hashtags</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Display your hashtags.</Text>
                 <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
                 </View>
+
                 {/* Subscription section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Subscription</Text>
                 <Text style={[tw`text-center text-xs self-start mb-1`, { color: theme.grayText }]}>Upgrade to premium, cancel anytime.</Text>
-                <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
+                <View style={[tw`p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
                 </View>
+                <Text style={[tw`text-xs mb-8`, { color: theme.grayText }]}>Already got premium?{' '}
+                    <Text style={[tw`text-xs`, { color: theme.primary }]}>Restore purchase.</Text>
+                </Text>
+
                 {/* Link to your accounts section */}
                 <Text style={[tw`text-center text-lg self-start font-semibold`, { color: theme.text }]}>Link tou your accounts</Text>
                 <View style={[tw`mb-4 p-4 rounded-xl flex-row`, { backgroundColor: theme.card }]}>
-
                 </View>
+
                 {/* Footer */}
                 <Text style={[tw`underline my-8`, { color: theme.primary }]} onPress={handleSignOut}>Sign Out</Text>
                 <Text style={[tw`text-xs mb-1`, { color: theme.grayText }]}>Contact to get help</Text>
