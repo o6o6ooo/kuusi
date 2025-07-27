@@ -1,10 +1,10 @@
-import { getApp } from "firebase/app";
 import { getAuth } from 'firebase/auth';
-import { arrayUnion, doc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
+import { app, db } from "../../lib/firebase";
 
 export default function CreateGroup() {
     const [groupId, setGroupId] = useState('');
@@ -34,8 +34,6 @@ export default function CreateGroup() {
         }
 
         try {
-            const app = getApp();
-            const db = getFirestore(app);
             const uid = getAuth(app).currentUser?.uid;
             if (!uid) throw new Error("User not authenticated");
 
