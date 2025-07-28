@@ -17,6 +17,9 @@ export default function Post() {
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [images, setImages] = useState<any[]>([]);
     const currentUser = auth.currentUser;
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
     useEffect(() => {
         setSelectedGroup(null);
@@ -83,6 +86,53 @@ export default function Post() {
         }
     };
 
+    const handleUpload = async () => {
+        // validation checks
+        const currentYear = new Date().getFullYear();
+        const yearNumber = parseInt(year);
+
+        if (!year || isNaN(yearNumber) || yearNumber < 1950 || yearNumber > currentYear) {
+            setMessage("Please enter a valid year between 1950 and " + currentYear);
+            setMessageType("error");
+            return;
+        }
+
+        if (hashtags.length > 5) {
+            setMessage("You can only add up to 5 hashtags.");
+            setMessageType("error");
+            return;
+        }
+
+        if (!selectedGroup || images.length === 0) {
+            setMessage("Group and image selection is required.");
+            setMessageType("error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setMessage("");
+            setMessageType("");
+
+            // TODO: 実際のアップロード処理を書く（CloudinaryやFirestoreなど）
+            await new Promise(resolve => setTimeout(resolve, 1000)); // モック
+
+            setMessage("Upload successful!");
+            setMessageType("success");
+
+            // 初期化（必要なら）
+            setYear("");
+            setHashtags([]);
+            setImages([]);
+        } catch (error) {
+            console.error("Upload failed", error);
+            setMessage("Upload failed. Please try again.");
+            setMessageType("error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <View style={[tw`flex-1 items-center justify-center px-4`, { backgroundColor: theme.background }]}>
             <Text style={[tw`text-2xl font-semibold mb-4`, { color: theme.text }]}>
@@ -145,6 +195,19 @@ export default function Post() {
                     ))}
                 </View>
 
+                {message !== "" && (
+                    <Text
+                        style={[
+                            tw`mb-2 text-center font-medium`,
+                            messageType === 'success'
+                                ? { color: theme.primary }
+                                : { color: 'tomato' },
+                        ]}
+                    >
+                        {message}
+                    </Text>
+                )}
+
                 <View style={tw`flex-row items-center justify-end gap-4`}>
                     {userGroups.length === 0 ? (
                         <Text style={[tw`text-xs`, { color: theme.text }]}>
@@ -158,18 +221,22 @@ export default function Post() {
                                 </Text>
                             </TouchableOpacity>
                             <Pressable
-                                onPress={() => console.log("Upload pressed")}
-                                disabled={!selectedGroup || images.length === 0}
+                                onPress={handleUpload}
+                                disabled={!selectedGroup || images.length === 0 || loading}
                                 style={({ pressed }) => [
                                     tw`px-4 py-2 rounded-full`,
                                     {
-                                        backgroundColor: !selectedGroup || images.length === 0 ? theme.gray : theme.primary,
+                                        backgroundColor: !selectedGroup || images.length === 0 || loading
+                                            ? theme.gray
+                                            : theme.primary,
                                         opacity: pressed ? 0.8 : 1,
                                     },
                                 ]}
                             >
-                                <Text style={[tw`text-sm font-semibold`, { color: !selectedGroup || images.length === 0 ? theme.grayText : 'white' }]}>
-                                    Upload
+                                <Text style={[tw`text-sm font-semibold`, {
+                                    color: !selectedGroup || images.length === 0 || loading ? theme.grayText : 'white',
+                                }]}>
+                                    {loading ? "Uploading..." : "Upload"}
                                 </Text>
                             </Pressable>
                         </>
