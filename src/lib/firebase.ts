@@ -1,5 +1,7 @@
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+// @ts-ignore
+import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -11,11 +13,10 @@ const firebaseConfig = {
     appId: "1:898290307420:android:e2f7519aadda9bf530f199",
 };
 
-// すでに初期化済みなら再初期化しないように
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-
-// Firebaseサービスをエクスポート
-const auth = getAuth(app);
+const auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
 const db = getFirestore(app);
 
 export { app, auth, db };
