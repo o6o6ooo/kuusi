@@ -39,6 +39,8 @@ export default function SignIn({ navigation }: Props) {
                     icon: '🌸',
                     bgColour: '#A5C3DE',
                     premium: false,
+                    upload_count: 0,
+                    upload_total_mb: 0,
                     createdAt: serverTimestamp(),
                 });
                 console.log('✅ User saved to Firestore');
