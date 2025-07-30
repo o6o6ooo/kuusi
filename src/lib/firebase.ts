@@ -19,6 +19,6 @@ const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage),
 });
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storage = getStorage(app, "gs://kuusi-8e573.appspot.com");
 
 export { app, auth, db, storage };
