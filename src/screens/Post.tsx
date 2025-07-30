@@ -1,11 +1,14 @@
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from "expo-image-picker";
-import { doc, getDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, increment, serverTimestamp, updateDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { FolderOpen } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
+import uuid from 'react-native-uuid';
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
-import { auth, db } from "../lib/firebase";
+import { auth, db, storage } from "../lib/firebase";
 
 export default function Post() {
     const colorScheme = useColorScheme();
@@ -86,6 +89,18 @@ export default function Post() {
         }
     };
 
+    const compressImage = async (uri: string, width: number, compressRatio = 0.7) => {
+        const result = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width } }],
+            {
+                compress: compressRatio,
+                format: ImageManipulator.SaveFormat.JPEG,
+            }
+        );
+        return result;
+    };
+
     const handleUpload = async () => {
         // validation checks
         const currentYear = new Date().getFullYear();
@@ -109,28 +124,86 @@ export default function Post() {
             return;
         }
 
-        try {
-            setLoading(true);
-            setMessage("");
-            setMessageType("");
+        setLoading(true);
+        setMessage("");
+        setMessageType("");
+        const userId = auth.currentUser?.uid;
+        let totalUploadedMB = 0;
+        let uploadedCount = 0;
 
-            // TODO: 実際のアップロード処理を書く（CloudinaryやFirestoreなど）
-            await new Promise(resolve => setTimeout(resolve, 1000)); // モック
+        for (const image of images) {
+            try {
+                const id = uuid.v4() as string;
 
-            setMessage("Upload successful!");
-            setMessageType("success");
+                // 1. preview image (compressed to 1000px width)
+                const preview = await compressImage(image.uri, 800, 0.65);
+                console.log("Compressed image URI:", preview.uri);
+                const previewBlob = await (await fetch(preview.uri)).blob();
+                console.log("Blob size (bytes):", previewBlob.size);
+                console.log("Blob:", previewBlob);
+                const previewRef = ref(storage, `photos/${userId}/${id}_preview.jpg`);
+                await uploadBytes(previewRef, previewBlob);
+                const previewURL = await getDownloadURL(previewRef);
+                const photoSizeMB = Number((previewBlob.size / 1024 / 1024).toFixed(2));
+                totalUploadedMB += photoSizeMB;
+                uploadedCount += 1;
 
-            // 初期化（必要なら）
-            setYear("");
-            setHashtags([]);
-            setImages([]);
-        } catch (error) {
-            console.error("Upload failed", error);
-            setMessage("Upload failed. Please try again.");
-            setMessageType("error");
-        } finally {
-            setLoading(false);
+                // 2. thumbnail image (compressed to 200px width)
+                const thumbnail = await compressImage(image.uri, 140, 0.5);
+                const thumbBlob = await (await fetch(thumbnail.uri)).blob();
+                const thumbRef = ref(storage, `photos/${userId}/${id}_thumb.jpg`);
+                await uploadBytes(thumbRef, thumbBlob);
+                const thumbURL = await getDownloadURL(thumbRef);
+
+                // 3. store photo metadata in photos collection
+                await addDoc(collection(db, 'photos'), {
+                    photo_url: previewURL,
+                    thumbnail_url: thumbURL,
+                    group_id: selectedGroup,
+                    posted_by: userId,
+                    year: yearNumber,
+                    hashtags,
+                    size_mb: photoSizeMB,
+                    created_at: serverTimestamp(),
+                });
+
+                // 4. store hashtags in hashtags collection
+                if (hashtags.length > 0) {
+                    const hashtagsRef = collection(db, 'hashtags');
+                    for (const tag of hashtags) {
+                        await addDoc(hashtagsRef, {
+                            hashtag: tag,
+                            group_id: selectedGroup,
+                            user_id: userId,
+                            show_in_feed: true,
+                            updated_at: serverTimestamp(),
+                        });
+                    }
+                }
+
+            } catch (err: any) {
+                console.warn("Upload failed for one image:", image.uri, err);
+                console.warn("Error code:", err.code);
+                console.warn("Error message:", err.message);
+                setMessage("Some uploads failed. Check your connection.");
+                setMessageType("error");
+            }
         }
+
+        if (uploadedCount > 0) {
+            await updateDoc(doc(db, 'users', auth.currentUser!.uid), {
+                upload_count: increment(uploadedCount),
+                upload_total_mb: increment(Number(totalUploadedMB.toFixed(2))),
+            });
+        }
+
+        setMessage("Upload finished!");
+        setMessageType("success");
+        setTimeout(() => setMessage(""), 3000);
+        setYear("");
+        setHashtags([]);
+        setImages([]);
+        setLoading(false);
     };
 
     return (
