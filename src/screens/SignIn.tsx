@@ -79,7 +79,7 @@ export default function SignIn({ navigation }: Props) {
                     { backgroundColor: theme.card },
                 ]}
             >
-                <FontAwesomeIcon icon={faGoogle} size={20} color="#DB4437" style={tw`mr-2`} />
+                <FontAwesomeIcon icon={faGoogle} size={16} color="#DB4437" style={tw`mr-2`} />
                 <Text style={tw`text-[#DB4437] text-center text-base`}>Continue with Google</Text>
             </TouchableOpacity>
 
