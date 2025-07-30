@@ -139,10 +139,10 @@ export default function Post() {
                 const preview = await compressImage(image.uri, 800, 0.65);
                 console.log("Compressed image URI:", preview.uri);
                 const previewBlob = await (await fetch(preview.uri)).blob();
-                console.log("Blob size (bytes):", previewBlob.size);
                 console.log("Blob:", previewBlob);
                 const previewRef = ref(storage, `photos/${userId}/${id}_preview.jpg`);
-                await uploadBytes(previewRef, previewBlob);
+                const previewMetadata = { contentType: "image/jpeg", };
+                await uploadBytes(previewRef, previewBlob, previewMetadata);
                 const previewURL = await getDownloadURL(previewRef);
                 const photoSizeMB = Number((previewBlob.size / 1024 / 1024).toFixed(2));
                 totalUploadedMB += photoSizeMB;
@@ -152,8 +152,12 @@ export default function Post() {
                 const thumbnail = await compressImage(image.uri, 140, 0.5);
                 const thumbBlob = await (await fetch(thumbnail.uri)).blob();
                 const thumbRef = ref(storage, `photos/${userId}/${id}_thumb.jpg`);
-                await uploadBytes(thumbRef, thumbBlob);
+                const thumbMetadata = { contentType: "image/jpeg" };
+                await uploadBytes(thumbRef, thumbBlob, thumbMetadata);
                 const thumbURL = await getDownloadURL(thumbRef);
+                const thumbSizeMB = Number((thumbBlob.size / 1024 / 1024).toFixed(2));
+                totalUploadedMB += thumbSizeMB;
+                const subtotalSizeMB = Number((photoSizeMB + thumbSizeMB).toFixed(2));
 
                 // 3. store photo metadata in photos collection
                 await addDoc(collection(db, 'photos'), {
@@ -163,7 +167,7 @@ export default function Post() {
                     posted_by: userId,
                     year: yearNumber,
                     hashtags,
-                    size_mb: photoSizeMB,
+                    size_mb: subtotalSizeMB,
                     created_at: serverTimestamp(),
                 });
 
