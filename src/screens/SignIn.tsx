@@ -1,8 +1,9 @@
+import { faApple, faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { AppleLogo, GoogleLogo } from "phosphor-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
@@ -66,7 +67,7 @@ export default function SignIn({ navigation }: Props) {
                     { backgroundColor: theme.card },
                 ]}
             >
-                <AppleLogo size={20} color={theme.text} weight="bold" style={tw`mr-2`} />
+                <FontAwesomeIcon icon={faApple} size={20} color={theme.text} style={tw`mr-2`} />
                 <Text style={[tw`text-center text-base`, { color: theme.text }]}>Continue with Apple</Text>
             </TouchableOpacity>
 
@@ -78,7 +79,7 @@ export default function SignIn({ navigation }: Props) {
                     { backgroundColor: theme.card },
                 ]}
             >
-                <GoogleLogo size={20} color="#DB4437" weight="bold" style={tw`mr-2`} />
+                <FontAwesomeIcon icon={faGoogle} size={16} color="#DB4437" style={tw`mr-2`} />
                 <Text style={tw`text-[#DB4437] text-center text-base`}>Continue with Google</Text>
             </TouchableOpacity>
 
