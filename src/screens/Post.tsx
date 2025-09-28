@@ -3,7 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { addDoc, collection, doc, getDoc, increment, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { FolderOpen } from "phosphor-react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
 import uuid from 'react-native-uuid';
 import tw from "twrnc";
@@ -128,6 +128,9 @@ export default function Post() {
         setMessage("");
         setMessageType("");
         const userId = auth.currentUser?.uid;
+        if (auth.currentUser) {
+            await auth.currentUser.getIdToken(true);
+        }
         let totalUploadedMB = 0;
         let uploadedCount = 0;
 
@@ -137,9 +140,7 @@ export default function Post() {
 
                 // 1. preview image (compressed to 1000px width)
                 const preview = await compressImage(image.uri, 800, 0.65);
-                console.log("Compressed image URI:", preview.uri);
                 const previewBlob = await (await fetch(preview.uri)).blob();
-                console.log("Blob:", previewBlob);
                 const previewRef = ref(storage, `photos/${userId}/${id}_preview.jpg`);
                 const previewMetadata = { contentType: "image/jpeg", };
                 await uploadBytes(previewRef, previewBlob, previewMetadata);
@@ -187,8 +188,7 @@ export default function Post() {
 
             } catch (err: any) {
                 console.warn("Upload failed for one image:", image.uri, err);
-                console.warn("Error code:", err.code);
-                console.warn("Error message:", err.message);
+                console.error("Full error:", JSON.stringify(err, null, 2));
                 setMessage("Some uploads failed. Check your connection.");
                 setMessageType("error");
             }
