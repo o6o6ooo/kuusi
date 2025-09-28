@@ -1,12 +1,14 @@
-import { GoogleAuthProvider, getAuth, signInWithCredential } from '@react-native-firebase/auth';
-import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
+import { faApple, faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { AppleLogo, GoogleLogo } from "phosphor-react-native";
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import React from "react";
 import { Text, TouchableOpacity, View, useColorScheme } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
+import { auth, db } from '../lib/firebase';
 import { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
@@ -20,39 +22,33 @@ export default function SignIn({ navigation }: Props) {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
             const signInResult = await GoogleSignin.signIn();
             const idToken = signInResult.data?.idToken;
-            if (!idToken) {
-                throw new Error('No ID token found');
-            }
+            if (!idToken) throw new Error('No ID token found');
+
             const googleCredential = GoogleAuthProvider.credential(idToken);
-            await signInWithCredential(getAuth(), googleCredential);
+            await signInWithCredential(auth, googleCredential);
 
-            // save user info to Firestore
-            async function saveUserToFirestore() {
-                const user = getAuth().currentUser;
-                if (!user) return;
-                const db = getFirestore();
-                const userRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(userRef);
+            const user = auth.currentUser;
+            if (!user) return;
 
-                if (!docSnap.exists()) {
-                    try {
-                        await setDoc(userRef, {
-                            name: user.displayName,
-                            email: user.email,
-                            icon: '🌸',
-                            bgColour: '#A5C3DE',
-                            premium: false,
-                            createdAt: serverTimestamp(),
-                        });
-                        console.log('✅ User saved to Firestore');
-                    } catch (error) {
-                        console.error('❌ Firestore save error:', error);
-                    }
-                } else {
-                    console.log('ℹ️ User already exists in Firestore');
-                }
+            const userRef = doc(db, 'users', user.uid);
+            const docSnap = await getDoc(userRef);
+
+            if (!docSnap.exists()) {
+                await setDoc(userRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    icon: '🌸',
+                    bgColour: '#A5C3DE',
+                    premium: false,
+                    upload_count: 0,
+                    upload_total_mb: 0,
+                    createdAt: serverTimestamp(),
+                });
+                console.log('✅ User saved to Firestore');
+            } else {
+                console.log('ℹ️ User already exists in Firestore');
             }
-            await saveUserToFirestore();
+
             navigation.replace("MainTabs");
 
         } catch (error) {
@@ -71,7 +67,7 @@ export default function SignIn({ navigation }: Props) {
                     { backgroundColor: theme.card },
                 ]}
             >
-                <AppleLogo size={20} color={theme.text} weight="bold" style={tw`mr-2`} />
+                <FontAwesomeIcon icon={faApple} size={20} color={theme.text} style={tw`mr-2`} />
                 <Text style={[tw`text-center text-base`, { color: theme.text }]}>Continue with Apple</Text>
             </TouchableOpacity>
 
@@ -83,7 +79,7 @@ export default function SignIn({ navigation }: Props) {
                     { backgroundColor: theme.card },
                 ]}
             >
-                <GoogleLogo size={20} color="#DB4437" weight="bold" style={tw`mr-2`} />
+                <FontAwesomeIcon icon={faGoogle} size={16} color="#DB4437" style={tw`mr-2`} />
                 <Text style={tw`text-[#DB4437] text-center text-base`}>Continue with Google</Text>
             </TouchableOpacity>
 

@@ -1,11 +1,12 @@
-import { getAuth } from "@react-native-firebase/auth";
-import firestore, { Timestamp } from "@react-native-firebase/firestore";
 import { format } from "date-fns";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { Calendar, CalendarDots, Check } from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import { Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
+import { auth, db } from "../../lib/firebase";
+
 
 export default function Subscription() {
     const [user, setUser] = useState<{ premium: boolean; plan?: string; nextBillingDate?: Timestamp }>({
@@ -16,12 +17,13 @@ export default function Subscription() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const uid = getAuth().currentUser?.uid;
+            const uid = auth.currentUser?.uid;
             if (!uid) return;
 
-            const doc = await firestore().collection("users").doc(uid).get();
-            if (doc.exists()) {
-                const data = doc.data();
+            const userRef = doc(db, "users", uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                const data = userSnap.data();
                 setUser({
                     premium: data?.premium === true,
                     plan: data?.plan ?? "",
@@ -91,7 +93,9 @@ export default function Subscription() {
                                         <Text style={[tw`text-xs font-medium`, { color: theme.primary }]}>{user.plan}</Text>
                                     </Text>
                                     <Text style={[tw`text-xs`, { color: theme.text }]}>Next billing date:{' '}
-                                        <Text style={[tw`text-xs font-medium`, { color: theme.primary }]}>{user.nextBillingDate ? format(user.nextBillingDate.toDate(), "dd MMM yyyy") : "--"}</Text>
+                                        <Text style={[tw`text-xs font-medium`, { color: theme.primary }]}>
+                                            {user.nextBillingDate ? format(user.nextBillingDate.toDate(), "dd MMM yyyy") : "--"}
+                                        </Text>
                                     </Text>
                                     <Text style={[tw`text-xs font-medium underline`, { color: theme.primary }]}>Cancel subscription</Text>
                                 </View>
