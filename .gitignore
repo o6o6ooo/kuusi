@@ -1,38 +1,75 @@
-# Node.js dependencies
+# ------------------------
+# Node.js / package managers
+# ------------------------
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
 
-# Expo / React Native build
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# ------------------------
+# Expo / React Native
+# ------------------------
+apps/mobile/.expo
+apps/mobile/.expo-shared
+apps/mobile/web-build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/ios/DerivedData/
+apps/mobile/android/
 
-# Build artifacts
-ios/build/
-android/build/
-
-# CocoaPods
-ios/Pods/
-
-# Logs and debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# TypeScript
+# ------------------------
+# TypeScript / build artifacts
+# ------------------------
 *.tsbuildinfo
+dist/
+build/
+coverage/
 
-# macOS
+# ------------------------
+# macOS / system files
+# ------------------------
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
 
-# Local env
+# ------------------------
+# Environment / secrets
+# ------------------------
+.env
 .env*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.mobileprovision
 
-# Xcode - user-specific files
-ios/**/xcuserdata/
-ios/**/xcshareddata/
-ios/**/UserInterfaceState.xcuserstate
+# ------------------------
+# Xcode specific
+# ------------------------
+apps/mobile/ios/**/xcuserdata/
+apps/mobile/ios/**/xcshareddata/
+apps/mobile/ios/**/UserInterfaceState.xcuserstate
+apps/mobile/ios/kuusi.xcworkspace/
+apps/mobile/ios/build/
+apps/mobile/ios/DerivedData/
 
-# Optional: if kuusi.xcworkspace is generated via CocoaPods
-ios/kuusi.xcworkspace/
+# ------------------------
+# VSCode / IDE
+# ------------------------
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+
+# ------------------------
+# Expo / Metro cache
+# ------------------------
+.expo/
+.expo-shared/
+.metro/
+.cache/
