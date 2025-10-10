@@ -1,6 +1,6 @@
 import MasonryList from "@react-native-seoul/masonry-list";
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, useColorScheme, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tw from "twrnc";
@@ -95,14 +95,16 @@ export default function Home() {
     ];
 
     // Filter photos based on selected tab
-    const filteredPhotos = photos.filter((p) => {
-        if (selectedTab === "all") return true;
-        if (selectedTab.startsWith("group-"))
-            return p.group_id === selectedTab.replace("group-", "");
-        if (selectedTab.startsWith("hashtag-"))
-            return p.hashtags?.includes(selectedTab.replace("hashtag-", ""));
-        return true;
-    });
+    const filteredPhotos = useMemo(() => {
+        return photos.filter((p) => {
+            if (selectedTab === "all") return true;
+            if (selectedTab.startsWith("group-"))
+                return p.group_id === selectedTab.replace("group-", "");
+            if (selectedTab.startsWith("hashtag-"))
+                return p.hashtags?.includes(selectedTab.replace("hashtag-", ""));
+            return true;
+        });
+    }, [photos, selectedTab]);
 
     if (loading) {
         return (
@@ -153,7 +155,8 @@ export default function Home() {
 
             {/* Masonry layout */}
             <MasonryList
-                data={photos}
+                data={filteredPhotos}
+                key={selectedTab}
                 keyExtractor={(item) => item.id}
                 numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
