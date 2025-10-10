@@ -1,6 +1,6 @@
 import MasonryList from "@react-native-seoul/masonry-list";
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
-import React, { useEffect, useMemo, useState } from "react";
+import { collection, doc, getDoc, getDocFromCache, getDocs, getDocsFromCache, orderBy, query, where } from "firebase/firestore";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, useColorScheme, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tw from "twrnc";
@@ -22,79 +22,93 @@ export default function Home() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
     const { width: screenWidth } = useWindowDimensions();
+
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [groups, setGroups] = useState<any[]>([]);
     const [hashtags, setHashtags] = useState<any[]>([]);
     const [selectedTab, setSelectedTab] = useState("all");
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    // number of columns: iPhone: 2, iPad: 3, larger: 4
+    // columns: iPhone: 2, iPad: 3, large: 4
     const numColumns = screenWidth < 600 ? 2 : screenWidth < 1000 ? 3 : 4;
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // groups
-                const userDoc = await getDoc(doc(db, "users", auth.currentUser!.uid));
-                const groupIds = userDoc.exists() ? userDoc.data().groups || [] : [];
+    // Firestore fetch function (キャッシュ対応)
+    const fetchAllData = useCallback(async () => {
+        if (!auth.currentUser) return;
+        setLoading(true);
 
-                const groupDocs = await Promise.all(
-                    groupIds.map(async (gid: string) => {
-                        const gDoc = await getDoc(doc(db, "groups", gid));
-                        return gDoc.exists() ? { id: gDoc.id, ...gDoc.data() } : null;
-                    })
-                );
-                setGroups(groupDocs.filter(Boolean));
+        try {
+            // users
+            const userDoc =
+                (await getDocFromCache(doc(db, "users", auth.currentUser.uid)).catch(
+                    () => null
+                )) ||
+                (await getDoc(doc(db, "users", auth.currentUser.uid)));
 
-                // hashtags
-                const q = query(
-                    collection(db, "hashtags"),
-                    where("user_id", "==", auth.currentUser!.uid),
-                    where("show_in_feed", "==", true)
-                );
-                const hashtagSnap = await getDocs(q);
-                setHashtags(hashtagSnap.docs.map((d) => d.data()));
-            } catch (e) {
-                console.error("Error fetching groups/hashtags", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+            const groupIds = userDoc?.exists() ? userDoc.data().groups || [] : [];
 
-        const fetchPhotos = async () => {
-            try {
-                const q = query(collection(db, "photos"), orderBy("created_at", "desc"));
-                const snapshot = await getDocs(q);
+            // groups
+            const groupDocs = await Promise.all(
+                groupIds.map(async (gid: string) => {
+                    const ref = doc(db, "groups", gid);
+                    const gDoc =
+                        (await getDocFromCache(ref).catch(() => null)) || (await getDoc(ref));
+                    return gDoc?.exists() ? { id: gDoc.id, ...gDoc.data() } : null;
+                })
+            );
+            setGroups(groupDocs.filter(Boolean));
 
-                const photoData = snapshot.docs.map((docSnap) => {
-                    const data = docSnap.data();
-                    return {
-                        id: docSnap.id,
-                        ...data,
-                        previewUrl: data.thumbnail_url || data.photo_url || null,
-                    };
-                }) as Photo[];
+            // hashtags
+            const hashtagQuery = query(
+                collection(db, "hashtags"),
+                where("user_id", "==", auth.currentUser.uid),
+                where("show_in_feed", "==", true)
+            );
 
-                setPhotos(photoData.filter((p) => p.previewUrl));
-            } catch (err) {
-                console.error("Error fetching photos:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPhotos();
+            const hashtagSnap =
+                (await getDocsFromCache(hashtagQuery).catch(() => null)) ||
+                (await getDocs(hashtagQuery));
+
+            setHashtags(hashtagSnap.docs.map((d) => d.data()));
+
+            // photos
+            const photoQuery = query(collection(db, "photos"), orderBy("created_at", "desc"));
+
+            const snapshot =
+                (await getDocsFromCache(photoQuery).catch(() => null)) ||
+                (await getDocs(photoQuery));
+
+            const photoData = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    ...data,
+                    previewUrl: data.thumbnail_url || data.photo_url || null,
+                };
+            }) as Photo[];
+
+            setPhotos(photoData.filter((p) => p.previewUrl));
+        } catch (err) {
+            console.error("Error fetching data:", err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    // Tabs: All, Groups..., Hashtags...
-    const tabs = [
-        { key: "all", label: "All" },
-        ...groups.map((g) => ({ key: `group-${g.id}`, label: g.name })),
-        ...hashtags.map((h) => ({ key: `hashtag-${h.hashtag}`, label: `#${h.hashtag}` })),
-    ];
+    // 初回マウント時のみロード（Fast Refresh対策）
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
 
-    // Filter photos based on selected tab
+    // Pull-to-refresh handler
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchAllData();
+        setRefreshing(false);
+    }, [fetchAllData]);
+
+    // Filtered photos
     const filteredPhotos = useMemo(() => {
         return photos.filter((p) => {
             if (selectedTab === "all") return true;
@@ -106,6 +120,7 @@ export default function Home() {
         });
     }, [photos, selectedTab]);
 
+    // Loading screen
     if (loading) {
         return (
             <View style={[tw`flex-1 items-center justify-center`, { backgroundColor: theme.background }]}>
@@ -117,13 +132,14 @@ export default function Home() {
 
     return (
         <SafeAreaView style={[tw`flex-1 px-3`, { backgroundColor: theme.background }]}>
-            {/* Hashtag bar */}
+            {/* Tab bar */}
             <View style={tw`py-2`}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                >
-                    {tabs.map((tab) => {
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {[
+                        { key: "all", label: "All" },
+                        ...groups.map((g) => ({ key: `group-${g.id}`, label: g.name })),
+                        ...hashtags.map((h) => ({ key: `hashtag-${h.hashtag}`, label: `#${h.hashtag}` })),
+                    ].map((tab) => {
                         const isSelected = tab.key === selectedTab;
                         return (
                             <TouchableOpacity
@@ -132,7 +148,6 @@ export default function Home() {
                                 style={[
                                     tw`px-3 py-1 mr-2 rounded-full`,
                                     {
-                                        alignSelf: "flex-start",
                                         backgroundColor: isSelected ? theme.primary : theme.card,
                                         borderWidth: 1,
                                         borderColor: theme.primary,
@@ -162,7 +177,9 @@ export default function Home() {
                 showsVerticalScrollIndicator={false}
                 style={{ marginHorizontal: -6 }}
                 contentContainerStyle={tw`pb-20`}
-                renderItem={({ item, i }: { item: unknown; i: number }) => {
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                renderItem={({ item }: { item: unknown }) => {
                     const photo = item as Photo;
                     const [ratio, setRatio] = useState(1);
 

@@ -2,7 +2,7 @@ import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApps, initializeApp } from 'firebase/app';
 // @ts-ignore
 import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -15,10 +15,18 @@ const firebaseConfig = {
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+
+// React Native 向けに認証を永続化
 const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage),
 });
-const db = getFirestore(app);
+
+// Firestore をローカルキャッシュ有効で初期化
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
+
+// Storage 初期化
 const storage = getStorage(app, "gs://kuusi-8e573.firebasestorage.app");
 
 export { app, auth, db, storage };
