@@ -1,7 +1,7 @@
 import MasonryList from "@react-native-seoul/masonry-list";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { ActivityIndicator, Image, Text, TouchableOpacity, useColorScheme, useWindowDimensions, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
 import { db } from "../lib/firebase";
@@ -20,9 +20,16 @@ type Photo = {
 export default function Home() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
-
+    const { width: screenWidth } = useWindowDimensions();
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const numColumns =
+        screenWidth < 600
+            ? 2 // iPhoneサイズ
+            : screenWidth < 1000
+                ? 3 // iPad（縦）
+                : 4; // iPad Proや横向き
 
     useEffect(() => {
         const fetchPhotos = async () => {
@@ -30,14 +37,14 @@ export default function Home() {
                 const q = query(collection(db, "photos"), orderBy("created_at", "desc"));
                 const snapshot = await getDocs(q);
 
-                const photoData: Photo[] = snapshot.docs.map((docSnap) => {
+                const photoData = snapshot.docs.map((docSnap) => {
                     const data = docSnap.data();
                     return {
                         id: docSnap.id,
                         ...data,
                         previewUrl: data.thumbnail_url || data.photo_url || null,
                     };
-                });
+                }) as Photo[];
 
                 setPhotos(photoData.filter((p) => p.previewUrl));
             } catch (err) {
@@ -69,22 +76,37 @@ export default function Home() {
             <MasonryList
                 data={photos}
                 keyExtractor={(item) => item.id}
-                numColumns={2}
+                numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={tw`pb-20`}
-                renderItem={({ item, i }) => (
-                    <TouchableOpacity
-                        onPress={() => console.log("Tapped:", (item as Photo).id)}
-                        activeOpacity={0.8}
-                        style={tw`m-1 rounded-2xl overflow-hidden`}
-                    >
-                        <Image
-                            source={{ uri: (item as Photo).previewUrl }}
-                            style={tw`w-full h-64 rounded-2xl`}
-                            resizeMode="cover"
-                        />
-                    </TouchableOpacity>
-                )}
+                renderItem={({ item, i }: { item: unknown; i: number }) => {
+                    const photo = item as Photo;
+                    const [ratio, setRatio] = useState(1);
+
+                    useEffect(() => {
+                        if (photo.previewUrl) {
+                            Image.getSize(
+                                photo.previewUrl,
+                                (width, height) => setRatio(width / height),
+                                () => setRatio(1)
+                            );
+                        }
+                    }, [photo.previewUrl]);
+
+                    return (
+                        <TouchableOpacity
+                            onPress={() => console.log("Tapped:", photo.id)}
+                            activeOpacity={0.8}
+                            style={tw`m-1 rounded-2xl overflow-hidden`}
+                        >
+                            <Image
+                                source={{ uri: photo.previewUrl }}
+                                style={[tw`w-full rounded-2xl`, { aspectRatio: ratio }]}
+                                resizeMode="cover"
+                            />
+                        </TouchableOpacity>
+                    );
+                }}
             />
         </View>
     );
