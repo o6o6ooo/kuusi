@@ -1,17 +1,27 @@
 import MasonryList from "@react-native-seoul/masonry-list";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
-import { getDownloadURL, ref } from "firebase/storage";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../constants/theme";
-import { db, storage } from "../lib/firebase";
+import { db } from "../lib/firebase";
+
+type Photo = {
+    id: string;
+    photo_url?: string;
+    thumbnail_url?: string;
+    previewUrl?: string;
+    created_at?: any;
+    group_id?: string;
+    year?: number;
+    [key: string]: any;
+};
 
 export default function Home() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
 
-    const [photos, setPhotos] = useState<any[]>([]);
+    const [photos, setPhotos] = useState<Photo[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -20,19 +30,14 @@ export default function Home() {
                 const q = query(collection(db, "photos"), orderBy("created_at", "desc"));
                 const snapshot = await getDocs(q);
 
-                const photoData = await Promise.all(
-                    snapshot.docs.map(async (docSnap) => {
-                        const data = docSnap.data();
-                        let previewUrl: string | null = null;
-                        try {
-                            const previewRef = ref(storage, data.preview_path);
-                            previewUrl = await getDownloadURL(previewRef);
-                        } catch {
-                            console.warn("Missing preview:", data.preview_path);
-                        }
-                        return { id: docSnap.id, ...data, previewUrl };
-                    })
-                );
+                const photoData: Photo[] = snapshot.docs.map((docSnap) => {
+                    const data = docSnap.data();
+                    return {
+                        id: docSnap.id,
+                        ...data,
+                        previewUrl: data.thumbnail_url || data.photo_url || null,
+                    };
+                });
 
                 setPhotos(photoData.filter((p) => p.previewUrl));
             } catch (err) {
@@ -67,14 +72,14 @@ export default function Home() {
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={tw`pb-20`}
-                renderItem={({ item }) => (
+                renderItem={({ item, i }) => (
                     <TouchableOpacity
-                        onPress={() => console.log("Tapped:", item.id)}
+                        onPress={() => console.log("Tapped:", (item as Photo).id)}
                         activeOpacity={0.8}
                         style={tw`m-1 rounded-2xl overflow-hidden`}
                     >
                         <Image
-                            source={{ uri: item.previewUrl }}
+                            source={{ uri: (item as Photo).previewUrl }}
                             style={tw`w-full h-64 rounded-2xl`}
                             resizeMode="cover"
                         />
