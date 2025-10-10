@@ -10,7 +10,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.o6o6ooo.kuusi"
+      "bundleIdentifier": "com.o6o6ooo.kuusi",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.898290307420-gots8uh9utp85745ia0ov0hdjrjmtct0"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
