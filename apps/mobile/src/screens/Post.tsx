@@ -11,10 +11,11 @@ import { DarkTheme, LightTheme } from "../constants/theme";
 import { auth, db, storage } from "../lib/firebase";
 
 export default function Post() {
+    type GroupInfo = { id: string; name: string };
     const colorScheme = useColorScheme();
     const theme = colorScheme === "dark" ? DarkTheme : LightTheme;
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-    const [userGroups, setUserGroups] = useState<string[]>([]);
+    const [userGroups, setUserGroups] = useState<GroupInfo[]>([]);
     const [year, setYear] = useState("");
     const [hashtagInput, setHashtagInput] = useState("");
     const [hashtags, setHashtags] = useState<string[]>([]);
@@ -36,15 +37,15 @@ export default function Post() {
                 const groupIds = userDoc.data()?.groups ?? [];
 
                 if (groupIds.length > 0) {
-                    const groupNames: string[] = [];
+                    const groupsData: { id: string; name: string }[] = [];
 
                     for (const groupId of groupIds) {
                         const groupDoc = await getDoc(doc(db, "groups", groupId));
                         const name = groupDoc.data()?.name;
-                        if (name) groupNames.push(name);
+                        if (name) groupsData.push({ id: groupId, name });
                     }
 
-                    setUserGroups(groupNames);
+                    setUserGroups(groupsData);
                 }
             } catch (err) {
                 console.warn("Failed to fetch groups:", err);
@@ -77,11 +78,13 @@ export default function Post() {
         if (Platform.OS === "ios") {
             ActionSheetIOS.showActionSheetWithOptions(
                 {
-                    options: [...userGroups, "Cancel"],
+                    options: [...userGroups.map((g) => g.name), "Cancel"],
                     cancelButtonIndex: userGroups.length,
                 },
                 (index) => {
-                    if (index < userGroups.length) setSelectedGroup(userGroups[index]);
+                    if (index < userGroups.length) {
+                        setSelectedGroup(userGroups[index].id);
+                    }
                 }
             );
         } else {
@@ -294,7 +297,9 @@ export default function Post() {
                         <>
                             <TouchableOpacity onPress={openGroupPicker}>
                                 <Text style={[tw`text-sm underline`, { color: theme.text }]}>
-                                    {selectedGroup || "Pick a group to post"}
+                                    {selectedGroup
+                                        ? userGroups.find((g) => g.id === selectedGroup)?.name || "Unknown group"
+                                        : "Pick a group to post"}
                                 </Text>
                             </TouchableOpacity>
                             <Pressable
