@@ -1,50 +1,127 @@
-# Welcome to your Expo app 👋
+# 🌲 Kuusi
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Kuusi** is a private family photo-sharing app built with **React Native (Expo)** and **Firebase**.  
+It focuses on privacy, simple sharing, and a calm, minimal design.  
+Currently optimized for **iPhone and iPad**, with a **PWA version planned** for Android users.
 
-## Get started
+---
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+## 🧭 Project Overview
+```
+kuusi/
+├── apps/
+│   └── mobile/          # iOS app built with Expo (React Native)
+│
+├── packages/            # Shared modules (planned)
+│
+├── node_modules/        # Shared dependencies (managed at root)
+├── package.json         # Root monorepo config
+├── .vscode/             # Shared editor settings
+├── .gitignore
+└── README.md
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## 🚀 Getting Started
 
-To learn more about developing your project with Expo, look at the following resources:
+### 1. Install dependencies
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+From the project root:
 
-## Join the community
+```bash
+npm install
+```
 
-Join our community of developers creating universal apps.
+### 2. Run the iOS app
+```
+npm run start:mobile
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🧩 Tech Stack
+
+| Layer | Technology |
+|-------|-------------|
+| Framework | [React Native (Expo)](https://expo.dev) |
+| Backend | [Firebase (Blaze Plan)](https://firebase.google.com) |
+| Database | Firestore |
+| Storage | Firebase Storage |
+| Authentication | Firebase Auth (Google Sign-In) |
+| Language | TypeScript |
+| Architecture | Monorepo (npm workspaces) |
+
+---
+
+## ☁️ Firebase Setup
+
+Kuusi uses a **single Firebase project** for both iOS and Web (PWA) versions.
+
+- **iOS:** Connects via `GoogleService-Info.plist`
+- **Web (PWA):** Uses the same Firebase config for Firestore, Storage, and Auth
+- **Storage:** All photos are stored in Firebase Storage  
+- **Firestore:** Photo metadata (hashtags, year, group, etc.) is saved in the `photos` collection
+
+---
+
+## 📱 App Features
+
+- 🔒 Google Sign-In for secure family access  
+- 🖼️ Upload photos with metadata (hashtags, year, group ID)  
+- 🕓 Real-time shared photo feed  
+- ⭐ Favorite and hashtag filtering  
+- 💾 Local-only user data (no external accounts)  
+- 💻 Planned iPad-optimized layout  
+
+---
+
+## 🛠 Development Notes
+
+- **Platform:** iOS only (Android users will access the PWA)
+- **Storage Policy:** Firebase Blaze plan ensures secure upload and free-tier operation for small-scale usage
+- **Build Tool:** Expo CLI
+- **Monorepo:** Apps and future shared packages are managed via npm workspaces
+
+---
+
+## 📘 Scripts
+
+| Command | Description |
+|----------|-------------|
+| `npm install` | Install all dependencies (root + mobile) |
+| `npm run start:mobile` | Run the iOS Expo app |
+| `npm --workspace apps/mobile run ios` | Build & run iOS locally |
+| `npm run lint` | Run ESLint (if configured) |
+
+---
+
+## 🧱 Planned Structure
+```
+packages/
+├── shared/        # Shared Firebase config & hooks (planned)
+├── ui/            # Shared UI components (planned)
+```
+
+---
+
+## 🗺 Roadmap
+
+- [ ] Add Web (PWA) version for Android users  
+- [ ] Implement shared Firebase hooks in `/packages/shared`  
+- [ ] iPad UI optimization (2-column layout)  
+- [ ] Photo caching and offline mode  
+- [ ] Face ID authentication option  
+
+---
+
+## 👩‍💻 Author
+
+Developed by **Sakura**,  
+a web and mobile app developer based in the UK 🇬🇧  
+Focused on small, private, privacy-first apps built with love 💚
+
+---
+
+## 🪄 License
+
+This project is for **personal and family use only**.  
+No commercial redistribution is allowed.
