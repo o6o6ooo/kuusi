@@ -4,6 +4,7 @@ import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, View, useColorScheme } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import tw from "twrnc";
 import { DarkTheme, LightTheme } from "../../constants/theme";
 import { auth, db } from "../../lib/firebase";
@@ -53,10 +54,10 @@ export default function User() {
     }
 
     return (
-        <View style={[tw`flex-1 items-center px-4 pt-10`, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[tw`flex-1`, { backgroundColor: theme.background }]}>
             <ScrollView style={tw`px-4`}>
                 {/* Header */}
-                <View style={tw`flex flex-row px-4 pt-12 pb-4 gap-3`}>
+                <View style={tw`flex flex-row px-4 pb-4 gap-3`}>
                     <Text style={[tw`text-xl font-semibold`, { color: theme.text }]}>Hi, {displayName}</Text>
                     <Text style={[tw`text-xs mt-2`, { color: theme.grayText }]}>{email}</Text>
                 </View>
@@ -110,6 +111,6 @@ export default function User() {
                     <Text style={[tw`text-xs`, { color: theme.primary }]}>Sakura Wallace</Text>
                 </Text>
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }
