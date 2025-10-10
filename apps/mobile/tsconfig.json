@@ -1,5 +1,5 @@
 {
-  "extends": "../expo/tsconfig.base",
+  "extends": "../../node_modules/expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -10,7 +10,7 @@
     },
     "jsx": "react-native",
     "baseUrl": ".",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "typeRoots": [
       "../../node_modules/@types",
       "node_modules/@types"
