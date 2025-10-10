@@ -66,11 +66,8 @@ export default function Home() {
     }
 
     return (
-        <View style={[tw`flex-1`, { backgroundColor: theme.background }]}>
-            {/* タイトル */}
-            <View style={tw`pt-14 pb-3 px-4`}>
-                <Text style={[tw`text-2xl font-bold`, { color: theme.text }]}>Home Feed</Text>
-            </View>
+        <View style={[tw`flex-1 px-3`, { backgroundColor: theme.background }]}>
+            {/* Hashtag bar */}
 
             {/* Masonry layout */}
             <MasonryList
@@ -78,6 +75,7 @@ export default function Home() {
                 keyExtractor={(item) => item.id}
                 numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
+                style={{ marginHorizontal: -6 }}
                 contentContainerStyle={tw`pb-20`}
                 renderItem={({ item, i }: { item: unknown; i: number }) => {
                     const photo = item as Photo;
@@ -97,7 +95,7 @@ export default function Home() {
                         <TouchableOpacity
                             onPress={() => console.log("Tapped:", photo.id)}
                             activeOpacity={0.8}
-                            style={tw`m-1 rounded-2xl overflow-hidden`}
+                            style={tw`m-1.5 rounded-2xl overflow-hidden`}
                         >
                             <Image
                                 source={{ uri: photo.previewUrl }}
