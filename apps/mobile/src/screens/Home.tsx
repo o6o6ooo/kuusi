@@ -33,51 +33,92 @@ export default function Home() {
     // columns: iPhone: 2, iPad: 3, large: 4
     const numColumns = screenWidth < 600 ? 2 : screenWidth < 1000 ? 3 : 4;
 
-    // Firestore fetch function (キャッシュ対応)
+    // Firestore fetch function キャッシュが空なら自動でサーバーから取得（フォールバック）
     const fetchAllData = useCallback(async () => {
         if (!auth.currentUser) return;
         setLoading(true);
 
         try {
-            // users
-            const userDoc =
-                (await getDocFromCache(doc(db, "users", auth.currentUser.uid)).catch(
-                    () => null
-                )) ||
-                (await getDoc(doc(db, "users", auth.currentUser.uid)));
+            console.log("🔄 Fetching all data...");
+
+            // --- users
+            let userDoc;
+            try {
+                userDoc = await getDocFromCache(doc(db, "users", auth.currentUser.uid));
+                if (userDoc.exists()) {
+                    console.log("✅ Loaded user from cache");
+                } else {
+                    console.log("⚠️ Cache empty → fetching user from server");
+                    userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                }
+            } catch {
+                console.log("⚠️ Cache miss → fetching user from server");
+                userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+            }
 
             const groupIds = userDoc?.exists() ? userDoc.data().groups || [] : [];
+            console.log("User groups:", groupIds);
 
-            // groups
+            // --- groups
             const groupDocs = await Promise.all(
                 groupIds.map(async (gid: string) => {
                     const ref = doc(db, "groups", gid);
-                    const gDoc =
-                        (await getDocFromCache(ref).catch(() => null)) || (await getDoc(ref));
-                    return gDoc?.exists() ? { id: gDoc.id, ...gDoc.data() } : null;
+                    try {
+                        const gDoc = await getDocFromCache(ref);
+                        if (gDoc.exists()) {
+                            console.log(`✅ Group ${gid} from cache`);
+                            return { id: gDoc.id, ...gDoc.data() };
+                        }
+                        console.log(`⚠️ Group ${gid} cache empty → fetching from server`);
+                        const freshDoc = await getDoc(ref);
+                        return freshDoc.exists() ? { id: freshDoc.id, ...freshDoc.data() } : null;
+                    } catch {
+                        console.log(`⚠️ Cache miss → fetching group ${gid} from server`);
+                        const gDoc = await getDoc(ref);
+                        return gDoc.exists() ? { id: gDoc.id, ...gDoc.data() } : null;
+                    }
                 })
             );
             setGroups(groupDocs.filter(Boolean));
 
-            // hashtags
+            // --- hashtags
             const hashtagQuery = query(
                 collection(db, "hashtags"),
                 where("user_id", "==", auth.currentUser.uid),
                 where("show_in_feed", "==", true)
             );
 
-            const hashtagSnap =
-                (await getDocsFromCache(hashtagQuery).catch(() => null)) ||
-                (await getDocs(hashtagQuery));
-
+            let hashtagSnap;
+            try {
+                hashtagSnap = await getDocsFromCache(hashtagQuery);
+                if (!hashtagSnap.empty) {
+                    console.log("✅ Loaded hashtags from cache");
+                } else {
+                    console.log("⚠️ Hashtag cache empty → fetching from server");
+                    hashtagSnap = await getDocs(hashtagQuery);
+                }
+            } catch {
+                console.log("⚠️ Cache miss → fetching hashtags from server");
+                hashtagSnap = await getDocs(hashtagQuery);
+            }
             setHashtags(hashtagSnap.docs.map((d) => d.data()));
 
-            // photos
+            // --- photos
             const photoQuery = query(collection(db, "photos"), orderBy("created_at", "desc"));
 
-            const snapshot =
-                (await getDocsFromCache(photoQuery).catch(() => null)) ||
-                (await getDocs(photoQuery));
+            let snapshot;
+            try {
+                snapshot = await getDocsFromCache(photoQuery);
+                if (!snapshot.empty) {
+                    console.log("✅ Loaded photos from cache");
+                } else {
+                    console.log("⚠️ Photo cache empty → fetching from server");
+                    snapshot = await getDocs(photoQuery);
+                }
+            } catch {
+                console.log("⚠️ Cache miss → fetching photos from server");
+                snapshot = await getDocs(photoQuery);
+            }
 
             const photoData = snapshot.docs.map((docSnap) => {
                 const data = docSnap.data();
@@ -89,8 +130,11 @@ export default function Home() {
             }) as Photo[];
 
             setPhotos(photoData.filter((p) => p.previewUrl));
+
+            console.log(`📸 Loaded ${photoData.length} photos`);
+
         } catch (err) {
-            console.error("Error fetching data:", err);
+            console.error("❌ Error fetching data:", err);
         } finally {
             setLoading(false);
         }
