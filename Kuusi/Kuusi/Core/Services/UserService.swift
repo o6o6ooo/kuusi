@@ -1,0 +1,87 @@
+import FirebaseAuth
+import FirebaseFirestore
+import Foundation
+
+final class UserService {
+    private let db = Firestore.firestore()
+    private let icons = ["🌸", "🐻", "🐣", "🧸", "🍀", "🦊", "🐼", "🐱", "🌻", "🫧"]
+
+    func ensureUserDocument(for user: User, suggestedName: String?) async throws {
+        let ref = db.collection("users").document(user.uid)
+        let snapshot = try await getDocument(ref)
+
+        if snapshot.exists {
+            return
+        }
+
+        let name: String
+        if let suggestedName, !suggestedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            name = suggestedName
+        } else if let displayName = user.displayName, !displayName.isEmpty {
+            name = displayName
+        } else {
+            name = "Kuusi User"
+        }
+
+        let email = user.email ?? ""
+        let payload: [String: Any] = [
+            "name": name,
+            "email": email,
+            "icon": icons.randomElement() ?? "🙂",
+            "bgColour": "#A5C3DE",
+            "premium": false,
+            "upload_count": 0,
+            "upload_total_mb": 0.0,
+            "groups": [],
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+        try await setDocument(ref, data: payload, merge: false)
+    }
+
+    func fetchUser(uid: String) async throws -> AppUser? {
+        let ref = db.collection("users").document(uid)
+        let snapshot = try await getDocument(ref)
+        guard snapshot.exists, let data = snapshot.data() else {
+            return nil
+        }
+        return AppUser(id: snapshot.documentID, data: data)
+    }
+
+    func updateProfile(uid: String, name: String, icon: String) async throws {
+        let ref = db.collection("users").document(uid)
+        let payload: [String: Any] = [
+            "name": name,
+            "icon": icon,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await setDocument(ref, data: payload, merge: true)
+    }
+
+    private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<DocumentSnapshot, Error>) in
+            ref.getDocument { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+    }
+
+    private func setDocument(_ ref: DocumentReference, data: [String: Any], merge: Bool) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            ref.setData(data, merge: merge) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+}

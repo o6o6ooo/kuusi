@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F22F5B69B200FB36CB /* FirebaseAuth */; };
+		8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F42F5B69B200FB36CB /* FirebaseCore */; };
+		8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */; };
+		8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F82F5B69B200FB36CB /* FirebaseStorage */; };
+		8F35C1FB2F5C7E7400FB36CB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8F35C1FA2F5C7E7400FB36CB /* GoogleService-Info.plist */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8F35C1D32F5B5B2700FB36CB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +35,7 @@
 		8F35C1C52F5B5B2500FB36CB /* Kuusi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kuusi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F35C1D22F5B5B2700FB36CB /* KuusiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KuusiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F35C1DC2F5B5B2700FB36CB /* KuusiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KuusiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F35C1FA2F5C7E7400FB36CB /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +61,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */,
+				8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */,
+				8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */,
+				8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +88,7 @@
 		8F35C1BC2F5B5B2500FB36CB = {
 			isa = PBXGroup;
 			children = (
+				8F35C1FA2F5C7E7400FB36CB /* GoogleService-Info.plist */,
 				8F35C1C72F5B5B2500FB36CB /* Kuusi */,
 				8F35C1D52F5B5B2700FB36CB /* KuusiTests */,
 				8F35C1DF2F5B5B2700FB36CB /* KuusiUITests */,
@@ -112,6 +126,10 @@
 			);
 			name = Kuusi;
 			packageProductDependencies = (
+				8F35C1F22F5B69B200FB36CB /* FirebaseAuth */,
+				8F35C1F42F5B69B200FB36CB /* FirebaseCore */,
+				8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */,
+				8F35C1F82F5B69B200FB36CB /* FirebaseStorage */,
 			);
 			productName = Kuusi;
 			productReference = 8F35C1C52F5B5B2500FB36CB /* Kuusi.app */;
@@ -195,6 +213,9 @@
 			);
 			mainGroup = 8F35C1BC2F5B5B2500FB36CB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8F35C1C62F5B5B2500FB36CB /* Products */;
 			projectDirPath = "";
@@ -212,6 +233,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F35C1FB2F5C7E7400FB36CB /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,6 +422,8 @@
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +456,8 @@
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -578,6 +604,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8F35C1F22F5B69B200FB36CB /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		8F35C1F42F5B69B200FB36CB /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		8F35C1F82F5B69B200FB36CB /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8F35C1BD2F5B5B2500FB36CB /* Project object */;
 }
