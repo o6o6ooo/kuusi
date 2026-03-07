@@ -38,6 +38,13 @@ struct LoginView: View {
             .frame(height: 50)
             .padding(.horizontal, 24)
 
+#if DEBUG
+            Button("開発用: サインインをスキップ") {
+                appState.debugEnterMainTabs()
+            }
+            .buttonStyle(.bordered)
+#endif
+
             if let errorMessage = appState.errorMessage {
                 Text(errorMessage)
                     .font(.footnote)

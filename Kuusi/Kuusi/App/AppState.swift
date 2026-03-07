@@ -95,6 +95,13 @@ final class AppState: ObservableObject {
         }
     }
 
+#if DEBUG
+    func debugEnterMainTabs() {
+        errorMessage = nil
+        route = .signedIn
+    }
+#endif
+
     private func observeAuthState() {
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
