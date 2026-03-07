@@ -2,6 +2,7 @@ import AuthenticationServices
 import Combine
 import FirebaseAuth
 import Foundation
+import LocalAuthentication
 
 @MainActor
 final class AppState: ObservableObject {
@@ -14,7 +15,8 @@ final class AppState: ObservableObject {
     @Published var route: Route = .signedOut
     @Published var errorMessage: String?
     @Published private(set) var currentUser: User?
-    @Published private(set) var biometricsEnabled: Bool = UserDefaults.standard.bool(forKey: AppSettings.biometricsEnabledKey)
+    @Published private(set) var biometricsEnabled: Bool = AppState.initialBiometricsEnabled()
+    var biometricDisplayName: String { AppState.detectBiometricName() }
 
     private let authService = AppleAuthService()
     private let userService = UserService()
@@ -70,16 +72,7 @@ final class AppState: ObservableObject {
         }
     }
 
-    func setBiometricsEnabled(_ enabled: Bool) async {
-        if enabled {
-            let ok = await biometricAuthService.authenticate(reason: "Enable Face ID / Touch ID for Kuusi")
-            guard ok else {
-                errorMessage = "Could not enable biometrics."
-                biometricsEnabled = false
-                UserDefaults.standard.set(false, forKey: AppSettings.biometricsEnabledKey)
-                return
-            }
-        }
+    func setBiometricsEnabled(_ enabled: Bool) {
         biometricsEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: AppSettings.biometricsEnabledKey)
     }
@@ -113,6 +106,29 @@ final class AppState: ObservableObject {
                     self.route = self.biometricsEnabled ? .locked : .signedIn
                 }
             }
+        }
+    }
+
+    private static func initialBiometricsEnabled() -> Bool {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: AppSettings.biometricsEnabledKey) == nil {
+            defaults.set(true, forKey: AppSettings.biometricsEnabledKey)
+            return true
+        }
+        return defaults.bool(forKey: AppSettings.biometricsEnabledKey)
+    }
+
+    private static func detectBiometricName() -> String {
+        let context = LAContext()
+        var error: NSError?
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        switch context.biometryType {
+        case .faceID:
+            return "Face ID"
+        case .touchID:
+            return "Touch ID"
+        default:
+            return "Biometric"
         }
     }
 }

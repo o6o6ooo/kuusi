@@ -13,6 +13,12 @@ struct LoginView: View {
             Text("Sign in with Apple to continue")
                 .foregroundStyle(.secondary)
 
+            Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
+                get: { appState.biometricsEnabled },
+                set: { appState.setBiometricsEnabled($0) }
+            ))
+            .padding(.horizontal, 24)
+
             SignInWithAppleButton(.signIn) { request in
                 let nonce = CryptoNonce.randomNonceString()
                 currentNonce = nonce

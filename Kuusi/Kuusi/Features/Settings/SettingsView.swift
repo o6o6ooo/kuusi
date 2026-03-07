@@ -21,13 +21,9 @@ struct SettingsView: View {
                 }
 
                 Section("Security") {
-                    Toggle("Face ID / Touch ID", isOn: Binding(
+                    Toggle(appState.biometricDisplayName, isOn: Binding(
                         get: { appState.biometricsEnabled },
-                        set: { newValue in
-                            Task {
-                                await appState.setBiometricsEnabled(newValue)
-                            }
-                        }
+                        set: { appState.setBiometricsEnabled($0) }
                     ))
                 }
 
