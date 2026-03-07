@@ -5,12 +5,12 @@ struct MainTabView: View {
         TabView {
             FeedView()
                 .tabItem {
-                    Label("Feed", systemImage: "photo.on.rectangle.angled")
+                    Label("Feed", systemImage: "square.grid.3x3")
                 }
 
             UploadView()
                 .tabItem {
-                    Label("Upload", systemImage: "square.and.arrow.up")
+                    Label("Upload", systemImage: "photo.badge.plus")
                 }
 
             NotificationsView()
@@ -20,7 +20,7 @@ struct MainTabView: View {
 
             SettingsView()
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape")
+                    Label("Settings", systemImage: "gear")
                 }
         }
     }
