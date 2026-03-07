@@ -47,11 +47,12 @@ final class UserService {
         return AppUser(id: snapshot.documentID, data: data)
     }
 
-    func updateProfile(uid: String, name: String, icon: String) async throws {
+    func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws {
         let ref = db.collection("users").document(uid)
         let payload: [String: Any] = [
             "name": name,
             "icon": icon,
+            "bgColour": bgColour,
             "updatedAt": FieldValue.serverTimestamp()
         ]
         try await setDocument(ref, data: payload, merge: true)
