@@ -4,6 +4,17 @@ import FirebaseAuth
 import Foundation
 import LocalAuthentication
 
+enum DebugCredentialsError: LocalizedError {
+    case missingEnvironmentVariables
+
+    var errorDescription: String? {
+        switch self {
+        case .missingEnvironmentVariables:
+            return "Set DEBUG_TEST_EMAIL and DEBUG_TEST_PASSWORD in Xcode Scheme > Run > Environment Variables."
+        }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     enum Route {
@@ -96,7 +107,7 @@ final class AppState: ObservableObject {
             try await userService.ensureUserDocument(
                 for: user,
                 suggestedName: "Sakura Wallace",
-                suggestedEmail: "sakura.wallace@kuusi.local"
+                suggestedEmail: user.email
             )
 
             currentUser = user
@@ -183,9 +194,14 @@ final class AppState: ObservableObject {
 
 #if DEBUG
     private func signInOrCreateDebugUser() async throws -> User {
-        // Fixed debug user: create this account in Firebase Console beforehand.
-        let email = "sakura.wallace.test@example.com"
-        let password = "KuusiDebug#2026"
+        guard
+            let email = ProcessInfo.processInfo.environment["DEBUG_TEST_EMAIL"],
+            let password = ProcessInfo.processInfo.environment["DEBUG_TEST_PASSWORD"],
+            !email.isEmpty,
+            !password.isEmpty
+        else {
+            throw DebugCredentialsError.missingEnvironmentVariables
+        }
 
         // Ensure a clean auth state before switching to fixed debug credentials.
         if Auth.auth().currentUser != nil {
