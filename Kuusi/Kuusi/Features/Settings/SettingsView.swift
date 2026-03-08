@@ -1,5 +1,8 @@
 import FirebaseAuth
 import SwiftUI
+import CoreImage
+import CoreImage.CIFilterBuiltins
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
@@ -11,6 +14,7 @@ struct SettingsView: View {
     @State private var isError = false
     @State private var hasLoaded = false
     @State private var isEmojiPickerPresented = false
+    @State private var isQRCodeOverlayPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
 
     private let userService = UserService()
@@ -22,84 +26,92 @@ struct SettingsView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
+    private var qrPayload: String? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return "kuusi://user/\(uid)"
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    VStack(alignment: .trailing, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 18) {
-                            HStack(alignment: .center, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(alignment: .center, spacing: 20) {
+                            Button {
+                                isEmojiPickerPresented = true
+                            } label: {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(hex: bgColour))
+                                        .frame(width: 100, height: 100)
+                                    Text(icon.isEmpty ? "🌸" : icon)
+                                        .font(.system(size: 50))
+                                }
+                            }
+                            .buttonStyle(.plain)
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                TextField("Name", text: $name)
+                                    .textFieldStyle(.plain)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(primaryText)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: 300)
+                                    .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.92))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            Spacer(minLength: 0)
+                        }
+
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 28, maximum: 50)), count: 5), spacing: 12) {
+                            ForEach(avatarColours, id: \.self) { colour in
                                 Button {
-                                    isEmojiPickerPresented = true
-                                } label: {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color(hex: bgColour))
-                                            .frame(width: 100, height: 100)
-                                        Text(icon.isEmpty ? "🌸" : icon)
-                                            .font(.system(size: 50))
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                        bgColour = colour
                                     }
+                                } label: {
+                                    Circle()
+                                        .fill(Color(hex: colour))
+                                        .frame(width: 50, height: 50)
+                                        .scaleEffect(bgColour == colour ? 1.07 : 1.0)
+                                        .overlay {
+                                            if bgColour == colour {
+                                                Circle()
+                                                    .stroke(.black.opacity(0.16), lineWidth: 1.5)
+                                            }
+                                        }
+                                        .shadow(color: .black.opacity(bgColour == colour ? 0.15 : 0.06), radius: bgColour == colour ? 7 : 3, x: 0, y: 2)
                                 }
                                 .buttonStyle(.plain)
-
-                                VStack(alignment: .leading, spacing: 12) {
-                                    TextField("Name", text: $name)
-                                        .textFieldStyle(.plain)
-                                        .font(.body.weight(.semibold))
-                                        .foregroundStyle(primaryText)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 10)
-                                        .frame(maxWidth: 300)
-                                        .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.92))
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                }
-                                Spacer(minLength: 0)
-                            }
-
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 28, maximum: 50)), count: 5), spacing: 12) {
-                                ForEach(avatarColours, id: \.self) { colour in
-                                    Button {
-                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                                            bgColour = colour
-                                        }
-                                    } label: {
-                                        Circle()
-                                            .fill(Color(hex: colour))
-                                            .frame(width: 50, height: 50)
-                                            .scaleEffect(bgColour == colour ? 1.07 : 1.0)
-                                            .overlay {
-                                                if bgColour == colour {
-                                                    Circle()
-                                                        .stroke(.black.opacity(0.16), lineWidth: 1.5)
-                                                }
-                                            }
-                                            .shadow(color: .black.opacity(bgColour == colour ? 0.15 : 0.06), radius: bgColour == colour ? 7 : 3, x: 0, y: 2)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
                             }
                         }
-                        .padding(16)
-                        .background(cardBackground)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(cardBorder, lineWidth: 1)
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
 
                         HStack(spacing: 8) {
+                            Spacer()
                             if let message, !isError {
                                 Text(message)
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
                             Button {
+                                isQRCodeOverlayPresented = true
+                            } label: {
+                                Image(systemName: "qrcode")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 34, height: 34)
+                                    .background(Color.accentColor)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(qrPayload == nil)
+                            Button {
                                 Task {
                                     await saveProfile()
                                 }
                             } label: {
-                                Image(systemName: "checkmark")
+                                Image(systemName: "checkmark.icloud.fill")
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 34, height: 34)
@@ -109,6 +121,13 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(16)
+                    .background(cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(cardBorder, lineWidth: 1)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
 
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle(appState.biometricDisplayName, isOn: Binding(
@@ -124,7 +143,7 @@ struct SettingsView: View {
                             }
                         } label: {
                             Text("Sign out")
-                                .foregroundStyle(primaryText)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
 
@@ -148,6 +167,13 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $isEmojiPickerPresented) {
                 EmojiPickerSheet(selectedEmoji: $icon)
+            }
+            .sheet(isPresented: $isQRCodeOverlayPresented) {
+                if let qrPayload {
+                    MyQRCodeOverlayView(payload: qrPayload)
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                }
             }
             .onChange(of: message) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
@@ -211,6 +237,60 @@ struct SettingsView: View {
                 message = nil
             }
         }
+    }
+}
+
+private struct MyQRCodeOverlayView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let payload: String
+    private let context = CIContext()
+    private let filter = CIFilter.qrCodeGenerator()
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                Text("Your QR code")
+                    .font(.headline.weight(.semibold))
+
+                if let image = makeQRCodeImage(from: payload) {
+                    Image(uiImage: image)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 220, height: 220)
+                        .padding(18)
+                        .background(cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                } else {
+                    Text("Failed to generate QR code")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.errorText)
+                }
+
+                ShareLink(item: payload) {
+                    Image(systemName: "square.and.arrow.up.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .screenTheme()
+        }
+    }
+
+    private func makeQRCodeImage(from string: String) -> UIImage? {
+        filter.setValue(Data(string.utf8), forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let outputImage = filter.outputImage else { return nil }
+        let transformed = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }
 
