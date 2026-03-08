@@ -1,5 +1,6 @@
 import FirebaseAuth
 import SwiftUI
+import Foundation
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
@@ -12,6 +13,8 @@ struct SettingsView: View {
     @State private var hasLoaded = false
     @State private var isEmojiPickerPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
+    @State private var usageMB: Double = 0
+    @State private var quotaMB: Double = 5120
 
     private let userService = UserService()
     private let avatarColours = [
@@ -19,9 +22,66 @@ struct SettingsView: View {
         "#F1C994", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E"
     ]
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var fieldBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
+    }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
+    private var usageRatio: Double {
+        guard quotaMB > 0 else { return 0 }
+        return min(max(usageMB / quotaMB, 0), 1)
+    }
+    private var usageText: String {
+        "\(formatStorage(usageMB))/\(formatStorage(quotaMB))"
+    }
+    private var storageCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your storage")
+                .font(.headline.weight(.semibold))
+
+            Text("You've posted so far.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Spacer()
+                    Text(usageText)
+                        .font(.headline.weight(.semibold))
+                }
+
+                GeometryReader { proxy in
+                    let barWidth = max(0, proxy.size.width * usageRatio)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(fieldBackground)
+                            .frame(height: 22)
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .frame(width: barWidth, height: 22)
+                    }
+                }
+                .frame(height: 22)
+
+                HStack(spacing: 6) {
+                    Text("Need more storage?")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Upgrade to premium.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(primaryText)
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(cardBorder, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -117,6 +177,8 @@ struct SettingsView: View {
                         .font(.body.weight(.medium))
                         .foregroundStyle(primaryText)
 
+                        storageCard
+
                         Button {
                             Task {
                                 await appState.signOut()
@@ -166,6 +228,8 @@ struct SettingsView: View {
                 name = user.name
                 icon = user.icon
                 bgColour = user.bgColour
+                usageMB = user.usageMB
+                quotaMB = user.quotaMB
             }
         } catch {
             message = error.localizedDescription
@@ -210,6 +274,21 @@ struct SettingsView: View {
                 message = nil
             }
         }
+    }
+
+    private func formatStorage(_ mb: Double) -> String {
+        if mb >= 1024 {
+            let gb = mb / 1024
+            if abs(gb.rounded() - gb) < 0.01 {
+                return "\(Int(gb.rounded()))GB"
+            }
+            return String(format: "%.1fGB", gb)
+        }
+
+        if mb.rounded() >= mb - 0.01 {
+            return "\(Int(mb.rounded()))MB"
+        }
+        return String(format: "%.0fMB", mb)
     }
 }
 
