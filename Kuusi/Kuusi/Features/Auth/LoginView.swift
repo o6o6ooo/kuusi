@@ -3,9 +3,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject private var appState: AppState
-    @Environment(\.colorScheme) private var colorScheme
     @State private var currentNonce: String?
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -22,7 +20,7 @@ struct LoginView: View {
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 8)
 
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 SignInWithAppleButton(.signIn, onRequest: { request in
                     let nonce = CryptoNonce.randomNonceString()
                     currentNonce = nonce
@@ -45,9 +43,8 @@ struct LoginView: View {
                         appState.errorMessage = error.localizedDescription
                     }
                 })
-                .signInWithAppleButtonStyle(.white)
-                .frame(height: 54)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .signInWithAppleButtonStyle(.whiteOutline)
+                .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
 
                 Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
                     get: { appState.biometricsEnabled },
@@ -56,11 +53,8 @@ struct LoginView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }
-            .padding(18)
-            .background(cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 24)
-            .frame(maxWidth: 460)
+            .frame(maxWidth: 420)
 
 #if DEBUG
             Button("Dev: skip sign in") {
@@ -70,6 +64,8 @@ struct LoginView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.accentColor)
+            .controlSize(.small)
+            .font(.footnote)
 #endif
 
             if let errorMessage = appState.errorMessage {
