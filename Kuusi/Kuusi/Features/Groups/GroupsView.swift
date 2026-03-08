@@ -5,6 +5,7 @@ struct GroupsView: View {
         NavigationStack {
             ContentUnavailableView("No groups yet", systemImage: "person.3")
                 .navigationTitle("Groups")
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

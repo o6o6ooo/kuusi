@@ -102,6 +102,7 @@ struct SettingsView: View {
                 .padding(16)
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .task {
                 if !hasLoaded {
                     await loadProfile()

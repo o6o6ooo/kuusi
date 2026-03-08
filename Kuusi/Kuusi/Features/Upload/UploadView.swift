@@ -76,6 +76,7 @@ struct UploadView: View {
                 .padding()
             }
             .navigationTitle("Upload")
+            .navigationBarTitleDisplayMode(.inline)
             .onChange(of: pickerItems) { _, newValue in
                 Task {
                     await loadImages(from: newValue)
