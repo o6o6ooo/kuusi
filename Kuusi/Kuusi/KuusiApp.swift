@@ -15,6 +15,7 @@ struct KuusiApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .controlSize(.small)
                 .environmentObject(appState)
         }
     }
