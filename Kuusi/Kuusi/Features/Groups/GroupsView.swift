@@ -20,6 +20,7 @@ struct GroupsView: View {
     @State private var isLoadingGroups = false
     @State private var isSavingGroupName = false
     @State private var isDeletingGroup = false
+    @State private var isDeleteConfirmPresented = false
     @State private var isQRScannerPresented = false
     @State private var isPhotoPickerPresented = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
@@ -223,9 +224,7 @@ struct GroupsView: View {
                                 }
 
                                 Button {
-                                    Task {
-                                        await deleteSelectedGroup()
-                                    }
+                                    isDeleteConfirmPresented = true
                                 } label: {
                                     Image(systemName: "trash.fill")
                                         .font(.system(size: 14, weight: .bold))
@@ -277,6 +276,16 @@ struct GroupsView: View {
                         await joinGroupFromQRCodePayload(payload)
                     }
                 }
+            }
+            .alert("Delete group?", isPresented: $isDeleteConfirmPresented) {
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await deleteSelectedGroup()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will remove the group for all members.")
             }
             .onChange(of: selectedQRCodePhoto) { _, newValue in
                 guard let newValue else { return }
