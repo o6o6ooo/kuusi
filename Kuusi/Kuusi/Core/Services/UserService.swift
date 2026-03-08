@@ -4,9 +4,8 @@ import Foundation
 
 final class UserService {
     private let db = Firestore.firestore()
-    private let icons = ["🌸", "🐻", "🐣", "🧸", "🍀", "🦊", "🐼", "🐱", "🌻", "🫧"]
 
-    func ensureUserDocument(for user: User, suggestedName: String?) async throws {
+    func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
         let ref = db.collection("users").document(user.uid)
         let snapshot = try await getDocument(ref)
 
@@ -23,11 +22,11 @@ final class UserService {
             name = "Kuusi User"
         }
 
-        let email = user.email ?? ""
+        let email = suggestedEmail ?? user.email ?? ""
         let payload: [String: Any] = [
             "name": name,
             "email": email,
-            "icon": icons.randomElement() ?? "🙂",
+            "icon": "🌸",
             "bgColour": "#A5C3DE",
             "premium": false,
             "upload_count": 0,

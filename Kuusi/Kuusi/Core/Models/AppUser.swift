@@ -25,7 +25,7 @@ extension AppUser {
         self.id = id
         self.name = name
         self.email = email
-        self.icon = (data["icon"] as? String) ?? "🙂"
+        self.icon = (data["icon"] as? String) ?? "🌸"
         self.bgColour = (data["bgColour"] as? String) ?? "#A5C3DE"
         self.premium = (data["premium"] as? Bool) ?? false
         self.uploadCount = (data["upload_count"] as? Int) ?? 0

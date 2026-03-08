@@ -89,9 +89,30 @@ final class AppState: ObservableObject {
     }
 
 #if DEBUG
-    func debugEnterMainTabs() {
-        errorMessage = nil
-        route = .signedIn
+    func debugEnterMainTabs() async {
+        do {
+            let user = try await signInOrCreateDebugUser()
+
+            try await userService.ensureUserDocument(
+                for: user,
+                suggestedName: "Sakura Wallace",
+                suggestedEmail: "sakura.wallace@kuusi.local"
+            )
+
+            currentUser = user
+            errorMessage = nil
+            route = .signedIn
+        } catch {
+            if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
+               nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
+                errorMessage = "Enable Email/Password provider in Firebase Authentication for debug login."
+            } else if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
+                      nsError.code == AuthErrorCode.invalidCredential.rawValue {
+                errorMessage = "Debug user credentials are invalid. Check email/password in AppState and Firebase Console."
+            } else {
+                errorMessage = "Debug sign-in failed: \(error.localizedDescription)"
+            }
+        }
     }
 #endif
 
@@ -99,12 +120,24 @@ final class AppState: ObservableObject {
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             Task { @MainActor in
-                self.currentUser = user
-                if user == nil {
+                guard let user else {
+                    self.currentUser = nil
                     self.route = .signedOut
-                } else {
-                    self.route = self.biometricsEnabled ? .locked : .signedIn
+                    return
                 }
+
+                let validSession = await self.validateCurrentUserSession(user)
+                if !validSession {
+                    try? Auth.auth().signOut()
+                    self.currentUser = nil
+                    self.route = .signedOut
+                    self.errorMessage = nil
+                    return
+                }
+
+                await self.ensureUserDocumentIfNeeded(for: user)
+                self.currentUser = user
+                self.route = self.biometricsEnabled ? .locked : .signedIn
             }
         }
     }
@@ -130,5 +163,71 @@ final class AppState: ObservableObject {
         default:
             return "Biometric"
         }
+    }
+
+    private func signInAnonymously() async throws -> User {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<User, Error>) in
+            Auth.auth().signInAnonymously { result, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let user = result?.user else {
+                    continuation.resume(throwing: NSError(domain: "Auth", code: -1))
+                    return
+                }
+                continuation.resume(returning: user)
+            }
+        }
+    }
+
+#if DEBUG
+    private func signInOrCreateDebugUser() async throws -> User {
+        // Fixed debug user: create this account in Firebase Console beforehand.
+        let email = "sakura.wallace.test@example.com"
+        let password = "KuusiDebug#2026"
+
+        // Ensure a clean auth state before switching to fixed debug credentials.
+        if Auth.auth().currentUser != nil {
+            try? Auth.auth().signOut()
+        }
+
+        return try await signInWithEmail(email: email, password: password)
+    }
+
+    private func signInWithEmail(email: String, password: String) async throws -> User {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<User, Error>) in
+            Auth.auth().signIn(withEmail: email, password: password) { result, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let user = result?.user else {
+                    continuation.resume(throwing: NSError(domain: "Auth", code: -2))
+                    return
+                }
+                continuation.resume(returning: user)
+            }
+        }
+    }
+
+#endif
+
+    private func validateCurrentUserSession(_ user: User) async -> Bool {
+        await withCheckedContinuation { continuation in
+            user.getIDTokenForcingRefresh(true) { _, error in
+                continuation.resume(returning: error == nil)
+            }
+        }
+    }
+
+    private func ensureUserDocumentIfNeeded(for user: User) async {
+        let suggestedName = user.displayName?.isEmpty == false ? user.displayName : "Sakura Wallace"
+        let suggestedEmail = user.email ?? (user.isAnonymous ? "sakura.wallace@kuusi.local" : nil)
+        try? await userService.ensureUserDocument(
+            for: user,
+            suggestedName: suggestedName,
+            suggestedEmail: suggestedEmail
+        )
     }
 }

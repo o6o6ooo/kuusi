@@ -30,7 +30,7 @@ struct SettingsView: View {
                                     Circle()
                                         .fill(Color(hex: bgColour))
                                         .frame(width: 120, height: 120)
-                                    Text(icon.isEmpty ? "🌲" : icon)
+                                    Text(icon.isEmpty ? "🌸" : icon)
                                         .font(.system(size: 60))
                                 }
                             }
@@ -144,7 +144,7 @@ struct SettingsView: View {
             try await userService.updateProfile(
                 uid: uid,
                 name: cleanName,
-                icon: cleanIcon.isEmpty ? "🙂" : cleanIcon,
+                icon: cleanIcon.isEmpty ? "🌸" : cleanIcon,
                 bgColour: bgColour
             )
             message = "Profile saved."

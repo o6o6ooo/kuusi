@@ -46,7 +46,9 @@ struct LoginView: View {
 
 #if DEBUG
             Button("開発用: サインインをスキップ") {
-                appState.debugEnterMainTabs()
+                Task {
+                    await appState.debugEnterMainTabs()
+                }
             }
             .buttonStyle(.bordered)
 #endif
