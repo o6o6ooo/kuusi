@@ -165,6 +165,19 @@ struct GroupsView: View {
                                                         .stroke(memberBorderColor, lineWidth: 2)
                                                 }
                                         }
+                                        let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
+                                        if remainingCount > 0 {
+                                            Text("+\(remainingCount)")
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
+                                                .frame(width: 36, height: 36)
+                                                .background(fieldBackground)
+                                                .clipShape(Circle())
+                                                .overlay {
+                                                    Circle()
+                                                        .stroke(memberBorderColor, lineWidth: 2)
+                                                }
+                                        }
                                     }
                                 }
 
@@ -285,7 +298,8 @@ struct GroupsView: View {
                 groups[index] = GroupSummary(
                     id: groups[index].id,
                     name: trimmed,
-                    members: groups[index].members
+                    members: groups[index].members,
+                    totalMemberCount: groups[index].totalMemberCount
                 )
             }
             isSaveError = false

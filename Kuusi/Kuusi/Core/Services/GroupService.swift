@@ -11,6 +11,7 @@ struct GroupSummary: Identifiable {
     let id: String
     let name: String
     let members: [GroupMemberPreview]
+    let totalMemberCount: Int
 }
 
 final class GroupService {
@@ -21,11 +22,6 @@ final class GroupService {
         let groupRef = db.collection("groups").document(groupID)
         let userRef = db.collection("users").document(ownerUID)
         let ownerPreview = try await loadMemberPreview(uid: ownerUID)
-        let memberPreviewsPayload: [[String: Any]] = [[
-            "uid": ownerPreview.id,
-            "icon": ownerPreview.icon,
-            "bgColour": ownerPreview.bgColour
-        ]]
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             db.runTransaction({ transaction, errorPointer in
@@ -34,7 +30,6 @@ final class GroupService {
                     "name": groupName,
                     "owner_uid": ownerUID,
                     "members": [ownerUID],
-                    "member_previews": memberPreviewsPayload,
                     "created_at": FieldValue.serverTimestamp()
                 ]
 
@@ -53,7 +48,7 @@ final class GroupService {
             })
         }
 
-        return GroupSummary(id: groupID, name: groupName, members: [ownerPreview])
+        return GroupSummary(id: groupID, name: groupName, members: [ownerPreview], totalMemberCount: 1)
     }
 
     private func makeGroupID() -> String {
@@ -79,21 +74,26 @@ final class GroupService {
                 }
         }
 
-        return snapshot.documents.map { document in
+        var groups: [GroupSummary] = []
+        groups.reserveCapacity(snapshot.documents.count)
+
+        for document in snapshot.documents {
             let data = document.data()
             let name = (data["name"] as? String) ?? "Untitled group"
+            let memberIDs = (data["members"] as? [String]) ?? []
+            let previews = (try? await loadMemberPreviews(uids: Array(memberIDs.prefix(5)))) ?? []
 
-            let rawPreviews = (data["member_previews"] as? [[String: Any]]) ?? []
-            let previews = rawPreviews.prefix(5).map { raw in
-                GroupMemberPreview(
-                    id: (raw["uid"] as? String) ?? UUID().uuidString,
-                    icon: (raw["icon"] as? String) ?? "🌸",
-                    bgColour: (raw["bgColour"] as? String) ?? "#A5C3DE"
+            groups.append(
+                GroupSummary(
+                    id: document.documentID,
+                    name: name,
+                    members: previews,
+                    totalMemberCount: memberIDs.count
                 )
-            }
-
-            return GroupSummary(id: document.documentID, name: name, members: Array(previews))
+            )
         }
+
+        return groups
     }
 
     func updateGroupName(groupID: String, name: String) async throws {
@@ -137,5 +137,14 @@ final class GroupService {
             icon: (data["icon"] as? String) ?? "🌸",
             bgColour: (data["bgColour"] as? String) ?? "#A5C3DE"
         )
+    }
+
+    private func loadMemberPreviews(uids: [String]) async throws -> [GroupMemberPreview] {
+        var previews: [GroupMemberPreview] = []
+        previews.reserveCapacity(uids.count)
+        for uid in uids {
+            previews.append(try await loadMemberPreview(uid: uid))
+        }
+        return previews
     }
 }
