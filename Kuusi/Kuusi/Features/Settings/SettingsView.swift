@@ -1,8 +1,5 @@
 import FirebaseAuth
 import SwiftUI
-import CoreImage
-import CoreImage.CIFilterBuiltins
-import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
@@ -14,7 +11,6 @@ struct SettingsView: View {
     @State private var isError = false
     @State private var hasLoaded = false
     @State private var isEmojiPickerPresented = false
-    @State private var isQRCodeOverlayPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
 
     private let userService = UserService()
@@ -26,10 +22,6 @@ struct SettingsView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
-    private var qrPayload: String? {
-        guard let uid = Auth.auth().currentUser?.uid else { return nil }
-        return "kuusi://user/\(uid)"
-    }
 
     var body: some View {
         NavigationStack {
@@ -95,18 +87,6 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Button {
-                                isQRCodeOverlayPresented = true
-                            } label: {
-                                Image(systemName: "qrcode")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 34, height: 34)
-                                    .background(Color.accentColor)
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(qrPayload == nil)
-                            Button {
                                 Task {
                                     await saveProfile()
                                 }
@@ -167,13 +147,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $isEmojiPickerPresented) {
                 EmojiPickerSheet(selectedEmoji: $icon)
-            }
-            .sheet(isPresented: $isQRCodeOverlayPresented) {
-                if let qrPayload {
-                    MyQRCodeOverlayView(payload: qrPayload)
-                        .presentationDetents([.height(400)])
-                        .presentationDragIndicator(.visible)
-                }
             }
             .onChange(of: message) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
@@ -237,57 +210,6 @@ struct SettingsView: View {
                 message = nil
             }
         }
-    }
-}
-
-private struct MyQRCodeOverlayView: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let payload: String
-    private let context = CIContext()
-    private let filter = CIFilter.qrCodeGenerator()
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 18) {
-                if let image = makeQRCodeImage(from: payload) {
-                    Image(uiImage: image)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 220, height: 220)
-                        .padding(18)
-                        .background(cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                } else {
-                    Text("Failed to generate QR code")
-                        .font(.footnote)
-                        .foregroundStyle(AppTheme.errorText)
-                }
-
-                ShareLink(item: payload) {
-                    Image(systemName: "square.and.arrow.up.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.accentColor)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .screenTheme()
-        }
-    }
-
-    private func makeQRCodeImage(from string: String) -> UIImage? {
-        filter.setValue(Data(string.utf8), forKey: "inputMessage")
-        filter.setValue("M", forKey: "inputCorrectionLevel")
-        guard let outputImage = filter.outputImage else { return nil }
-        let transformed = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
-        guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
-        return UIImage(cgImage: cgImage)
     }
 }
 
