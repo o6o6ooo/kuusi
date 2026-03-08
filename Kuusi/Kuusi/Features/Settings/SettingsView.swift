@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
     @State private var quotaMB: Double = 5120
+    @State private var isEditingName = false
 
     private let userService = UserService()
     private let avatarColours = [
@@ -83,56 +84,72 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    HStack(spacing: 10) {
+                        if isEditingName {
+                            Text("Hi,")
+                                .font(.system(size: 20, weight: .bold))
+                            TextField("Name", text: $name)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(primaryText)
+                        } else {
+                            Text("Hi, \(name)")
+                                .font(.system(size: 20, weight: .bold))
+                        }
+
+                        Button {
+                            isEditingName.toggle()
+                        } label: {
+                            Image(systemName: "pencil.and.outline")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color.accentColor)
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+
                     VStack(alignment: .leading, spacing: 18) {
-                        HStack(alignment: .center, spacing: 20) {
+                        HStack(alignment: .top, spacing: 14) {
                             Button {
                                 isEmojiPickerPresented = true
                             } label: {
                                 ZStack {
                                     Circle()
                                         .fill(Color(hex: bgColour))
-                                        .frame(width: 100, height: 100)
+                                        .frame(width: 84, height: 84)
                                     Text(icon.isEmpty ? "🌸" : icon)
-                                        .font(.system(size: 50))
+                                        .font(.system(size: 42))
                                 }
                             }
                             .buttonStyle(.plain)
 
-                            VStack(alignment: .leading, spacing: 12) {
-                                TextField("Name", text: $name)
-                                    .textFieldStyle(.plain)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(primaryText)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: 300)
-                                    .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.92))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                            }
-                            Spacer(minLength: 0)
-                        }
-
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 28, maximum: 50)), count: 5), spacing: 12) {
-                            ForEach(avatarColours, id: \.self) { colour in
-                                Button {
-                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                                        bgColour = colour
-                                    }
-                                } label: {
-                                    Circle()
-                                        .fill(Color(hex: colour))
-                                        .frame(width: 50, height: 50)
-                                        .scaleEffect(bgColour == colour ? 1.07 : 1.0)
-                                        .overlay {
-                                            if bgColour == colour {
-                                                Circle()
-                                                    .stroke(.black.opacity(0.16), lineWidth: 1.5)
-                                            }
+                            LazyVGrid(
+                                columns: Array(repeating: GridItem(.flexible(minimum: 26, maximum: 36)), count: 5),
+                                spacing: 10
+                            ) {
+                                ForEach(avatarColours, id: \.self) { colour in
+                                    Button {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                            bgColour = colour
                                         }
-                                        .shadow(color: .black.opacity(bgColour == colour ? 0.15 : 0.06), radius: bgColour == colour ? 7 : 3, x: 0, y: 2)
+                                    } label: {
+                                        Circle()
+                                            .fill(Color(hex: colour))
+                                            .frame(width: 36, height: 36)
+                                            .scaleEffect(bgColour == colour ? 1.07 : 1.0)
+                                            .overlay {
+                                                if bgColour == colour {
+                                                    Circle()
+                                                        .stroke(.black.opacity(0.16), lineWidth: 1.2)
+                                                }
+                                            }
+                                            .shadow(color: .black.opacity(bgColour == colour ? 0.12 : 0.05), radius: bgColour == colour ? 5 : 2, x: 0, y: 1)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
 
                         HStack(spacing: 8) {
