@@ -16,18 +16,25 @@ struct GroupSummary: Identifiable {
 final class GroupService {
     private let db = Firestore.firestore()
 
-    func createGroup(groupName: String, ownerUID: String) async throws -> String {
+    func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         let groupID = makeGroupID()
         let groupRef = db.collection("groups").document(groupID)
         let userRef = db.collection("users").document(ownerUID)
+        let ownerPreview = try await loadMemberPreview(uid: ownerUID)
+        let memberPreviewsPayload: [[String: Any]] = [[
+            "uid": ownerPreview.id,
+            "icon": ownerPreview.icon,
+            "bgColour": ownerPreview.bgColour
+        ]]
 
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             db.runTransaction({ transaction, errorPointer in
                 let groupPayload: [String: Any] = [
                     "id": groupID,
                     "name": groupName,
                     "owner_uid": ownerUID,
                     "members": [ownerUID],
+                    "member_previews": memberPreviewsPayload,
                     "created_at": FieldValue.serverTimestamp()
                 ]
 
@@ -42,9 +49,11 @@ final class GroupService {
                     continuation.resume(throwing: error)
                     return
                 }
-                continuation.resume(returning: groupID)
+                continuation.resume(returning: ())
             })
         }
+
+        return GroupSummary(id: groupID, name: groupName, members: [ownerPreview])
     }
 
     private func makeGroupID() -> String {
@@ -54,35 +63,37 @@ final class GroupService {
     }
 
     func fetchGroups(for uid: String) async throws -> [GroupSummary] {
-        let userSnapshot = try await getDocument(db.collection("users").document(uid))
-        let groupIDs = (userSnapshot.data()?["groups"] as? [String]) ?? []
-        guard !groupIDs.isEmpty else { return [] }
+        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
+            db.collection("groups")
+                .whereField("members", arrayContains: uid)
+                .getDocuments { snapshot, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    guard let snapshot else {
+                        continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                        return
+                    }
+                    continuation.resume(returning: snapshot)
+                }
+        }
 
-        var summaries: [GroupSummary] = []
-        for groupID in groupIDs {
-            let groupSnapshot = try await getDocument(db.collection("groups").document(groupID))
-            guard let groupData = groupSnapshot.data() else { continue }
+        return snapshot.documents.map { document in
+            let data = document.data()
+            let name = (data["name"] as? String) ?? "Untitled group"
 
-            let name = (groupData["name"] as? String) ?? "Untitled group"
-            let memberIDs = (groupData["members"] as? [String]) ?? []
-            var members: [GroupMemberPreview] = []
-
-            for memberID in memberIDs.prefix(5) {
-                let memberSnapshot = try await getDocument(db.collection("users").document(memberID))
-                let memberData = memberSnapshot.data() ?? [:]
-                members.append(
-                    GroupMemberPreview(
-                        id: memberID,
-                        icon: (memberData["icon"] as? String) ?? "🌸",
-                        bgColour: (memberData["bgColour"] as? String) ?? "#A5C3DE"
-                    )
+            let rawPreviews = (data["member_previews"] as? [[String: Any]]) ?? []
+            let previews = rawPreviews.prefix(5).map { raw in
+                GroupMemberPreview(
+                    id: (raw["uid"] as? String) ?? UUID().uuidString,
+                    icon: (raw["icon"] as? String) ?? "🌸",
+                    bgColour: (raw["bgColour"] as? String) ?? "#A5C3DE"
                 )
             }
 
-            summaries.append(GroupSummary(id: groupID, name: name, members: members))
+            return GroupSummary(id: document.documentID, name: name, members: Array(previews))
         }
-
-        return summaries
     }
 
     func updateGroupName(groupID: String, name: String) async throws {
@@ -116,5 +127,15 @@ final class GroupService {
                 continuation.resume(returning: ())
             }
         }
+    }
+
+    private func loadMemberPreview(uid: String) async throws -> GroupMemberPreview {
+        let snapshot = try await getDocument(db.collection("users").document(uid))
+        let data = snapshot.data() ?? [:]
+        return GroupMemberPreview(
+            id: uid,
+            icon: (data["icon"] as? String) ?? "🌸",
+            bgColour: (data["bgColour"] as? String) ?? "#A5C3DE"
+        )
     }
 }

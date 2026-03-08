@@ -97,7 +97,7 @@ struct GroupsView: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else if groups.isEmpty {
-                            Text("No groups yet")
+                            Text("No groups yet. Pull down to refresh.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -195,7 +195,7 @@ struct GroupsView: View {
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
-            .task {
+            .refreshable {
                 await loadGroups()
             }
             .onChange(of: createStatusMessage) { _, newValue in
@@ -232,11 +232,13 @@ struct GroupsView: View {
         defer { isCreating = false }
 
         do {
-            let createdGroupID = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
+            let createdGroup = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
             createGroupName = ""
             isCreateError = false
             createStatusMessage = "Group created"
-            await loadGroups(selecting: createdGroupID)
+            groups.insert(createdGroup, at: 0)
+            selectedGroupID = createdGroup.id
+            editableGroupName = createdGroup.name
         } catch {
             isCreateError = true
             createStatusMessage = error.localizedDescription
@@ -244,7 +246,7 @@ struct GroupsView: View {
     }
 
     @MainActor
-    private func loadGroups(selecting preferredGroupID: String? = nil) async {
+    private func loadGroups() async {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         isLoadingGroups = true
         defer { isLoadingGroups = false }
@@ -253,9 +255,7 @@ struct GroupsView: View {
             let fetched = try await groupService.fetchGroups(for: uid)
             groups = fetched
 
-            if let preferredGroupID, fetched.contains(where: { $0.id == preferredGroupID }) {
-                selectedGroupID = preferredGroupID
-            } else if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
+            if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
                 selectedGroupID = fetched.first?.id
             }
 
