@@ -15,12 +15,6 @@ struct MainTabView: View {
                 }
                 .accessibilityLabel("Upload")
 
-            GroupsView()
-                .tabItem {
-                    Image(systemName: "figure.2.and.child.holdinghands")
-                }
-                .accessibilityLabel("Groups")
-
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")

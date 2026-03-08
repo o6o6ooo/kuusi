@@ -423,8 +423,8 @@
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to scan QR codes for group invites.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -459,8 +459,8 @@
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to scan QR codes for group invites.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
