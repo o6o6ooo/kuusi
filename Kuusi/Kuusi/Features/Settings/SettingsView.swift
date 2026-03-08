@@ -291,8 +291,29 @@ struct SettingsView: View {
                             }
                         } label: {
                             Text("Sign out")
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Color.accentColor)
                         }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Privacy policy")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            Text("Terms of service")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            HStack(spacing: 4) {
+                                Text("Made with love by")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Link("Sakura Wallace", destination: URL(string: "https://github.com/o6o6ooo")!)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .padding(.top, 4)
                     }
 
                     if let message, isError {
@@ -630,7 +651,7 @@ struct SettingsView: View {
                 }
             } label: {
                 Text("Join a group")
-                    .font(.footnote.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
