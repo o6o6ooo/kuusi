@@ -76,33 +76,27 @@ struct GroupsView: View {
                         .font(.headline.weight(.semibold))
 
                     VStack(spacing: 12) {
-                        TextField(
-                            "",
-                            text: $createGroupName,
-                            prompt: Text("group name")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        )
-                            .textFieldStyle(.plain)
-                            .font(.body)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .background(fieldBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        HStack {
-                            Spacer()
-                            if let createStatusMessage {
-                                Text(createStatusMessage)
+                        HStack(spacing: 10) {
+                            TextField(
+                                "",
+                                text: $createGroupName,
+                                prompt: Text("group name")
                                     .font(.footnote)
-                                    .foregroundStyle(createStatusTextColor)
-                            }
+                                    .foregroundStyle(.secondary)
+                            )
+                                .textFieldStyle(.plain)
+                                .font(.body)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(fieldBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+
                             Button {
                                 Task {
                                     await createGroup()
                                 }
                             } label: {
-                                Image(systemName: "person.fill.badge.plus")
+                                Image(systemName: "folder.fill.badge.plus")
                                     .font(.system(size: 14, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 34, height: 34)
@@ -117,8 +111,15 @@ struct GroupsView: View {
                     .background(cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
 
+                    if let createStatusMessage {
+                        Text(createStatusMessage)
+                            .font(.footnote)
+                            .foregroundStyle(createStatusTextColor)
+                    }
+
                     Text("Your groups")
                         .font(.headline.weight(.semibold))
+                        .padding(.top, 8)
 
                     VStack(spacing: 12) {
                         if isLoadingGroups {
@@ -360,13 +361,10 @@ struct GroupsView: View {
         defer { isCreating = false }
 
         do {
-            let createdGroup = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
+            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
             createGroupName = ""
             isCreateError = false
-            createStatusMessage = "Group created"
-            groups.insert(createdGroup, at: 0)
-            selectedGroupID = createdGroup.id
-            editableGroupName = createdGroup.name
+            createStatusMessage = "Group created. Pull down to refresh."
         } catch {
             isCreateError = true
             createStatusMessage = error.localizedDescription
@@ -434,11 +432,8 @@ struct GroupsView: View {
 
         do {
             try await groupService.deleteGroup(groupID: selectedGroupID)
-            groups.removeAll { $0.id == selectedGroupID }
-            self.selectedGroupID = groups.first?.id
-            editableGroupName = groups.first?.name ?? ""
             isSaveError = false
-            saveStatusMessage = "Group deleted"
+            saveStatusMessage = "Group deleted. Pull down to refresh."
         } catch {
             isSaveError = true
             saveStatusMessage = error.localizedDescription
