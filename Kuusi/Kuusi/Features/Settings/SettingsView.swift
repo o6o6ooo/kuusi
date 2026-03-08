@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
     @State private var quotaMB: Double = 5120
+    @State private var plan = "free"
     @State private var isEditingName = false
 
     @State private var createGroupName = ""
@@ -135,7 +136,7 @@ struct SettingsView: View {
 
                 HStack(spacing: 6) {
                     Text("Need more storage?")
-                        .font(.subheadline)
+										.font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("Upgrade to premium.")
                         .font(.subheadline.weight(.semibold))
@@ -149,6 +150,80 @@ struct SettingsView: View {
                     .stroke(cardBorder, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private var subscriptionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Subscription")
+                .font(.system(size: 20, weight: .bold))
+
+            Text("Upgrade to premium, cancel anytime.")
+						.font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 24, weight: .regular))
+                        .opacity(plan == "free" ? 1 : 0)
+                        .frame(width: 84)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Free plan")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text("•  5GB storage\n•  Preview photos up to 2 years\n•  Have up to 3 groups")
+                            .font(.subheadline.weight(.medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(cardBorder, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 24, weight: .regular))
+                        .opacity(plan == "premium" ? 1 : 0)
+                        .frame(width: 84)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Premium plan - £20.00 / year")
+                            .font(.subheadline.weight(.semibold))
+                        
+                        Text("•  50GB storage\n•  Preview all photos\n•  Have up to 10 groups")
+                            .font(.subheadline.weight(.medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+            .background(cardBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(cardBorder, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 6) {
+                Text("Already got premium?")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("Restore purchases.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(primaryText)
+            }
         }
     }
 
@@ -208,6 +283,7 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         storageCard
+                        subscriptionCard
 
                         Button {
                             Task {
@@ -579,6 +655,7 @@ struct SettingsView: View {
                 bgColour = user.bgColour
                 usageMB = user.usageMB
                 quotaMB = user.quotaMB
+                plan = user.plan
             }
         } catch {
             message = error.localizedDescription
