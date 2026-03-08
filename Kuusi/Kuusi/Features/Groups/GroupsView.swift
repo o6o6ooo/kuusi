@@ -9,6 +9,7 @@ struct GroupsView: View {
     @State private var statusMessage: String?
     @State private var isError = false
     @State private var isCreating = false
+    @State private var clearMessageTask: Task<Void, Never>?
 
     private let groupService = GroupService()
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
@@ -87,6 +88,13 @@ struct GroupsView: View {
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
+            .onChange(of: statusMessage) { _, newValue in
+                scheduleMessageAutoClear(for: newValue)
+            }
+            .onDisappear {
+                clearMessageTask?.cancel()
+                clearMessageTask = nil
+            }
         }
     }
 
@@ -124,6 +132,19 @@ struct GroupsView: View {
         } catch {
             isError = true
             statusMessage = error.localizedDescription
+        }
+    }
+
+    private func scheduleMessageAutoClear(for value: String?) {
+        clearMessageTask?.cancel()
+        guard value != nil, !isError else { return }
+
+        let currentValue = value
+        clearMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, statusMessage == currentValue, !isError {
+                statusMessage = nil
+            }
         }
     }
 }

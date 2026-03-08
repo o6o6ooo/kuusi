@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var isError = false
     @State private var hasLoaded = false
     @State private var isEmojiPickerPresented = false
+    @State private var clearMessageTask: Task<Void, Never>?
 
     private let userService = UserService()
     private let avatarColours = [
@@ -148,6 +149,13 @@ struct SettingsView: View {
             .sheet(isPresented: $isEmojiPickerPresented) {
                 EmojiPickerSheet(selectedEmoji: $icon)
             }
+            .onChange(of: message) { _, newValue in
+                scheduleMessageAutoClear(for: newValue)
+            }
+            .onDisappear {
+                clearMessageTask?.cancel()
+                clearMessageTask = nil
+            }
         }
     }
 
@@ -189,6 +197,19 @@ struct SettingsView: View {
         } catch {
             message = error.localizedDescription
             isError = true
+        }
+    }
+
+    private func scheduleMessageAutoClear(for value: String?) {
+        clearMessageTask?.cancel()
+        guard value != nil, !isError else { return }
+
+        let currentValue = value
+        clearMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, message == currentValue, !isError {
+                message = nil
+            }
         }
     }
 }
