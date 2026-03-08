@@ -4,23 +4,49 @@ import FirebaseAuth
 struct GroupsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var groupName = ""
-    @State private var statusMessage: String?
-    @State private var isError = false
+    @State private var createGroupName = ""
+    @State private var selectedGroupID: String?
+    @State private var editableGroupName = ""
+    @State private var groups: [GroupSummary] = []
+    @State private var createStatusMessage: String?
+    @State private var isCreateError = false
+    @State private var saveStatusMessage: String?
+    @State private var isSaveError = false
     @State private var isCreating = false
-    @State private var clearMessageTask: Task<Void, Never>?
+    @State private var isLoadingGroups = false
+    @State private var isSavingGroupName = false
+    @State private var clearCreateMessageTask: Task<Void, Never>?
+    @State private var clearSaveMessageTask: Task<Void, Never>?
 
     private let groupService = GroupService()
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var fieldBackground: Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
-    private var statusTextColor: Color {
-        isError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+    private var memberBorderColor: Color { AppTheme.cardBorder(for: colorScheme) }
+    private var createStatusTextColor: Color {
+        isCreateError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+    }
+    private var saveStatusTextColor: Color {
+        isSaveError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
     }
     private var canCreate: Bool {
-        !isCreating && !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !isCreating && !createGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+    private var selectedGroup: GroupSummary? {
+        guard let selectedGroupID else { return nil }
+        return groups.first(where: { $0.id == selectedGroupID })
+    }
+    private var canSaveSelectedGroupName: Bool {
+        guard let selectedGroup else { return false }
+        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !isSavingGroupName && !trimmed.isEmpty && trimmed != selectedGroup.name
+    }
+    private var selectedGroupInviteURL: URL? {
+        guard let selectedGroupID else { return nil }
+        return URL(string: "https://kuusi.app/invite/\(selectedGroupID)")
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -31,7 +57,7 @@ struct GroupsView: View {
                     VStack(spacing: 12) {
                         TextField(
                             "",
-                            text: $groupName,
+                            text: $createGroupName,
                             prompt: Text("group name")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -45,10 +71,10 @@ struct GroupsView: View {
 
                         HStack {
                             Spacer()
-                            if let statusMessage {
-                                Text(statusMessage)
+                            if let createStatusMessage {
+                                Text(createStatusMessage)
                                     .font(.footnote)
-                                    .foregroundStyle(statusTextColor)
+                                    .foregroundStyle(createStatusTextColor)
                             }
                             Button("Create") {
                                 Task {
@@ -62,18 +88,127 @@ struct GroupsView: View {
                     .padding(14)
                     .background(cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                    Text("Your groups")
+                        .font(.headline.weight(.semibold))
+
+                    VStack(spacing: 12) {
+                        if isLoadingGroups {
+                            ProgressView()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if groups.isEmpty {
+                            Text("No groups yet")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: 10) {
+                                    ForEach(groups) { group in
+                                        let isSelected = selectedGroupID == group.id
+                                        Button(group.name) {
+                                            selectedGroupID = group.id
+                                            editableGroupName = group.name
+                                        }
+                                        .font(.body)
+                                        .foregroundStyle(isSelected ? Color.white : Color.accentColor)
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 34)
+                                        .background(
+                                            Capsule()
+                                                .fill(isSelected ? Color.accentColor : Color.clear)
+                                        )
+                                        .overlay {
+                                            Capsule()
+                                                .strokeBorder(Color.accentColor, lineWidth: 1)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .fixedSize(horizontal: true, vertical: false)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            TextField(
+                                "",
+                                text: $editableGroupName,
+                                prompt: Text("group name")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            )
+                            .textFieldStyle(.plain)
+                            .font(.body)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(fieldBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                            HStack(spacing: 10) {
+                                if let selectedGroupInviteURL {
+                                    ShareLink(item: selectedGroupInviteURL) {
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.title3)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                if let selectedGroup {
+                                    HStack(spacing: -8) {
+                                        ForEach(selectedGroup.members) { member in
+                                            Text(member.icon)
+                                                .font(.system(size: 18))
+                                                .frame(width: 36, height: 36)
+                                                .background(Color(hex: member.bgColour))
+                                                .clipShape(Circle())
+                                                .overlay {
+                                                    Circle()
+                                                        .stroke(memberBorderColor, lineWidth: 2)
+                                                }
+                                        }
+                                    }
+                                }
+
+                                Spacer()
+
+                                if let saveStatusMessage {
+                                    Text(saveStatusMessage)
+                                        .font(.footnote)
+                                        .foregroundStyle(saveStatusTextColor)
+                                }
+
+                                Button("Save") {
+                                    Task {
+                                        await saveGroupName()
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(!canSaveSelectedGroupName)
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .background(cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
                 }
                 .padding(16)
             }
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
-            .onChange(of: statusMessage) { _, newValue in
-                scheduleMessageAutoClear(for: newValue)
+            .task {
+                await loadGroups()
+            }
+            .onChange(of: createStatusMessage) { _, newValue in
+                scheduleCreateMessageAutoClear(for: newValue)
+            }
+            .onChange(of: saveStatusMessage) { _, newValue in
+                scheduleSaveMessageAutoClear(for: newValue)
             }
             .onDisappear {
-                clearMessageTask?.cancel()
-                clearMessageTask = nil
+                clearCreateMessageTask?.cancel()
+                clearCreateMessageTask = nil
+                clearSaveMessageTask?.cancel()
+                clearSaveMessageTask = nil
             }
         }
     }
@@ -81,15 +216,15 @@ struct GroupsView: View {
     @MainActor
     private func createGroup() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            isError = true
-            statusMessage = "Please sign in first"
+            isCreateError = true
+            createStatusMessage = "Please sign in first"
             return
         }
 
-        let cleanName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else {
-            isError = true
-            statusMessage = "Fill in group name"
+            isCreateError = true
+            createStatusMessage = "Fill in group name"
             return
         }
 
@@ -97,25 +232,92 @@ struct GroupsView: View {
         defer { isCreating = false }
 
         do {
-            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
-            groupName = ""
-            isError = false
-            statusMessage = "Group created"
+            let createdGroupID = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
+            createGroupName = ""
+            isCreateError = false
+            createStatusMessage = "Group created"
+            await loadGroups(selecting: createdGroupID)
         } catch {
-            isError = true
-            statusMessage = error.localizedDescription
+            isCreateError = true
+            createStatusMessage = error.localizedDescription
         }
     }
 
-    private func scheduleMessageAutoClear(for value: String?) {
-        clearMessageTask?.cancel()
-        guard value != nil, !isError else { return }
+    @MainActor
+    private func loadGroups(selecting preferredGroupID: String? = nil) async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        isLoadingGroups = true
+        defer { isLoadingGroups = false }
+
+        do {
+            let fetched = try await groupService.fetchGroups(for: uid)
+            groups = fetched
+
+            if let preferredGroupID, fetched.contains(where: { $0.id == preferredGroupID }) {
+                selectedGroupID = preferredGroupID
+            } else if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
+                selectedGroupID = fetched.first?.id
+            }
+
+            if let selectedGroup {
+                editableGroupName = selectedGroup.name
+            } else {
+                editableGroupName = ""
+            }
+        } catch {
+            isCreateError = true
+            createStatusMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func saveGroupName() async {
+        guard let selectedGroupID else { return }
+        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isSavingGroupName = true
+        defer { isSavingGroupName = false }
+
+        do {
+            try await groupService.updateGroupName(groupID: selectedGroupID, name: trimmed)
+            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
+                groups[index] = GroupSummary(
+                    id: groups[index].id,
+                    name: trimmed,
+                    members: groups[index].members
+                )
+            }
+            isSaveError = false
+            saveStatusMessage = "Group updated"
+        } catch {
+            isSaveError = true
+            saveStatusMessage = error.localizedDescription
+        }
+    }
+
+    private func scheduleCreateMessageAutoClear(for value: String?) {
+        clearCreateMessageTask?.cancel()
+        guard value != nil, !isCreateError else { return }
 
         let currentValue = value
-        clearMessageTask = Task { @MainActor in
+        clearCreateMessageTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, statusMessage == currentValue, !isError {
-                statusMessage = nil
+            if !Task.isCancelled, createStatusMessage == currentValue, !isCreateError {
+                createStatusMessage = nil
+            }
+        }
+    }
+
+    private func scheduleSaveMessageAutoClear(for value: String?) {
+        clearSaveMessageTask?.cancel()
+        guard value != nil, !isSaveError else { return }
+
+        let currentValue = value
+        clearSaveMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, saveStatusMessage == currentValue, !isSaveError {
+                saveStatusMessage = nil
             }
         }
     }
