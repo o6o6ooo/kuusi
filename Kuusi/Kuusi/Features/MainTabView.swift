@@ -9,12 +9,6 @@ struct MainTabView: View {
                 }
                 .accessibilityLabel("Feed")
 
-            UploadView()
-                .tabItem {
-                    Image(systemName: "photo.badge.plus")
-                }
-                .accessibilityLabel("Upload")
-
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")

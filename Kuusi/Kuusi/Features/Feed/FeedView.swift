@@ -6,7 +6,7 @@ struct FeedView: View {
     @State private var photos: [FeedPhoto] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var isNotificationsOverlayPresented = false
+    @State private var isUploadOverlayPresented = false
 
     private let feedService = FeedService()
 
@@ -36,11 +36,11 @@ struct FeedView: View {
             }
             .screenTheme()
             .toolbar(.hidden, for: .navigationBar)
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: .topLeading) {
                 Button {
-                    isNotificationsOverlayPresented = true
+                    isUploadOverlayPresented = true
                 } label: {
-                    Image(systemName: "bell")
+                    Image(systemName: "plus")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText(for: colorScheme))
                         .padding(10)
@@ -48,15 +48,15 @@ struct FeedView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 6)
-                .padding(.trailing, 14)
+                .padding(.leading, 14)
             }
             .task {
                 if photos.isEmpty {
                     await fetchFeed()
                 }
             }
-            .sheet(isPresented: $isNotificationsOverlayPresented) {
-                NotificationsOverlayView()
+            .sheet(isPresented: $isUploadOverlayPresented) {
+                UploadView()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
