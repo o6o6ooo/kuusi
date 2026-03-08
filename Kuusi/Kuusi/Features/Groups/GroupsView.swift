@@ -1,5 +1,9 @@
 import SwiftUI
 import FirebaseAuth
+import PhotosUI
+import CoreImage
+import AVFoundation
+import UIKit
 
 struct GroupsView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -16,6 +20,10 @@ struct GroupsView: View {
     @State private var isLoadingGroups = false
     @State private var isSavingGroupName = false
     @State private var isDeletingGroup = false
+    @State private var isQRScannerPresented = false
+    @State private var isPhotoPickerPresented = false
+    @State private var selectedQRCodePhoto: PhotosPickerItem?
+    @State private var isJoiningGroup = false
     @State private var clearCreateMessageTask: Task<Void, Never>?
     @State private var clearSaveMessageTask: Task<Void, Never>?
 
@@ -46,9 +54,8 @@ struct GroupsView: View {
     private var canDeleteSelectedGroup: Bool {
         selectedGroupID != nil && !isDeletingGroup
     }
-    private var selectedGroupInviteURL: URL? {
-        guard let selectedGroupID else { return nil }
-        return URL(string: "https://kuusi.app/invite/\(selectedGroupID)")
+    private var canAddMemberByQRCode: Bool {
+        !isJoiningGroup
     }
 
     var body: some View {
@@ -155,17 +162,28 @@ struct GroupsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
 
                             HStack(spacing: 10) {
-                                if let selectedGroupInviteURL {
-                                    ShareLink(item: selectedGroupInviteURL) {
-                                        Image(systemName: "square.and.arrow.up.fill")
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundStyle(.white)
-                                            .frame(width: 34, height: 34)
-                                            .background(Color.accentColor)
-                                            .clipShape(Circle())
+                                Menu {
+                                    Button {
+                                        isQRScannerPresented = true
+                                    } label: {
+                                        Label("Scan QR code", systemImage: "camera")
                                     }
-                                    .buttonStyle(.plain)
+
+                                    Button {
+                                        isPhotoPickerPresented = true
+                                    } label: {
+                                        Label("Choose from Photos", systemImage: "photo.badge.magnifyingglass")
+                                    }
+                                } label: {
+                                    Image(systemName: "person.fill.questionmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 34, height: 34)
+                                        .background(Color.accentColor)
+                                        .clipShape(Circle())
                                 }
+                                .buttonStyle(.plain)
+                                .disabled(!canAddMemberByQRCode)
 
                                 if let selectedGroup {
                                     HStack(spacing: -8) {
@@ -247,6 +265,24 @@ struct GroupsView: View {
             .screenTheme()
             .refreshable {
                 await loadGroups()
+            }
+            .photosPicker(
+                isPresented: $isPhotoPickerPresented,
+                selection: $selectedQRCodePhoto,
+                matching: .images
+            )
+            .sheet(isPresented: $isQRScannerPresented) {
+                QRCodeScannerSheet { payload in
+                    Task {
+                        await joinGroupFromQRCodePayload(payload)
+                    }
+                }
+            }
+            .onChange(of: selectedQRCodePhoto) { _, newValue in
+                guard let newValue else { return }
+                Task {
+                    await handleSelectedQRCodePhoto(newValue)
+                }
             }
             .onChange(of: createStatusMessage) { _, newValue in
                 scheduleCreateMessageAutoClear(for: newValue)
@@ -367,6 +403,85 @@ struct GroupsView: View {
         }
     }
 
+    @MainActor
+    private func handleSelectedQRCodePhoto(_ item: PhotosPickerItem) async {
+        defer { selectedQRCodePhoto = nil }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                isSaveError = true
+                saveStatusMessage = "Failed to load image"
+                return
+            }
+            guard let payload = decodeQRCodePayload(from: data) else {
+                isSaveError = true
+                saveStatusMessage = "QR code was not found in the image"
+                return
+            }
+            await joinGroupFromQRCodePayload(payload)
+        } catch {
+            isSaveError = true
+            saveStatusMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func joinGroupFromQRCodePayload(_ payload: String) async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            isSaveError = true
+            saveStatusMessage = "Please sign in first"
+            return
+        }
+        guard let groupID = extractGroupID(from: payload) else {
+            isSaveError = true
+            saveStatusMessage = "Invalid invite QR"
+            return
+        }
+
+        isJoiningGroup = true
+        defer { isJoiningGroup = false }
+
+        do {
+            try await groupService.joinGroup(groupID: groupID, uid: uid)
+            isSaveError = false
+            saveStatusMessage = "Joined group"
+        } catch {
+            isSaveError = true
+            saveStatusMessage = error.localizedDescription
+        }
+    }
+
+    private func extractGroupID(from payload: String) -> String? {
+        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let url = URL(string: trimmed) {
+            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
+                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
+                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+        }
+
+        return trimmed.lowercased()
+    }
+
+    private func decodeQRCodePayload(from data: Data) -> String? {
+        guard let ciImage = CIImage(data: data) else { return nil }
+        let detector = CIDetector(
+            ofType: CIDetectorTypeQRCode,
+            context: nil,
+            options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]
+        )
+        let features = detector?.features(in: ciImage) as? [CIQRCodeFeature]
+        return features?.first?.messageString
+    }
+
     private func scheduleCreateMessageAutoClear(for value: String?) {
         clearCreateMessageTask?.cancel()
         guard value != nil, !isCreateError else { return }
@@ -392,4 +507,165 @@ struct GroupsView: View {
             }
         }
     }
+}
+
+private struct QRCodeScannerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let onCode: (String) -> Void
+    @State private var scanError: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                QRCodeCameraView(
+                    onCode: { code in
+                        onCode(code)
+                        dismiss()
+                    },
+                    onError: { message in
+                        scanError = message
+                    }
+                )
+                .ignoresSafeArea()
+
+                if let scanError {
+                    Text(scanError)
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.errorText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .padding(.bottom, 20)
+                }
+            }
+            .navigationTitle("Scan QR")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct QRCodeCameraView: UIViewRepresentable {
+    let onCode: (String) -> Void
+    let onError: (String) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onCode: onCode, onError: onError)
+    }
+
+    func makeUIView(context: Context) -> CameraPreviewView {
+        let view = CameraPreviewView()
+        context.coordinator.configureSession(previewView: view)
+        return view
+    }
+
+    func updateUIView(_ uiView: CameraPreviewView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: CameraPreviewView, coordinator: Coordinator) {
+        coordinator.stopSession()
+    }
+
+    final class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
+        private let onCode: (String) -> Void
+        private let onError: (String) -> Void
+        private var session: AVCaptureSession?
+        private var didScan = false
+
+        init(onCode: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
+            self.onCode = onCode
+            self.onError = onError
+        }
+
+        func configureSession(previewView: CameraPreviewView) {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                setupCaptureSession(previewView: previewView)
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        if granted {
+                            self.setupCaptureSession(previewView: previewView)
+                        } else {
+                            self.onError("Camera permission was denied")
+                        }
+                    }
+                }
+            case .denied, .restricted:
+                onError("Enable camera access in Settings")
+            @unknown default:
+                onError("Camera is unavailable")
+            }
+        }
+
+        func stopSession() {
+            session?.stopRunning()
+            session = nil
+        }
+
+        private func setupCaptureSession(previewView: CameraPreviewView) {
+            let session = AVCaptureSession()
+            guard let device = AVCaptureDevice.default(for: .video) else {
+                onError("Camera is unavailable")
+                return
+            }
+
+            do {
+                let input = try AVCaptureDeviceInput(device: device)
+                guard session.canAddInput(input) else {
+                    onError("Failed to configure camera input")
+                    return
+                }
+                session.addInput(input)
+            } catch {
+                onError(error.localizedDescription)
+                return
+            }
+
+            let output = AVCaptureMetadataOutput()
+            guard session.canAddOutput(output) else {
+                onError("Failed to configure camera output")
+                return
+            }
+            session.addOutput(output)
+            output.setMetadataObjectsDelegate(self, queue: .main)
+            output.metadataObjectTypes = [.qr]
+
+            previewView.previewLayer.session = session
+            previewView.previewLayer.videoGravity = .resizeAspectFill
+            self.session = session
+            DispatchQueue.global(qos: .userInitiated).async {
+                session.startRunning()
+            }
+        }
+
+        func metadataOutput(
+            _ output: AVCaptureMetadataOutput,
+            didOutput metadataObjects: [AVMetadataObject],
+            from connection: AVCaptureConnection
+        ) {
+            guard !didScan else { return }
+            guard
+                let qrObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+                let stringValue = qrObject.stringValue
+            else {
+                return
+            }
+            didScan = true
+            stopSession()
+            onCode(stringValue)
+        }
+    }
+}
+
+private final class CameraPreviewView: UIView {
+    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+    var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
 }

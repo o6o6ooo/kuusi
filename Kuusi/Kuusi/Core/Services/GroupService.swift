@@ -1,6 +1,17 @@
 import FirebaseFirestore
 import Foundation
 
+enum GroupServiceError: LocalizedError {
+    case groupNotFound
+
+    var errorDescription: String? {
+        switch self {
+        case .groupNotFound:
+            return "Group not found."
+        }
+    }
+}
+
 struct GroupMemberPreview: Identifiable {
     let id: String
     let icon: String
@@ -16,6 +27,7 @@ struct GroupSummary: Identifiable {
 
 final class GroupService {
     private let db = Firestore.firestore()
+    private let groupMemberPreviewLimit = 3
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         let groupID = makeGroupID()
@@ -78,19 +90,7 @@ final class GroupService {
         groups.reserveCapacity(snapshot.documents.count)
 
         for document in snapshot.documents {
-            let data = document.data()
-            let name = (data["name"] as? String) ?? "Untitled group"
-            let memberIDs = (data["members"] as? [String]) ?? []
-            let previews = (try? await loadMemberPreviews(uids: Array(memberIDs.prefix(5)))) ?? []
-
-            groups.append(
-                GroupSummary(
-                    id: document.documentID,
-                    name: name,
-                    members: previews,
-                    totalMemberCount: memberIDs.count
-                )
-            )
+            groups.append(try await makeGroupSummary(from: document, previewLimit: groupMemberPreviewLimit))
         }
 
         return groups
@@ -99,6 +99,36 @@ final class GroupService {
     func updateGroupName(groupID: String, name: String) async throws {
         let ref = db.collection("groups").document(groupID)
         try await setDocument(ref, data: ["name": name], merge: true)
+    }
+
+    func joinGroup(groupID: String, uid: String) async throws {
+        let groupRef = db.collection("groups").document(groupID)
+        let userRef = db.collection("users").document(uid)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer in
+                do {
+                    let groupSnapshot = try transaction.getDocument(groupRef)
+                    guard groupSnapshot.exists else {
+                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
+                        return nil
+                    }
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+
+                transaction.updateData(["members": FieldValue.arrayUnion([uid])], forDocument: groupRef)
+                transaction.setData(["groups": FieldValue.arrayUnion([groupID])], forDocument: userRef, merge: true)
+                return nil
+            }, completion: { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            })
+        }
     }
 
     func deleteGroup(groupID: String) async throws {
@@ -170,5 +200,19 @@ final class GroupService {
             previews.append(try await loadMemberPreview(uid: uid))
         }
         return previews
+    }
+
+    private func makeGroupSummary(from document: DocumentSnapshot, previewLimit: Int) async throws -> GroupSummary {
+        let data = document.data() ?? [:]
+        let name = (data["name"] as? String) ?? "Untitled group"
+        let memberIDs = (data["members"] as? [String]) ?? []
+        let previewIDs = Array(memberIDs.prefix(previewLimit))
+        let previews = (try? await loadMemberPreviews(uids: previewIDs)) ?? []
+        return GroupSummary(
+            id: document.documentID,
+            name: name,
+            members: previews,
+            totalMemberCount: memberIDs.count
+        )
     }
 }
