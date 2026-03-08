@@ -171,7 +171,7 @@ struct SettingsView: View {
             .sheet(isPresented: $isQRCodeOverlayPresented) {
                 if let qrPayload {
                     MyQRCodeOverlayView(payload: qrPayload)
-                        .presentationDetents([.large])
+                        .presentationDetents([.height(400)])
                         .presentationDragIndicator(.visible)
                 }
             }
@@ -250,9 +250,6 @@ private struct MyQRCodeOverlayView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 18) {
-                Text("Your QR code")
-                    .font(.headline.weight(.semibold))
-
                 if let image = makeQRCodeImage(from: payload) {
                     Image(uiImage: image)
                         .interpolation(.none)
