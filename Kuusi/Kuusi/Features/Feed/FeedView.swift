@@ -6,86 +6,53 @@ struct FeedView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isNotificationsOverlayPresented = false
-    @State private var notificationsDragOffset: CGFloat = 0
 
     private let feedService = FeedService()
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Group {
-                    if isLoading {
-                        ProgressView("Loading feed...")
-                    } else if let errorMessage {
-                        ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-                    } else if photos.isEmpty {
-                        ContentUnavailableView("No photos yet", systemImage: "photo")
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 10) {
-                                ForEach(photos) { photo in
-                                    PhotoRow(photo: photo)
-                                }
+            Group {
+                if isLoading {
+                    ProgressView("Loading feed...")
+                } else if let errorMessage {
+                    ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                } else if photos.isEmpty {
+                    ContentUnavailableView("No photos yet", systemImage: "photo")
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(photos) { photo in
+                                PhotoRow(photo: photo)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
                         }
-                        .refreshable {
-                            await fetchFeed()
-                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                     }
-                }
-                .navigationTitle("Feed")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                notificationsDragOffset = 0
-                                isNotificationsOverlayPresented = true
-                            }
-                        } label: {
-                            Image(systemName: "bell")
-                        }
-                    }
-                }
-                .task {
-                    if photos.isEmpty {
+                    .refreshable {
                         await fetchFeed()
                     }
                 }
-
-                if isNotificationsOverlayPresented {
-                    NotificationsOverlayView {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                            isNotificationsOverlayPresented = false
-                            notificationsDragOffset = 0
-                        }
+            }
+            .navigationTitle("Feed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isNotificationsOverlayPresented = true
+                    } label: {
+                        Image(systemName: "bell")
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-                    .offset(y: notificationsDragOffset)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                notificationsDragOffset = max(0, value.translation.height)
-                            }
-                            .onEnded { value in
-                                if value.translation.height > 8 {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                        isNotificationsOverlayPresented = false
-                                        notificationsDragOffset = 0
-                                    }
-                                } else {
-                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                                        notificationsDragOffset = 0
-                                    }
-                                }
-                            }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(1)
                 }
+            }
+            .task {
+                if photos.isEmpty {
+                    await fetchFeed()
+                }
+            }
+            .sheet(isPresented: $isNotificationsOverlayPresented) {
+                NotificationsOverlayView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
