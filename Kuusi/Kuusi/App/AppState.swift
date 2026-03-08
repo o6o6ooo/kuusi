@@ -112,7 +112,7 @@ final class AppState: ObservableObject {
 
             currentUser = user
             errorMessage = nil
-            route = .signedIn
+            route = biometricsEnabled ? .locked : .signedIn
         } catch {
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
