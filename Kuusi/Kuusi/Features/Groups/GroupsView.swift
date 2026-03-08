@@ -58,6 +58,9 @@ struct GroupsView: View {
     private var canAddMemberByQRCode: Bool {
         !isJoiningGroup
     }
+    private var appShareURL: URL {
+        URL(string: "https://apps.apple.com/app/id1234567890")!
+    }
 
     var body: some View {
         NavigationStack {
@@ -256,6 +259,13 @@ struct GroupsView: View {
                     .padding(14)
                     .background(cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                    ShareLink(item: appShareURL) {
+                        Text("Tell your friends about this app?")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(16)
             }
