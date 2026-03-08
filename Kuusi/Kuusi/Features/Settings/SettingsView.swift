@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var name = ""
     @State private var icon = "🌸"
     @State private var bgColour = "#A5C3DE"
@@ -16,12 +17,17 @@ struct SettingsView: View {
         "#A5C3DE", "#E6C7D0", "#C7C0E4", "#EAA5B8", "#B7D7C9",
         "#F1C994", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E"
     ]
+    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
+    private var errorText: Color { AppTheme.errorText }
+    private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    VStack(alignment: .trailing, spacing: 8) {
+                    VStack(alignment: .trailing, spacing: 10) {
                         VStack(alignment: .leading, spacing: 18) {
                             HStack(alignment: .center, spacing: 20) {
                                 Button {
@@ -41,10 +47,11 @@ struct SettingsView: View {
                                     TextField("Name", text: $name)
                                         .textFieldStyle(.plain)
                                         .font(.body.weight(.semibold))
+                                        .foregroundStyle(primaryText)
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 10)
                                         .frame(maxWidth: 300)
-                                        .background(Color.white.opacity(0.8))
+                                        .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.92))
                                         .clipShape(RoundedRectangle(cornerRadius: 14))
                                 }
                                 Spacer(minLength: 0)
@@ -53,32 +60,54 @@ struct SettingsView: View {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 28, maximum: 50)), count: 5), spacing: 12) {
                                 ForEach(avatarColours, id: \.self) { colour in
                                     Button {
-                                        bgColour = colour
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                            bgColour = colour
+                                        }
                                     } label: {
                                         Circle()
                                             .fill(Color(hex: colour))
                                             .frame(width: 50, height: 50)
+                                            .scaleEffect(bgColour == colour ? 1.07 : 1.0)
                                             .overlay {
                                                 if bgColour == colour {
                                                     Circle()
-                                                        .stroke(.black.opacity(0.4), lineWidth: 2)
+                                                        .stroke(.black.opacity(0.16), lineWidth: 1.5)
                                                 }
                                             }
+                                            .shadow(color: .black.opacity(bgColour == colour ? 0.15 : 0.06), radius: bgColour == colour ? 7 : 3, x: 0, y: 2)
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
                         }
                         .padding(16)
-                        .background(Color(.secondarySystemBackground))
+                        .background(cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(cardBorder, lineWidth: 1)
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 20))
 
-                        Button("Save") {
-                            Task {
-                                await saveProfile()
+                        HStack(spacing: 8) {
+                            if let message, !isError {
+                                Text(message)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
                             }
+                            Button {
+                                Task {
+                                    await saveProfile()
+                                }
+                            } label: {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 34, height: 34)
+                                    .background(Color.accentColor)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.borderedProminent)
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
@@ -87,24 +116,33 @@ struct SettingsView: View {
                             set: { appState.setBiometricsEnabled($0) }
                         ))
                         .font(.body.weight(.medium))
+                        .foregroundStyle(primaryText)
 
-                        Button("Sign out", role: .destructive) {
+                        Button {
                             Task {
                                 await appState.signOut()
                             }
+                        } label: {
+                            Text("Sign out")
+                                .foregroundStyle(primaryText)
                         }
                     }
 
-                    if let message {
+                    if let message, isError {
                         Text(message)
                             .font(.footnote)
-                            .foregroundStyle(isError ? .red : .green)
+                            .foregroundStyle(errorText)
                     }
                 }
                 .padding(16)
+                .foregroundStyle(primaryText)
             }
+            .background(pageBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(colorScheme, for: .navigationBar)
+            .toolbarBackground(pageBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .task {
                 if !hasLoaded {
                     await loadProfile()
@@ -150,7 +188,7 @@ struct SettingsView: View {
                 icon: cleanIcon.isEmpty ? "🌸" : cleanIcon,
                 bgColour: bgColour
             )
-            message = "Profile saved."
+            message = "Profile updated"
             isError = false
         } catch {
             message = error.localizedDescription
@@ -214,17 +252,5 @@ private struct EmojiPickerSheet: View {
                 }
             }
         }
-    }
-}
-
-private extension Color {
-    init(hex: String) {
-        let sanitized = hex.replacingOccurrences(of: "#", with: "")
-        var rgb: UInt64 = 0
-        Scanner(string: sanitized).scanHexInt64(&rgb)
-        let r = Double((rgb >> 16) & 0xFF) / 255.0
-        let g = Double((rgb >> 8) & 0xFF) / 255.0
-        let b = Double(rgb & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b)
     }
 }

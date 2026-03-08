@@ -2,12 +2,15 @@ import SwiftUI
 
 @MainActor
 struct FeedView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var photos: [FeedPhoto] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isNotificationsOverlayPresented = false
 
     private let feedService = FeedService()
+    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     var body: some View {
         NavigationStack {
@@ -35,6 +38,10 @@ struct FeedView: View {
             }
             .navigationTitle("Feed")
             .navigationBarTitleDisplayMode(.inline)
+            .foregroundStyle(primaryText)
+            .background(pageBackground.ignoresSafeArea())
+            .toolbarBackground(pageBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -71,7 +78,10 @@ struct FeedView: View {
 }
 
 private struct PhotoRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let photo: FeedPhoto
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -91,15 +101,18 @@ private struct PhotoRow: View {
                 if let year = photo.year {
                     Text("\(year)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(primaryText.opacity(0.7))
                 }
                 if !photo.hashtags.isEmpty {
                     Text(photo.hashtags.prefix(3).map { "#\($0)" }.joined(separator: " "))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(primaryText.opacity(0.7))
                         .lineLimit(1)
                 }
             }
         }
+        .padding(8)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

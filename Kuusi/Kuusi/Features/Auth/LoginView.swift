@@ -3,20 +3,26 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var currentNonce: String?
+
+    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
             Text("Kuusi")
                 .font(.largeTitle.bold())
+                .foregroundStyle(primaryText)
             Text("Sign in with Apple to continue")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(primaryText.opacity(0.72))
 
             Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
                 get: { appState.biometricsEnabled },
                 set: { appState.setBiometricsEnabled($0) }
             ))
+            .foregroundStyle(primaryText)
             .padding(.horizontal, 24)
 
             SignInWithAppleButton(.signIn) { request in
@@ -56,7 +62,7 @@ struct LoginView: View {
             if let errorMessage = appState.errorMessage {
                 Text(errorMessage)
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppTheme.errorText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
@@ -64,5 +70,7 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(pageBackground.ignoresSafeArea())
     }
 }

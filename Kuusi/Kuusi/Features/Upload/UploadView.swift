@@ -4,6 +4,7 @@ import SwiftUI
 import UIKit
 
 struct UploadView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isUploading = false
@@ -11,6 +12,9 @@ struct UploadView: View {
     @State private var isError = false
 
     private let uploadService = UploadService()
+    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     var body: some View {
         NavigationStack {
@@ -70,13 +74,21 @@ struct UploadView: View {
                     if let message {
                         Text(message)
                             .font(.footnote)
-                            .foregroundStyle(isError ? .red : .green)
+                            .foregroundStyle(isError ? AppTheme.errorText : primaryText.opacity(0.8))
                     }
                 }
                 .padding()
+                .foregroundStyle(primaryText)
+                .background(cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .navigationTitle("Upload")
             .navigationBarTitleDisplayMode(.inline)
+            .background(pageBackground.ignoresSafeArea())
+            .toolbarBackground(pageBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onChange(of: pickerItems) { _, newValue in
                 Task {
                     await loadImages(from: newValue)
