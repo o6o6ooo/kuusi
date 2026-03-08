@@ -2,6 +2,7 @@ import SwiftUI
 import FirebaseAuth
 import PhotosUI
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import AVFoundation
 import UIKit
 
@@ -23,6 +24,7 @@ struct GroupsView: View {
     @State private var isDeleteConfirmPresented = false
     @State private var isQRScannerPresented = false
     @State private var isPhotoPickerPresented = false
+    @State private var isGroupQRCodeOverlayPresented = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var isJoiningGroup = false
     @State private var clearCreateMessageTask: Task<Void, Never>?
@@ -60,6 +62,10 @@ struct GroupsView: View {
     }
     private var appShareURL: URL {
         URL(string: "https://apps.apple.com/app/id1234567890")!
+    }
+    private var selectedGroupInvitePayload: String? {
+        guard let selectedGroupID else { return nil }
+        return "kuusi://invite/\(selectedGroupID)"
     }
 
     var body: some View {
@@ -166,20 +172,10 @@ struct GroupsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
 
                             HStack(spacing: 10) {
-                                Menu {
-                                    Button {
-                                        isQRScannerPresented = true
-                                    } label: {
-                                        Label("Scan QR code", systemImage: "camera")
-                                    }
-
-                                    Button {
-                                        isPhotoPickerPresented = true
-                                    } label: {
-                                        Label("Choose from Photos", systemImage: "photo.badge.magnifyingglass")
-                                    }
+                                Button {
+                                    isGroupQRCodeOverlayPresented = true
                                 } label: {
-                                    Image(systemName: "person.fill.questionmark")
+                                    Image(systemName: "qrcode")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundStyle(.white)
                                         .frame(width: 34, height: 34)
@@ -187,7 +183,7 @@ struct GroupsView: View {
                                         .clipShape(Circle())
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(!canAddMemberByQRCode)
+                                .disabled(selectedGroupInvitePayload == nil)
 
                                 if let selectedGroup {
                                     HStack(spacing: -8) {
@@ -260,6 +256,26 @@ struct GroupsView: View {
                     .background(cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
 
+                    Menu {
+                        Button {
+                            isQRScannerPresented = true
+                        } label: {
+                            Label("Scan QR code", systemImage: "camera")
+                        }
+
+                        Button {
+                            isPhotoPickerPresented = true
+                        } label: {
+                            Label("Choose from Photos", systemImage: "photo.badge.magnifyingglass")
+                        }
+                    } label: {
+                        Text("Join a group")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canAddMemberByQRCode)
+
                     ShareLink(item: appShareURL) {
                         Text("Tell your friends about this app?")
                             .font(.footnote.weight(.semibold))
@@ -285,6 +301,13 @@ struct GroupsView: View {
                     Task {
                         await joinGroupFromQRCodePayload(payload)
                     }
+                }
+            }
+            .sheet(isPresented: $isGroupQRCodeOverlayPresented) {
+                if let selectedGroupInvitePayload {
+                    GroupQRCodeOverlayView(payload: selectedGroupInvitePayload)
+                        .presentationDetents([.height(400)])
+                        .presentationDragIndicator(.visible)
                 }
             }
             .alert("Delete group?", isPresented: $isDeleteConfirmPresented) {
@@ -525,6 +548,57 @@ struct GroupsView: View {
                 saveStatusMessage = nil
             }
         }
+    }
+}
+
+private struct GroupQRCodeOverlayView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let payload: String
+    private let context = CIContext()
+    private let filter = CIFilter.qrCodeGenerator()
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                if let image = makeQRCodeImage(from: payload) {
+                    Image(uiImage: image)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 220, height: 220)
+                        .padding(18)
+                        .background(cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                } else {
+                    Text("Failed to generate QR code")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.errorText)
+                }
+
+                ShareLink(item: payload) {
+                    Image(systemName: "square.and.arrow.up.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .screenTheme()
+        }
+    }
+
+    private func makeQRCodeImage(from string: String) -> UIImage? {
+        filter.setValue(Data(string.utf8), forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let outputImage = filter.outputImage else { return nil }
+        let transformed = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }
 
