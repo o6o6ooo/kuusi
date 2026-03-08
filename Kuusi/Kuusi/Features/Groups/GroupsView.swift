@@ -4,7 +4,6 @@ import FirebaseAuth
 struct GroupsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var groupID = ""
     @State private var groupName = ""
     @State private var statusMessage: String?
     @State private var isError = false
@@ -20,35 +19,16 @@ struct GroupsView: View {
         isError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
     }
     private var canCreate: Bool {
-        !isCreating && !groupID.isEmpty && !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !isCreating && !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Create a group")
-										.font(.headline.weight(.semibold))
+                        .font(.headline.weight(.semibold))
 
                     VStack(spacing: 12) {
-                        TextField(
-                            "",
-                            text: $groupID,
-                            prompt: Text("group ID")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        )
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .textFieldStyle(.plain)
-                            .font(.body)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .background(fieldBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .onChange(of: groupID) { _, newValue in
-                                groupID = sanitizeGroupID(newValue)
-                            }
-
                         TextField(
                             "",
                             text: $groupName,
@@ -98,12 +78,6 @@ struct GroupsView: View {
         }
     }
 
-    private func sanitizeGroupID(_ raw: String) -> String {
-        let lowercased = raw.lowercased()
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-")
-        return String(lowercased.unicodeScalars.filter { allowed.contains($0) })
-    }
-
     @MainActor
     private func createGroup() async {
         guard let uid = Auth.auth().currentUser?.uid else {
@@ -112,11 +86,10 @@ struct GroupsView: View {
             return
         }
 
-        let cleanID = sanitizeGroupID(groupID)
         let cleanName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanID.isEmpty, !cleanName.isEmpty else {
+        guard !cleanName.isEmpty else {
             isError = true
-            statusMessage = "Fill in group ID and name"
+            statusMessage = "Fill in group name"
             return
         }
 
@@ -124,8 +97,7 @@ struct GroupsView: View {
         defer { isCreating = false }
 
         do {
-            try await groupService.createGroup(groupID: cleanID, groupName: cleanName, ownerUID: uid)
-            groupID = ""
+            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
             groupName = ""
             isError = false
             statusMessage = "Group created"
