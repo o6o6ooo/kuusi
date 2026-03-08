@@ -57,15 +57,42 @@ struct LoginView: View {
             .frame(maxWidth: 420)
 
 #if DEBUG
-            Button("Dev: skip sign in") {
-                Task {
-                    await appState.debugEnterMainTabs()
+            if !appState.debugAccounts.isEmpty {
+                HStack(spacing: 10) {
+                    Picker("Dev user", selection: Binding(
+                        get: { appState.selectedDebugAccountID ?? "" },
+                        set: { appState.selectedDebugAccountID = $0 }
+                    )) {
+                        ForEach(appState.debugAccounts) { account in
+                            Text(account.displayLabel).tag(account.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .controlSize(.small)
+
+                    Button("Dev: sign in") {
+                        Task {
+                            await appState.debugEnterMainTabs(selectedAccountID: appState.selectedDebugAccountID)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.accentColor)
+                    .controlSize(.small)
+                    .font(.footnote)
                 }
+                .padding(.horizontal, 24)
+            } else {
+                Button("Dev: sign in") {
+                    Task {
+                        await appState.debugEnterMainTabs()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.accentColor)
+                .controlSize(.small)
+                .font(.footnote)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.accentColor)
-            .controlSize(.small)
-            .font(.footnote)
 #endif
 
             if let errorMessage = appState.errorMessage {
@@ -81,5 +108,10 @@ struct LoginView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
+#if DEBUG
+        .onAppear {
+            appState.refreshDebugAccounts()
+        }
+#endif
     }
 }

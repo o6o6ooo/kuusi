@@ -10,10 +10,26 @@ enum DebugCredentialsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingEnvironmentVariables:
-            return "Set DEBUG_TEST_EMAIL and DEBUG_TEST_PASSWORD in Xcode Scheme > Run > Environment Variables."
+            return "Set DEBUG_TEST_EMAIL/DEBUG_TEST_PASSWORD or DEBUG_TEST_USER_{N}_EMAIL/_PASSWORD in Xcode Scheme > Run > Environment Variables."
         }
     }
 }
+
+#if DEBUG
+struct DebugAccount: Identifiable, Hashable {
+    let id: String
+    let email: String
+    let password: String
+    let suggestedName: String?
+
+    var displayLabel: String {
+        if let suggestedName, !suggestedName.isEmpty {
+            return suggestedName
+        }
+        return email
+    }
+}
+#endif
 
 @MainActor
 final class AppState: ObservableObject {
@@ -28,6 +44,10 @@ final class AppState: ObservableObject {
     @Published private(set) var currentUser: User?
     @Published private(set) var biometricsEnabled: Bool = AppState.initialBiometricsEnabled()
     var biometricDisplayName: String { AppState.detectBiometricName() }
+#if DEBUG
+    @Published private(set) var debugAccounts: [DebugAccount] = []
+    @Published var selectedDebugAccountID: String?
+#endif
 
     private let authService = AppleAuthService()
     private let userService = UserService()
@@ -35,6 +55,11 @@ final class AppState: ObservableObject {
     private var authHandle: AuthStateDidChangeListenerHandle?
 
     init() {
+#if DEBUG
+        let loadedAccounts = AppState.loadDebugAccounts()
+        debugAccounts = loadedAccounts
+        selectedDebugAccountID = loadedAccounts.first?.id
+#endif
         observeAuthState()
     }
 
@@ -100,13 +125,23 @@ final class AppState: ObservableObject {
     }
 
 #if DEBUG
-    func debugEnterMainTabs() async {
+    func refreshDebugAccounts() {
+        let loadedAccounts = AppState.loadDebugAccounts()
+        debugAccounts = loadedAccounts
+        if !loadedAccounts.contains(where: { $0.id == selectedDebugAccountID }) {
+            selectedDebugAccountID = loadedAccounts.first?.id
+        }
+    }
+
+    func debugEnterMainTabs(selectedAccountID: String? = nil) async {
         do {
-            let user = try await signInOrCreateDebugUser()
+            let selected = selectedAccountID ?? selectedDebugAccountID
+            let account = try resolveDebugAccount(id: selected)
+            let user = try await signInOrCreateDebugUser(account: account)
 
             try await userService.ensureUserDocument(
                 for: user,
-                suggestedName: "Sakura Wallace",
+                suggestedName: account.suggestedName ?? "Sakura Wallace",
                 suggestedEmail: user.email
             )
 
@@ -193,22 +228,24 @@ final class AppState: ObservableObject {
     }
 
 #if DEBUG
-    private func signInOrCreateDebugUser() async throws -> User {
-        guard
-            let email = ProcessInfo.processInfo.environment["DEBUG_TEST_EMAIL"],
-            let password = ProcessInfo.processInfo.environment["DEBUG_TEST_PASSWORD"],
-            !email.isEmpty,
-            !password.isEmpty
-        else {
+    private func resolveDebugAccount(id: String?) throws -> DebugAccount {
+        guard !debugAccounts.isEmpty else {
             throw DebugCredentialsError.missingEnvironmentVariables
         }
+        if let id, let account = debugAccounts.first(where: { $0.id == id }) {
+            return account
+        }
+        return debugAccounts[0]
+    }
+
+    private func signInOrCreateDebugUser(account: DebugAccount) async throws -> User {
 
         // Ensure a clean auth state before switching to fixed debug credentials.
         if Auth.auth().currentUser != nil {
             try? Auth.auth().signOut()
         }
 
-        return try await signInWithEmail(email: email, password: password)
+        return try await signInWithEmail(email: account.email, password: account.password)
     }
 
     private func signInWithEmail(email: String, password: String) async throws -> User {
@@ -225,6 +262,54 @@ final class AppState: ObservableObject {
                 continuation.resume(returning: user)
             }
         }
+    }
+
+    private static func loadDebugAccounts() -> [DebugAccount] {
+        let env = ProcessInfo.processInfo.environment
+        var accountsByIndex: [Int: DebugAccount] = [:]
+
+        for (key, value) in env where key.hasPrefix("DEBUG_TEST_USER_") && key.hasSuffix("_EMAIL") {
+            let prefix = "DEBUG_TEST_USER_"
+            let suffix = "_EMAIL"
+            let start = key.index(key.startIndex, offsetBy: prefix.count)
+            let end = key.index(key.endIndex, offsetBy: -suffix.count)
+            let indexString = String(key[start..<end])
+            guard let index = Int(indexString), !value.isEmpty else { continue }
+
+            let passwordKey = "DEBUG_TEST_USER_\(index)_PASSWORD"
+            guard let password = env[passwordKey], !password.isEmpty else { continue }
+            let name = env["DEBUG_TEST_USER_\(index)_NAME"]
+            accountsByIndex[index] = DebugAccount(
+                id: "debug_user_\(index)",
+                email: value,
+                password: password,
+                suggestedName: name
+            )
+        }
+
+        let orderedAccounts = accountsByIndex
+            .sorted(by: { $0.key < $1.key })
+            .map(\.value)
+        if !orderedAccounts.isEmpty {
+            return orderedAccounts
+        }
+
+        if
+            let email = env["DEBUG_TEST_EMAIL"],
+            let password = env["DEBUG_TEST_PASSWORD"],
+            !email.isEmpty,
+            !password.isEmpty
+        {
+            let name = env["DEBUG_TEST_NAME"]
+            return [DebugAccount(
+                id: "debug_default",
+                email: email,
+                password: password,
+                suggestedName: name
+            )]
+        }
+
+        return []
     }
 
 #endif
