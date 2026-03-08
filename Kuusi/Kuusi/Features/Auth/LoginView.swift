@@ -3,54 +3,73 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var currentNonce: String?
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: 18) {
+            Spacer(minLength: 32)
+            Image("BrandTree")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 150, height: 150)
+                .accessibilityHidden(true)
+
             Text("Kuusi")
-                .font(.largeTitle.bold())
-            Text("Sign in with Apple to continue")
+                .font(.system(size: 30, weight: .bold))
+            Text("Share photos with your loved ones")
                 .foregroundStyle(.secondary)
+                .padding(.bottom, 8)
 
-            Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
-                get: { appState.biometricsEnabled },
-                set: { appState.setBiometricsEnabled($0) }
-            ))
-            .padding(.horizontal, 24)
+            VStack(spacing: 14) {
+                SignInWithAppleButton(.signIn, onRequest: { request in
+                    let nonce = CryptoNonce.randomNonceString()
+                    currentNonce = nonce
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = CryptoNonce.sha256(nonce)
+                }, onCompletion: { result in
+                    switch result {
+                    case let .success(authResults):
+                        guard
+                            let credential = authResults.credential as? ASAuthorizationAppleIDCredential,
+                            let nonce = currentNonce
+                        else {
+                            appState.errorMessage = "Apple Sign-In failed."
+                            return
+                        }
+                        Task {
+                            await appState.signInWithApple(credential: credential, rawNonce: nonce)
+                        }
+                    case let .failure(error):
+                        appState.errorMessage = error.localizedDescription
+                    }
+                })
+                .signInWithAppleButtonStyle(.white)
+                .frame(height: 54)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            SignInWithAppleButton(.signIn) { request in
-                let nonce = CryptoNonce.randomNonceString()
-                currentNonce = nonce
-                request.requestedScopes = [.fullName, .email]
-                request.nonce = CryptoNonce.sha256(nonce)
-            } onCompletion: { result in
-                switch result {
-                case let .success(authResults):
-                    guard
-                        let credential = authResults.credential as? ASAuthorizationAppleIDCredential,
-                        let nonce = currentNonce
-                    else {
-                        appState.errorMessage = "Apple Sign-In failed."
-                        return
-                    }
-                    Task {
-                        await appState.signInWithApple(credential: credential, rawNonce: nonce)
-                    }
-                case let .failure(error):
-                    appState.errorMessage = error.localizedDescription
-                }
+                Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
+                    get: { appState.biometricsEnabled },
+                    set: { appState.setBiometricsEnabled($0) }
+                ))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
-            .frame(height: 50)
+            .padding(18)
+            .background(cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 24)
+            .frame(maxWidth: 460)
 
 #if DEBUG
-            Button("開発用: サインインをスキップ") {
+            Button("Dev: skip sign in") {
                 Task {
                     await appState.debugEnterMainTabs()
                 }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.borderedProminent)
+            .tint(.accentColor)
 #endif
 
             if let errorMessage = appState.errorMessage {
@@ -61,7 +80,7 @@ struct LoginView: View {
                     .padding(.horizontal, 24)
             }
 
-            Spacer()
+            Spacer(minLength: 24)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
