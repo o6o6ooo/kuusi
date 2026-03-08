@@ -40,10 +40,6 @@ struct SettingsView: View {
             Text("Your storage")
                 .font(.headline.weight(.semibold))
 
-            Text("You've posted so far.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Spacer()
