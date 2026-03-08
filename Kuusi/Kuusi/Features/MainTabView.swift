@@ -13,9 +13,9 @@ struct MainTabView: View {
                     Label("Upload", systemImage: "photo.badge.plus")
                 }
 
-            NotificationsView()
+            GroupsView()
                 .tabItem {
-                    Label("Notifications", systemImage: "bell")
+                    Label("Groups", systemImage: "person.3")
                 }
 
             SettingsView()
