@@ -187,8 +187,6 @@ struct SettingsView: View {
                 .padding(16)
                 .foregroundStyle(primaryText)
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
             .task {
                 if !hasLoaded {

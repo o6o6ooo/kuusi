@@ -33,8 +33,6 @@ struct FeedView: View {
                     }
                 }
             }
-            .navigationTitle("Feed")
-            .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

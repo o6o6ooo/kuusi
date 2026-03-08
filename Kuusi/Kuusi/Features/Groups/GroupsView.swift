@@ -286,8 +286,6 @@ struct GroupsView: View {
                 }
                 .padding(16)
             }
-            .navigationTitle("Groups")
-            .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
             .refreshable {
                 await loadGroups()

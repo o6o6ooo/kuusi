@@ -83,8 +83,6 @@ struct UploadView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            .navigationTitle("Upload")
-            .navigationBarTitleDisplayMode(.inline)
             .screenTheme()
             .onChange(of: pickerItems) { _, newValue in
                 Task {
