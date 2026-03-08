@@ -193,6 +193,13 @@ struct SettingsView: View {
                         }
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(cardBorder.opacity(0.7), lineWidth: 1)
+                        }
                         .buttonStyle(.plain)
                     }
 
@@ -222,6 +229,7 @@ struct SettingsView: View {
                 .foregroundStyle(primaryText)
             }
             .screenTheme()
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable {
                 await loadProfile()
                 await loadGroups()

@@ -84,6 +84,7 @@ struct UploadView: View {
                 .padding(.vertical, 12)
             }
             .screenTheme()
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: pickerItems) { _, newValue in
                 Task {
                     await loadImages(from: newValue)

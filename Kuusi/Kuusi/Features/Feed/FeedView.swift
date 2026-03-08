@@ -2,6 +2,7 @@ import SwiftUI
 
 @MainActor
 struct FeedView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var photos: [FeedPhoto] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -34,14 +35,20 @@ struct FeedView: View {
                 }
             }
             .screenTheme()
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isNotificationsOverlayPresented = true
-                    } label: {
-                        Image(systemName: "bell")
-                    }
+            .toolbar(.hidden, for: .navigationBar)
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    isNotificationsOverlayPresented = true
+                } label: {
+                    Image(systemName: "bell")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText(for: colorScheme))
+                        .padding(10)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
+                .buttonStyle(.plain)
+                .padding(.top, 6)
+                .padding(.trailing, 14)
             }
             .task {
                 if photos.isEmpty {
