@@ -5,23 +5,27 @@ struct MainTabView: View {
         TabView {
             FeedView()
                 .tabItem {
-                    Label("Feed", systemImage: "square.grid.3x3")
+                    Image(systemName: "square.grid.3x3")
                 }
+                .accessibilityLabel("Feed")
 
             UploadView()
                 .tabItem {
-                    Label("Upload", systemImage: "photo.badge.plus")
+                    Image(systemName: "photo.badge.plus")
                 }
+                .accessibilityLabel("Upload")
 
             GroupsView()
                 .tabItem {
-                    Label("Groups", systemImage: "person.3")
+                    Image(systemName: "figure.2.and.child.holdinghands")
                 }
+                .accessibilityLabel("Groups")
 
             SettingsView()
                 .tabItem {
-                    Label("Settings", systemImage: "gear")
+                    Image(systemName: "gear")
                 }
+                .accessibilityLabel("Settings")
         }
     }
 }
