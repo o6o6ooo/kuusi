@@ -2,7 +2,6 @@ import AuthenticationServices
 import Combine
 import FirebaseAuth
 import Foundation
-import LocalAuthentication
 
 enum DebugCredentialsError: LocalizedError {
     case missingEnvironmentVariables
@@ -42,8 +41,6 @@ final class AppState: ObservableObject {
     @Published var route: Route = .signedOut
     @Published var errorMessage: String?
     @Published private(set) var currentUser: User?
-    @Published private(set) var biometricsEnabled: Bool = AppState.initialBiometricsEnabled()
-    var biometricDisplayName: String { AppState.detectBiometricName() }
 #if DEBUG
     @Published private(set) var debugAccounts: [DebugAccount] = []
     @Published var selectedDebugAccountID: String?
@@ -92,7 +89,7 @@ final class AppState: ObservableObject {
 
             errorMessage = nil
             currentUser = user
-            route = biometricsEnabled ? .locked : .signedIn
+            route = .locked
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -106,11 +103,6 @@ final class AppState: ObservableObject {
         } else {
             errorMessage = "Biometric authentication failed."
         }
-    }
-
-    func setBiometricsEnabled(_ enabled: Bool) {
-        biometricsEnabled = enabled
-        UserDefaults.standard.set(enabled, forKey: AppSettings.biometricsEnabledKey)
     }
 
     func signOut() async {
@@ -147,7 +139,7 @@ final class AppState: ObservableObject {
 
             currentUser = user
             errorMessage = nil
-            route = biometricsEnabled ? .locked : .signedIn
+            route = .locked
         } catch {
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
@@ -183,31 +175,8 @@ final class AppState: ObservableObject {
 
                 await self.ensureUserDocumentIfNeeded(for: user)
                 self.currentUser = user
-                self.route = self.biometricsEnabled ? .locked : .signedIn
+                self.route = .locked
             }
-        }
-    }
-
-    private static func initialBiometricsEnabled() -> Bool {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: AppSettings.biometricsEnabledKey) == nil {
-            defaults.set(true, forKey: AppSettings.biometricsEnabledKey)
-            return true
-        }
-        return defaults.bool(forKey: AppSettings.biometricsEnabledKey)
-    }
-
-    private static func detectBiometricName() -> String {
-        let context = LAContext()
-        var error: NSError?
-        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
-        switch context.biometryType {
-        case .faceID:
-            return "Face ID"
-        case .touchID:
-            return "Touch ID"
-        default:
-            return "Biometric"
         }
     }
 

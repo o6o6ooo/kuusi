@@ -166,13 +166,6 @@ struct SettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20))
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Toggle(appState.biometricDisplayName, isOn: Binding(
-                            get: { appState.biometricsEnabled },
-                            set: { appState.setBiometricsEnabled($0) }
-                        ))
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(primaryText)
-
                         storageCard
 
                         Button {

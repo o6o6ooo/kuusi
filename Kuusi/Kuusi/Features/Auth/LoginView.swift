@@ -45,13 +45,6 @@ struct LoginView: View {
                 })
                 .signInWithAppleButtonStyle(.whiteOutline)
                 .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
-
-                Toggle("Use \(appState.biometricDisplayName)", isOn: Binding(
-                    get: { appState.biometricsEnabled },
-                    set: { appState.setBiometricsEnabled($0) }
-                ))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: 420)
