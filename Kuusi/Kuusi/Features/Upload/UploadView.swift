@@ -12,7 +12,6 @@ struct UploadView: View {
     @State private var isError = false
 
     private let uploadService = UploadService()
-    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
@@ -86,9 +85,7 @@ struct UploadView: View {
             }
             .navigationTitle("Upload")
             .navigationBarTitleDisplayMode(.inline)
-            .background(pageBackground.ignoresSafeArea())
-            .toolbarBackground(pageBackground, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .screenTheme()
             .onChange(of: pickerItems) { _, newValue in
                 Task {
                     await loadImages(from: newValue)

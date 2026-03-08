@@ -17,7 +17,6 @@ struct SettingsView: View {
         "#A5C3DE", "#E6C7D0", "#C7C0E4", "#EAA5B8", "#B7D7C9",
         "#F1C994", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E"
     ]
-    private var pageBackground: Color { AppTheme.pageBackground(for: colorScheme) }
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
@@ -137,12 +136,9 @@ struct SettingsView: View {
                 .padding(16)
                 .foregroundStyle(primaryText)
             }
-            .background(pageBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(colorScheme, for: .navigationBar)
-            .toolbarBackground(pageBackground, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .screenTheme()
             .task {
                 if !hasLoaded {
                     await loadProfile()

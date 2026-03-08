@@ -20,6 +20,27 @@ struct AppTheme {
     static let errorText = Color(hex: "#CE0000")
 }
 
+private struct ScreenThemeModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        let background = AppTheme.pageBackground(for: colorScheme)
+        let text = AppTheme.primaryText(for: colorScheme)
+
+        content
+            .foregroundStyle(text)
+            .background(background.ignoresSafeArea())
+            .toolbarBackground(background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+    }
+}
+
+extension View {
+    func screenTheme() -> some View {
+        modifier(ScreenThemeModifier())
+    }
+}
+
 extension Color {
     init(hex: String) {
         let sanitized = hex.replacingOccurrences(of: "#", with: "")
