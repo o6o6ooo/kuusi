@@ -157,8 +157,12 @@ struct GroupsView: View {
                             HStack(spacing: 10) {
                                 if let selectedGroupInviteURL {
                                     ShareLink(item: selectedGroupInviteURL) {
-                                        Image(systemName: "square.and.arrow.up")
-                                            .font(.title3)
+                                        Image(systemName: "square.and.arrow.up.fill")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .frame(width: 34, height: 34)
+                                            .background(Color.accentColor)
+                                            .clipShape(Circle())
                                     }
                                     .buttonStyle(.plain)
                                 }
