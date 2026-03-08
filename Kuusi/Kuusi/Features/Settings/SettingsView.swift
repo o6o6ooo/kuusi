@@ -21,56 +21,65 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        HStack(alignment: .center, spacing: 20) {
-                            Button {
-                                isEmojiPickerPresented = true
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: bgColour))
-                                        .frame(width: 120, height: 120)
-                                    Text(icon.isEmpty ? "🌸" : icon)
-                                        .font(.system(size: 60))
-                                }
-                            }
-                            .buttonStyle(.plain)
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                TextField("Name", text: $name)
-                                    .textFieldStyle(.plain)
-                                    .font(.title3.weight(.semibold))
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .frame(maxWidth: 300)
-                                    .background(Color.white.opacity(0.8))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                            }
-                            Spacer(minLength: 0)
-                        }
-
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 30, maximum: 56)), count: 5), spacing: 14) {
-                            ForEach(avatarColours, id: \.self) { colour in
+                    VStack(alignment: .trailing, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            HStack(alignment: .center, spacing: 20) {
                                 Button {
-                                    bgColour = colour
+                                    isEmojiPickerPresented = true
                                 } label: {
-                                    Circle()
-                                        .fill(Color(hex: colour))
-                                        .frame(width: 56, height: 56)
-                                        .overlay {
-                                            if bgColour == colour {
-                                                Circle()
-                                                    .stroke(.black.opacity(0.4), lineWidth: 2)
-                                            }
-                                        }
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: bgColour))
+                                            .frame(width: 100, height: 100)
+                                        Text(icon.isEmpty ? "🌸" : icon)
+                                            .font(.system(size: 50))
+                                    }
                                 }
                                 .buttonStyle(.plain)
+
+                                VStack(alignment: .leading, spacing: 12) {
+                                    TextField("Name", text: $name)
+                                        .textFieldStyle(.plain)
+                                        .font(.body.weight(.semibold))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
+                                        .frame(maxWidth: 300)
+                                        .background(Color.white.opacity(0.8))
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                                Spacer(minLength: 0)
+                            }
+
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 28, maximum: 50)), count: 5), spacing: 12) {
+                                ForEach(avatarColours, id: \.self) { colour in
+                                    Button {
+                                        bgColour = colour
+                                    } label: {
+                                        Circle()
+                                            .fill(Color(hex: colour))
+                                            .frame(width: 50, height: 50)
+                                            .overlay {
+                                                if bgColour == colour {
+                                                    Circle()
+                                                        .stroke(.black.opacity(0.4), lineWidth: 2)
+                                                }
+                                            }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                         }
+                        .padding(16)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                        Button("Save") {
+                            Task {
+                                await saveProfile()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .padding(18)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
 
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle(appState.biometricDisplayName, isOn: Binding(
@@ -78,13 +87,6 @@ struct SettingsView: View {
                             set: { appState.setBiometricsEnabled($0) }
                         ))
                         .font(.body.weight(.medium))
-
-                        Button("Save profile") {
-                            Task {
-                                await saveProfile()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
 
                         Button("Sign out", role: .destructive) {
                             Task {
