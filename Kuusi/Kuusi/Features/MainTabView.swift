@@ -5,9 +5,21 @@ struct MainTabView: View {
         TabView {
             FeedView()
                 .tabItem {
-                    Image(systemName: "square.grid.3x3")
+                    Image(systemName: "circle.grid.3x3.fill")
                 }
                 .accessibilityLabel("Feed")
+
+            CalendarView()
+                .tabItem {
+                    Image(systemName: "calendar")
+                }
+                .accessibilityLabel("Calendar")
+
+            FavoritesView()
+                .tabItem {
+                    Image(systemName: "heart.fill")
+                }
+                .accessibilityLabel("Favorites")
 
             SettingsView()
                 .tabItem {
