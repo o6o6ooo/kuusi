@@ -7,9 +7,9 @@ struct AppUser: Identifiable {
     let email: String
     let icon: String
     let bgColour: String
-    let premium: Bool
-    let uploadCount: Int
-    let uploadTotalMB: Double
+    let plan: String
+    let quotaMB: Double
+    let usageMB: Double
     let groups: [String]
 }
 
@@ -27,9 +27,10 @@ extension AppUser {
         self.email = email
         self.icon = (data["icon"] as? String) ?? "🌸"
         self.bgColour = (data["bgColour"] as? String) ?? "#A5C3DE"
-        self.premium = (data["premium"] as? Bool) ?? false
-        self.uploadCount = (data["upload_count"] as? Int) ?? 0
-        self.uploadTotalMB = (data["upload_total_mb"] as? Double) ?? 0
+        let premium = (data["premium"] as? Bool) ?? false
+        self.plan = (data["plan"] as? String) ?? (premium ? "premium" : "free")
+        self.quotaMB = (data["quota_mb"] as? Double) ?? (plan == "premium" ? 51200.0 : 5120.0)
+        self.usageMB = (data["usage_mb"] as? Double) ?? ((data["upload_total_mb"] as? Double) ?? 0)
         self.groups = (data["groups"] as? [String]) ?? []
     }
 }

@@ -4,6 +4,7 @@ import Foundation
 
 final class UserService {
     private let db = Firestore.firestore()
+    private let defaultFreeQuotaMB = 5120.0
 
     func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
         let ref = db.collection("users").document(user.uid)
@@ -28,9 +29,9 @@ final class UserService {
             "email": email,
             "icon": "🌸",
             "bgColour": "#A5C3DE",
-            "premium": false,
-            "upload_count": 0,
-            "upload_total_mb": 0.0,
+            "plan": "free",
+            "quota_mb": defaultFreeQuotaMB,
+            "usage_mb": 0.0,
             "groups": [],
             "createdAt": FieldValue.serverTimestamp()
         ]
@@ -51,8 +52,7 @@ final class UserService {
         let payload: [String: Any] = [
             "name": name,
             "icon": icon,
-            "bgColour": bgColour,
-            "updatedAt": FieldValue.serverTimestamp()
+            "bgColour": bgColour
         ]
         try await setDocument(ref, data: payload, merge: true)
     }

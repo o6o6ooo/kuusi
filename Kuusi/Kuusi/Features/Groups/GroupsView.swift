@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 
 struct GroupsView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -6,12 +7,20 @@ struct GroupsView: View {
     @State private var groupID = ""
     @State private var groupName = ""
     @State private var statusMessage: String?
+    @State private var isError = false
+    @State private var isCreating = false
 
+    private let groupService = GroupService()
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var fieldBackground: Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
-    private var canCreate: Bool { !groupID.isEmpty && !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var statusTextColor: Color {
+        isError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+    }
+    private var canCreate: Bool {
+        !isCreating && !groupID.isEmpty && !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -58,10 +67,12 @@ struct GroupsView: View {
                             if let statusMessage {
                                 Text(statusMessage)
                                     .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(statusTextColor)
                             }
                             Button("Create") {
-                                statusMessage = "Group ready"
+                                Task {
+                                    await createGroup()
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(!canCreate)
@@ -83,5 +94,36 @@ struct GroupsView: View {
         let lowercased = raw.lowercased()
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-")
         return String(lowercased.unicodeScalars.filter { allowed.contains($0) })
+    }
+
+    @MainActor
+    private func createGroup() async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            isError = true
+            statusMessage = "Please sign in first"
+            return
+        }
+
+        let cleanID = sanitizeGroupID(groupID)
+        let cleanName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanID.isEmpty, !cleanName.isEmpty else {
+            isError = true
+            statusMessage = "Fill in group ID and name"
+            return
+        }
+
+        isCreating = true
+        defer { isCreating = false }
+
+        do {
+            try await groupService.createGroup(groupID: cleanID, groupName: cleanName, ownerUID: uid)
+            groupID = ""
+            groupName = ""
+            isError = false
+            statusMessage = "Group created"
+        } catch {
+            isError = true
+            statusMessage = error.localizedDescription
+        }
     }
 }

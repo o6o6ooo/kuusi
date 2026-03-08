@@ -47,7 +47,7 @@ final class UploadService {
         }
 
         if uploadedCount > 0 {
-            try await updateUserCounters(uid: userID, count: uploadedCount, totalMB: totalUploadedMB)
+            try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
         }
     }
 
@@ -110,12 +110,10 @@ final class UploadService {
         }
     }
 
-    private func updateUserCounters(uid: String, count: Int, totalMB: Double) async throws {
+    private func updateUserUsage(uid: String, totalMB: Double) async throws {
         let ref = db.collection("users").document(uid)
         let payload: [String: Any] = [
-            "upload_count": FieldValue.increment(Int64(count)),
-            "upload_total_mb": FieldValue.increment(totalMB),
-            "updatedAt": FieldValue.serverTimestamp()
+            "usage_mb": FieldValue.increment(totalMB)
         ]
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
