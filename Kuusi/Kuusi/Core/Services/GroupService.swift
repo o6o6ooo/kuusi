@@ -101,6 +101,30 @@ final class GroupService {
         try await setDocument(ref, data: ["name": name], merge: true)
     }
 
+    func deleteGroup(groupID: String) async throws {
+        let groupRef = db.collection("groups").document(groupID)
+        let groupSnapshot = try await getDocument(groupRef)
+        let memberIDs = (groupSnapshot.data()?["members"] as? [String]) ?? []
+
+        let batch = db.batch()
+        batch.deleteDocument(groupRef)
+
+        for memberID in memberIDs {
+            let userRef = db.collection("users").document(memberID)
+            batch.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            batch.commit { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<DocumentSnapshot, Error>) in
             ref.getDocument { snapshot, error in

@@ -15,6 +15,7 @@ struct GroupsView: View {
     @State private var isCreating = false
     @State private var isLoadingGroups = false
     @State private var isSavingGroupName = false
+    @State private var isDeletingGroup = false
     @State private var clearCreateMessageTask: Task<Void, Never>?
     @State private var clearSaveMessageTask: Task<Void, Never>?
 
@@ -41,6 +42,9 @@ struct GroupsView: View {
         guard let selectedGroup else { return false }
         let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         return !isSavingGroupName && !trimmed.isEmpty && trimmed != selectedGroup.name
+    }
+    private var canDeleteSelectedGroup: Bool {
+        selectedGroupID != nil && !isDeletingGroup
     }
     private var selectedGroupInviteURL: URL? {
         guard let selectedGroupID else { return nil }
@@ -76,12 +80,19 @@ struct GroupsView: View {
                                     .font(.footnote)
                                     .foregroundStyle(createStatusTextColor)
                             }
-                            Button("Create") {
+                            Button {
                                 Task {
                                     await createGroup()
                                 }
+                            } label: {
+                                Image(systemName: "person.fill.badge.plus")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 34, height: 34)
+                                    .background(Color.accentColor)
+                                    .clipShape(Circle())
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.plain)
                             .disabled(!canCreate)
                         }
                     }
@@ -189,12 +200,34 @@ struct GroupsView: View {
                                         .foregroundStyle(saveStatusTextColor)
                                 }
 
-                                Button("Save") {
+                                Button {
+                                    Task {
+                                        await deleteSelectedGroup()
+                                    }
+                                } label: {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 34, height: 34)
+                                        .background(AppTheme.errorText.opacity(0.7))
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!canDeleteSelectedGroup)
+
+                                Button {
                                     Task {
                                         await saveGroupName()
                                     }
+                                } label: {
+                                    Image(systemName: "checkmark.icloud.fill")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 34, height: 34)
+                                        .background(Color.accentColor)
+                                        .clipShape(Circle())
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.plain)
                                 .disabled(!canSaveSelectedGroupName)
                             }
                         }
@@ -304,6 +337,26 @@ struct GroupsView: View {
             }
             isSaveError = false
             saveStatusMessage = "Group updated"
+        } catch {
+            isSaveError = true
+            saveStatusMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func deleteSelectedGroup() async {
+        guard let selectedGroupID else { return }
+
+        isDeletingGroup = true
+        defer { isDeletingGroup = false }
+
+        do {
+            try await groupService.deleteGroup(groupID: selectedGroupID)
+            groups.removeAll { $0.id == selectedGroupID }
+            self.selectedGroupID = groups.first?.id
+            editableGroupName = groups.first?.name ?? ""
+            isSaveError = false
+            saveStatusMessage = "Group deleted"
         } catch {
             isSaveError = true
             saveStatusMessage = error.localizedDescription
