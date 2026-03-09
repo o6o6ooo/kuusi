@@ -3,7 +3,7 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-struct UploadView: View {
+struct UploadOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []

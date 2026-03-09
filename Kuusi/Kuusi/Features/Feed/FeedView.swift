@@ -56,7 +56,7 @@ struct FeedView: View {
                 }
             }
             .sheet(isPresented: $isUploadOverlayPresented) {
-                UploadView()
+                UploadOverlayView()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
