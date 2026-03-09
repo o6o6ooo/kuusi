@@ -29,6 +29,7 @@ final class UploadService {
                 "posted_by": userID,
                 "year": year,
                 "hashtags": hashtags,
+                "favourite": false,
                 "aspect_ratio": prepared.aspectRatio,
                 "size_mb": Double(round(100 * prepared.sizeMB) / 100),
                 "created_at": FieldValue.serverTimestamp()

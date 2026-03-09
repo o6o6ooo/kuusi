@@ -14,6 +14,7 @@ struct FeedView: View {
     @State private var measuredAspectRatios: [String: CGFloat] = [:]
     @State private var measuringAspectRatioIDs: Set<String> = []
     @State private var deletingPhotoIDs: Set<String> = []
+    @State private var favouritingPhotoIDs: Set<String> = []
     @State private var pendingDeletePhoto: FeedPhoto?
 
     private let feedService = FeedService()
@@ -58,10 +59,14 @@ struct FeedView: View {
                                                 onDelete: {
                                                     pendingDeletePhoto = photo
                                                 },
+                                                onToggleFavourite: {
+                                                    Task { await toggleFavourite(photo) }
+                                                },
                                                 onRequireAspectRatio: {
                                                     requestAspectRatioIfNeeded(for: photo)
                                                 },
-                                                isDeleting: deletingPhotoIDs.contains(photo.id)
+                                                isDeleting: deletingPhotoIDs.contains(photo.id),
+                                                isFavouriting: favouritingPhotoIDs.contains(photo.id)
                                             )
                                         }
                                     }
@@ -223,6 +228,36 @@ struct FeedView: View {
             feedMessage = error.localizedDescription
         }
     }
+
+    private func toggleFavourite(_ photo: FeedPhoto) async {
+        guard !favouritingPhotoIDs.contains(photo.id) else { return }
+        favouritingPhotoIDs.insert(photo.id)
+        defer { favouritingPhotoIDs.remove(photo.id) }
+
+        let newValue = !photo.isFavourite
+        do {
+            try await feedService.setFavourite(photoID: photo.id, isFavourite: newValue)
+            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
+                let existing = photos[index]
+                photos[index] = FeedPhoto(
+                    id: existing.id,
+                    photoURL: existing.photoURL,
+                    thumbnailURL: existing.thumbnailURL,
+                    groupID: existing.groupID,
+                    postedBy: existing.postedBy,
+                    year: existing.year,
+                    hashtags: existing.hashtags,
+                    isFavourite: newValue,
+                    sizeMB: existing.sizeMB,
+                    aspectRatio: existing.aspectRatio,
+                    createdAt: existing.createdAt
+                )
+            }
+            feedMessage = newValue ? "Added to favourites." : "Removed from favourites."
+        } catch {
+            feedMessage = error.localizedDescription
+        }
+    }
 }
 
 private struct PhotoTile: View {
@@ -233,8 +268,10 @@ private struct PhotoTile: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onToggleFavourite: () -> Void
     let onRequireAspectRatio: () -> Void
     let isDeleting: Bool
+    let isFavouriting: Bool
 
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
@@ -269,13 +306,22 @@ private struct PhotoTile: View {
                 Label("Edit", systemImage: "pencil")
             }
 
+            Button {
+                onToggleFavourite()
+            } label: {
+                Label(
+                    photo.isFavourite ? "Remove from favourites" : "Add to favourites",
+                    systemImage: photo.isFavourite ? "heart.slash" : "heart"
+                )
+            }
+
             Button(role: .destructive) {
                 onDelete()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .disabled(isDeleting)
+        .disabled(isDeleting || isFavouriting)
         .task {
             onRequireAspectRatio()
         }
