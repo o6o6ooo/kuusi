@@ -5,70 +5,88 @@ import UIKit
 
 struct UploadOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
+
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
+    @State private var groups: [GroupSummary] = []
+    @State private var selectedGroupID: String?
+    @State private var yearText = String(Calendar.current.component(.year, from: Date()))
+    @State private var hashtagInput = ""
+    @State private var hashtags: [String] = []
     @State private var isUploading = false
+    @State private var isLoadingGroups = false
     @State private var message: String?
     @State private var isError = false
 
     private let uploadService = UploadService()
+    private let groupService = GroupService()
+
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var fieldBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
+    }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
+
+    private var selectedGroupName: String {
+        guard let selectedGroupID else { return "group" }
+        return groups.first(where: { $0.id == selectedGroupID })?.name ?? "group"
+    }
+
+    private var canUpload: Bool {
+        !selectedImages.isEmpty && !isUploading
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    PhotosPicker(
-                        selection: $pickerItems,
-                        maxSelectionCount: 10,
-                        matching: .images
-                    ) {
-                        Label("Choose photos", systemImage: "photo.badge.plus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                VStack(alignment: .leading, spacing: 18) {
+                    topContent
 
-                    if !selectedImages.isEmpty {
-                        Text("\(selectedImages.count) selected")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    groupPicker
+                    yearField
+                    hashtagsField
 
-                        ScrollView(.horizontal) {
+                    if !hashtags.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
-                                ForEach(Array(selectedImages.enumerated()), id: \.offset) { idx, image in
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 84, height: 84)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        .overlay(alignment: .topTrailing) {
-                                            Button {
-                                                selectedImages.remove(at: idx)
-                                            } label: {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundStyle(.white, .black.opacity(0.7))
-                                            }
-                                            .padding(4)
-                                        }
+                                ForEach(hashtags, id: \.self) { tag in
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "xmark")
+                                            .font(.caption.weight(.medium))
+                                        Text(tag)
+                                            .font(.subheadline.weight(.semibold))
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Color.accentColor)
+                                    .foregroundStyle(.white)
+                                    .clipShape(Capsule())
+                                    .onTapGesture {
+                                        hashtags.removeAll { $0 == tag }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Button {
-                        Task { await upload() }
-                    } label: {
-                        if isUploading {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Upload")
-                                .frame(maxWidth: .infinity)
+                    HStack {
+                        Spacer()
+                        Button {
+                            Task { await upload() }
+                        } label: {
+                            if isUploading {
+                                ProgressView()
+                                    .tint(.white)
+                                    .frame(width: 118)
+                            } else {
+                                Text("Upload")
+                                    .frame(width: 118)
+                            }
                         }
+                        .buttonStyle(.appPrimaryCapsule)
+                        .controlSize(.regular)
+                        .disabled(!canUpload)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(selectedImages.isEmpty || isUploading)
 
                     if let message {
                         Text(message)
@@ -76,7 +94,7 @@ struct UploadOverlayView: View {
                             .foregroundStyle(isError ? AppTheme.errorText : primaryText.opacity(0.8))
                     }
                 }
-                .padding()
+                .padding(18)
                 .foregroundStyle(primaryText)
                 .background(cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -86,11 +104,157 @@ struct UploadOverlayView: View {
             .screenTheme()
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: pickerItems) { _, newValue in
-                Task {
-                    await loadImages(from: newValue)
-                }
+                Task { await loadImages(from: newValue) }
+            }
+            .task {
+                await loadGroups()
             }
         }
+    }
+
+    @ViewBuilder
+    private var topContent: some View {
+        if selectedImages.isEmpty {
+            PhotosPicker(
+                selection: $pickerItems,
+                maxSelectionCount: 10,
+                matching: .images
+            ) {
+                HStack(spacing: 10) {
+                    Image(systemName: "folder")
+                        .font(.title2)
+                    Text("Choose photos")
+                        .font(.title3.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+            }
+            .buttonStyle(.plain)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(Array(selectedImages.enumerated()), id: \.offset) { idx, image in
+                        ZStack(alignment: .topLeading) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 120, height: 120)
+                                .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                            Button {
+                                selectedImages.remove(at: idx)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(primaryText)
+                                    .frame(width: 26, height: 26)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .offset(x: -8, y: -8)
+                        }
+                    }
+                }
+                .padding(.top, 6)
+                .padding(.leading, 8)
+            }
+            .frame(height: 132)
+        }
+    }
+
+    private var groupPicker: some View {
+        Menu {
+            if isLoadingGroups {
+                Text("Loading...")
+            } else if groups.isEmpty {
+                Text("No groups")
+            } else {
+                ForEach(groups) { group in
+                    Button(group.name) {
+                        selectedGroupID = group.id
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Text(selectedGroupName)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "checkmark")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(primaryText)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var yearField: some View {
+        TextField("year", text: $yearText)
+            .keyboardType(.numberPad)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var hashtagsField: some View {
+        TextField("hashtags", text: $hashtagInput)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .onSubmit {
+                addHashtagsFromInput()
+            }
+            .onChange(of: hashtagInput) { _, newValue in
+                if newValue.contains("\n") || newValue.contains(",") {
+                    addHashtagsFromInput()
+                }
+            }
+    }
+
+    @MainActor
+    private func loadGroups() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        isLoadingGroups = true
+        defer { isLoadingGroups = false }
+
+        do {
+            let fetched = try await groupService.fetchGroups(for: uid)
+            groups = fetched
+            if selectedGroupID == nil {
+                selectedGroupID = fetched.first?.id
+            }
+        } catch {
+            message = error.localizedDescription
+            isError = true
+        }
+    }
+
+    private func addHashtagsFromInput() {
+        let separators = CharacterSet(charactersIn: ",\n\t ")
+        let tokens = hashtagInput
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { token -> String in
+                let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
+                return clean.lowercased()
+            }
+
+        for token in tokens where !hashtags.contains(token) {
+            hashtags.append(token)
+        }
+        hashtagInput = ""
     }
 
     @MainActor
@@ -112,13 +276,25 @@ struct UploadOverlayView: View {
             isError = true
             return
         }
+
+        let year = Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines))
+            ?? Calendar.current.component(.year, from: Date())
+
         isUploading = true
         defer { isUploading = false }
 
         do {
-            try await uploadService.upload(images: selectedImages, userID: uid)
+            try await uploadService.upload(
+                images: selectedImages,
+                userID: uid,
+                groupID: selectedGroupID ?? "default",
+                year: year,
+                hashtags: hashtags
+            )
             selectedImages = []
             pickerItems = []
+            hashtagInput = ""
+            hashtags = []
             message = "Upload completed."
             isError = false
         } catch {

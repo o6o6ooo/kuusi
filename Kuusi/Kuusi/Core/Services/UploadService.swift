@@ -7,7 +7,7 @@ final class UploadService {
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
 
-    func upload(images: [UIImage], userID: String) async throws {
+    func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
         var uploadedCount = 0
         var totalUploadedMB: Double = 0
 
@@ -31,14 +31,13 @@ final class UploadService {
             totalUploadedMB += sizeMB
             uploadedCount += 1
 
-            let currentYear = Calendar.current.component(.year, from: Date())
             let payload: [String: Any] = [
                 "photo_url": previewURL.absoluteString,
                 "thumbnail_url": thumbURL.absoluteString,
-                "group_id": "default",
+                "group_id": groupID,
                 "posted_by": userID,
-                "year": currentYear,
-                "hashtags": [],
+                "year": year,
+                "hashtags": hashtags,
                 "size_mb": Double(round(100 * sizeMB) / 100),
                 "created_at": FieldValue.serverTimestamp()
             ]
