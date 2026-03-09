@@ -189,7 +189,7 @@ final class GroupService {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
         Self.groupsCacheByUID[uid] = groups
-        let encodable = groups.map(CachedGroup.init)
+        let encodable = groups.map { cachedGroup(from: $0) }
         if let data = try? JSONEncoder().encode(encodable) {
             Self.defaults.set(data, forKey: Self.cacheKey(for: uid))
         }
@@ -296,10 +296,21 @@ final class GroupService {
     }
 
     private func savePersistedGroupsLocked(_ groups: [GroupSummary], for uid: String) {
-        let encodable = groups.map(CachedGroup.init)
+        let encodable = groups.map { cachedGroup(from: $0) }
         if let data = try? JSONEncoder().encode(encodable) {
             Self.defaults.set(data, forKey: Self.cacheKey(for: uid))
         }
+    }
+
+    private func cachedGroup(from group: GroupSummary) -> CachedGroup {
+        CachedGroup(
+            id: group.id,
+            name: group.name,
+            members: group.members.map {
+                CachedMember(id: $0.id, icon: $0.icon, bgColour: $0.bgColour)
+            },
+            totalMemberCount: group.totalMemberCount
+        )
     }
 }
 
@@ -308,13 +319,6 @@ private struct CachedGroup: Codable {
     let name: String
     let members: [CachedMember]
     let totalMemberCount: Int
-
-    init(_ group: GroupSummary) {
-        id = group.id
-        name = group.name
-        members = group.members.map(CachedMember.init)
-        totalMemberCount = group.totalMemberCount
-    }
 
     func toGroupSummary() -> GroupSummary {
         GroupSummary(
@@ -330,12 +334,6 @@ private struct CachedMember: Codable {
     let id: String
     let icon: String
     let bgColour: String
-
-    init(_ preview: GroupMemberPreview) {
-        id = preview.id
-        icon = preview.icon
-        bgColour = preview.bgColour
-    }
 
     func toPreview() -> GroupMemberPreview {
         GroupMemberPreview(id: id, icon: icon, bgColour: bgColour)
