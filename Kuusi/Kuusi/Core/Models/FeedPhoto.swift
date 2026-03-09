@@ -8,6 +8,7 @@ struct FeedPhoto: Identifiable {
     let groupID: String?
     let year: Int?
     let hashtags: [String]
+    let aspectRatio: Double?
     let createdAt: Date?
 }
 
@@ -19,6 +20,7 @@ extension FeedPhoto {
         self.groupID = data["group_id"] as? String
         self.year = data["year"] as? Int
         self.hashtags = (data["hashtags"] as? [String]) ?? []
+        self.aspectRatio = data["aspect_ratio"] as? Double
         if let ts = data["created_at"] as? Timestamp {
             self.createdAt = ts.dateValue()
         } else {

@@ -29,6 +29,7 @@ final class UploadService {
                 "posted_by": userID,
                 "year": year,
                 "hashtags": hashtags,
+                "aspect_ratio": prepared.aspectRatio,
                 "size_mb": Double(round(100 * prepared.sizeMB) / 100),
                 "created_at": FieldValue.serverTimestamp()
             ]
@@ -59,6 +60,7 @@ final class UploadService {
                         id: id,
                         previewData: previewData,
                         thumbData: thumbData,
+                        aspectRatio: max(Double(image.size.width / max(image.size.height, 1)), 0.2),
                         sizeMB: sizeMB
                     )
                 }
@@ -149,5 +151,6 @@ private struct PreparedImage {
     let id: String
     let previewData: Data
     let thumbData: Data
+    let aspectRatio: Double
     let sizeMB: Double
 }
