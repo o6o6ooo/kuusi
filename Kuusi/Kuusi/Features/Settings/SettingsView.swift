@@ -291,25 +291,21 @@ struct SettingsView: View {
                             }
                         } label: {
                             Text("Sign out")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Color.accentColor)
+                                .appTextLinkStyle()
                         }
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .appSecondaryTextLinkStyle()
 
                             Text("Terms of service")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .appSecondaryTextLinkStyle()
 
                             HStack(spacing: 4) {
                                 Text("Made with love by")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                                    .appSecondaryTextLinkStyle()
                                 Link("Sakura Wallace", destination: URL(string: "https://github.com/o6o6ooo")!)
-                                    .font(.caption2.weight(.semibold))
+                                    .appSecondaryTextLinkStyle()
                                     .foregroundStyle(Color.accentColor)
                             }
                         }
@@ -453,27 +449,182 @@ struct SettingsView: View {
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Create a group")
-						.font(.title3.weight(.bold))
+                .font(.title3.weight(.bold))
 
-            VStack(spacing: 12) {
-                HStack(spacing: 10) {
-                    TextField(
-                        "",
-                        text: $createGroupName,
-                        prompt: Text("group name")
+            createGroupCard
+
+            if let createStatusMessage {
+                Text(createStatusMessage)
+                    .font(.footnote)
+                    .foregroundStyle(createStatusTextColor)
+            }
+
+            Text("Your groups")
+                .font(.title3.weight(.bold))
+                .padding(.top, 8)
+
+            yourGroupsCard
+            groupActionLinks
+        }
+    }
+
+    private var createGroupCard: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                TextField(
+                    "",
+                    text: $createGroupName,
+                    prompt: Text("group name")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                )
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                Button {
+                    Task {
+                        await createGroup()
+                    }
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canCreate)
+            }
+        }
+        .padding(14)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var yourGroupsCard: some View {
+        VStack(spacing: 12) {
+            if isLoadingGroups {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if groups.isEmpty {
+                Text("No groups yet. Pull down to refresh.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(groups) { group in
+                            let isSelected = selectedGroupID == group.id
+                            Button(group.name) {
+                                selectedGroupID = group.id
+                                editableGroupName = group.name
+                            }
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    )
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(fieldBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .foregroundStyle(isSelected ? Color.white : Color.accentColor)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected ? Color.accentColor : Color.clear)
+                            )
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(Color.accentColor, lineWidth: 1)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextField(
+                    "",
+                    text: $editableGroupName,
+                    prompt: Text("group name")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                )
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                HStack(spacing: 10) {
+                    Button {
+                        isGroupQRCodeOverlayPresented = true
+                    } label: {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(selectedGroupInvitePayload == nil)
+
+                    if let selectedGroup {
+                        HStack(spacing: -8) {
+                            ForEach(selectedGroup.members) { member in
+                                Text(member.icon)
+                                    .font(.system(size: 18))
+                                    .frame(width: 36, height: 36)
+                                    .background(Color(hex: member.bgColour))
+                                    .clipShape(Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(memberBorderColor, lineWidth: 2)
+                                    }
+                            }
+                            let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
+                            if remainingCount > 0 {
+                                Text("+\(remainingCount)")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
+                                    .frame(width: 36, height: 36)
+                                    .background(fieldBackground)
+                                    .clipShape(Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(memberBorderColor, lineWidth: 2)
+                                    }
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    if let saveStatusMessage {
+                        Text(saveStatusMessage)
+                            .font(.footnote)
+                            .foregroundStyle(saveStatusTextColor)
+                    }
+
+                    Button {
+                        isDeleteConfirmPresented = true
+                    } label: {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(AppTheme.errorText.opacity(0.7))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canDeleteSelectedGroup)
 
                     Button {
                         Task {
-                            await createGroup()
+                            await saveGroupName()
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -484,159 +635,17 @@ struct SettingsView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(!canCreate)
+                    .disabled(!canSaveSelectedGroupName)
                 }
             }
-            .padding(14)
-            .background(cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .padding(14)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
 
-            if let createStatusMessage {
-                Text(createStatusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(createStatusTextColor)
-            }
-
-            Text("Your groups")
-						.font(.title3.weight(.bold))
-                .padding(.top, 8)
-
-            VStack(spacing: 12) {
-                if isLoadingGroups {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if groups.isEmpty {
-                    Text("No groups yet. Pull down to refresh.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 10) {
-                            ForEach(groups) { group in
-                                let isSelected = selectedGroupID == group.id
-                                Button(group.name) {
-                                    selectedGroupID = group.id
-                                    editableGroupName = group.name
-                                }
-                                .font(.footnote)
-                                .foregroundStyle(isSelected ? Color.white : Color.accentColor)
-                                .padding(.horizontal, 14)
-                                .frame(height: 34)
-                                .background(
-                                    Capsule()
-                                        .fill(isSelected ? Color.accentColor : Color.clear)
-                                )
-                                .overlay {
-                                    Capsule()
-                                        .strokeBorder(Color.accentColor, lineWidth: 1)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    TextField(
-                        "",
-                        text: $editableGroupName,
-                        prompt: Text("group name")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    )
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(fieldBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                    HStack(spacing: 10) {
-                        Button {
-                            isGroupQRCodeOverlayPresented = true
-                        } label: {
-                            Image(systemName: "qrcode")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 34, height: 34)
-                                .background(Color.accentColor)
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(selectedGroupInvitePayload == nil)
-
-                        if let selectedGroup {
-                            HStack(spacing: -8) {
-                                ForEach(selectedGroup.members) { member in
-                                    Text(member.icon)
-                                        .font(.system(size: 18))
-                                        .frame(width: 36, height: 36)
-                                        .background(Color(hex: member.bgColour))
-                                        .clipShape(Circle())
-                                        .overlay {
-                                            Circle()
-                                                .stroke(memberBorderColor, lineWidth: 2)
-                                        }
-                                }
-                                let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
-                                if remainingCount > 0 {
-                                    Text("+\(remainingCount)")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
-                                        .frame(width: 36, height: 36)
-                                        .background(fieldBackground)
-                                        .clipShape(Circle())
-                                        .overlay {
-                                            Circle()
-                                                .stroke(memberBorderColor, lineWidth: 2)
-                                        }
-                                }
-                            }
-                        }
-
-                        Spacer()
-
-                        if let saveStatusMessage {
-                            Text(saveStatusMessage)
-                                .font(.footnote)
-                                .foregroundStyle(saveStatusTextColor)
-                        }
-
-                        Button {
-                            isDeleteConfirmPresented = true
-                        } label: {
-                            Image(systemName: "trash.fill")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 34, height: 34)
-                                .background(AppTheme.errorText.opacity(0.7))
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!canDeleteSelectedGroup)
-
-                        Button {
-                            Task {
-                                await saveGroupName()
-                            }
-                        } label: {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 34, height: 34)
-                                .background(Color.accentColor)
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!canSaveSelectedGroupName)
-                    }
-                }
-            }
-            .padding(14)
-            .background(cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-
+    private var groupActionLinks: some View {
+        VStack(alignment: .leading, spacing: 10) {
             Menu {
                 Button {
                     isQRScannerPresented = true
@@ -651,16 +660,14 @@ struct SettingsView: View {
                 }
             } label: {
                 Text("Join a group")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .appTextLinkStyle()
             }
             .buttonStyle(.plain)
             .disabled(!canAddMemberByQRCode)
 
             ShareLink(item: appShareURL) {
                 Text("Tell your friends about this app?")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.accentColor)
+                    .appSecondaryTextLinkStyle()
             }
             .buttonStyle(.plain)
         }
@@ -969,8 +976,7 @@ private struct GroupQRCodeOverlayView: View {
 
                 ShareLink(item: payload) {
                     Text("Share QR code")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .appTextLinkStyle()
                 }
                 .buttonStyle(.plain)
             }
