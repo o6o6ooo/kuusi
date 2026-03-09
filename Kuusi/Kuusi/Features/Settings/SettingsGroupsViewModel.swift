@@ -1,0 +1,225 @@
+import Combine
+import CoreImage
+import FirebaseAuth
+import Foundation
+
+@MainActor
+final class SettingsGroupsViewModel: ObservableObject {
+    @Published var createGroupName = ""
+    @Published var selectedGroupID: String?
+    @Published var editableGroupName = ""
+    @Published var groups: [GroupSummary] = []
+    @Published var createStatusMessage: String?
+    @Published var isCreateError = false
+    @Published var saveStatusMessage: String?
+    @Published var isSaveError = false
+    @Published var isCreating = false
+    @Published var isLoadingGroups = false
+    @Published var isSavingGroupName = false
+    @Published var isDeletingGroup = false
+    @Published var isDeleteConfirmPresented = false
+    @Published var isQRScannerPresented = false
+    @Published var isPhotoPickerPresented = false
+    @Published var isGroupQRCodeOverlayPresented = false
+    @Published var isJoiningGroup = false
+
+    private let groupService = GroupService()
+    private var clearCreateMessageTask: Task<Void, Never>?
+    private var clearSaveMessageTask: Task<Void, Never>?
+
+    var selectedGroupInvitePayload: String? {
+        guard let selectedGroupID else { return nil }
+        return "kuusi://invite/\(selectedGroupID)"
+    }
+
+    let appShareURL = URL(string: "https://apps.apple.com/app/id1234567890")!
+
+    func onDisappear() {
+        clearCreateMessageTask?.cancel()
+        clearCreateMessageTask = nil
+        clearSaveMessageTask?.cancel()
+        clearSaveMessageTask = nil
+    }
+
+    func createGroup() async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            setCreateStatus("Please sign in first", isError: true)
+            return
+        }
+
+        let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else {
+            setCreateStatus("Fill in group name", isError: true)
+            return
+        }
+
+        isCreating = true
+        defer { isCreating = false }
+
+        do {
+            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
+            createGroupName = ""
+            setCreateStatus("Group created. Pull down to refresh.", isError: false)
+        } catch {
+            setCreateStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func loadGroups() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        isLoadingGroups = true
+        defer { isLoadingGroups = false }
+
+        do {
+            let fetched = try await groupService.fetchGroups(for: uid)
+            groups = fetched
+
+            if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
+                selectedGroupID = fetched.first?.id
+            }
+
+            if let selectedGroupID,
+               let selectedGroup = fetched.first(where: { $0.id == selectedGroupID }) {
+                editableGroupName = selectedGroup.name
+            } else {
+                editableGroupName = ""
+            }
+        } catch {
+            setCreateStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func saveGroupName() async {
+        guard let selectedGroupID else { return }
+        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isSavingGroupName = true
+        defer { isSavingGroupName = false }
+
+        do {
+            try await groupService.updateGroupName(groupID: selectedGroupID, name: trimmed)
+            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
+                groups[index] = GroupSummary(
+                    id: groups[index].id,
+                    name: trimmed,
+                    members: groups[index].members,
+                    totalMemberCount: groups[index].totalMemberCount
+                )
+            }
+            setSaveStatus("Group updated", isError: false)
+        } catch {
+            setSaveStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func deleteSelectedGroup() async {
+        guard let selectedGroupID else { return }
+
+        isDeletingGroup = true
+        defer { isDeletingGroup = false }
+
+        do {
+            try await groupService.deleteGroup(groupID: selectedGroupID)
+            setSaveStatus("Group deleted. Pull down to refresh.", isError: false)
+        } catch {
+            setSaveStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func handleSelectedQRCodePhotoData(_ data: Data?) async {
+        guard let data else {
+            setSaveStatus("Failed to load image", isError: true)
+            return
+        }
+        guard let payload = decodeQRCodePayload(from: data) else {
+            setSaveStatus("QR code was not found in the image", isError: true)
+            return
+        }
+        await joinGroupFromQRCodePayload(payload)
+    }
+
+    func joinGroupFromQRCodePayload(_ payload: String) async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            setSaveStatus("Please sign in first", isError: true)
+            return
+        }
+        guard let groupID = extractGroupID(from: payload) else {
+            setSaveStatus("Invalid invite QR", isError: true)
+            return
+        }
+
+        isJoiningGroup = true
+        defer { isJoiningGroup = false }
+
+        do {
+            try await groupService.joinGroup(groupID: groupID, uid: uid)
+            setSaveStatus("Joined group", isError: false)
+        } catch {
+            setSaveStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    private func extractGroupID(from payload: String) -> String? {
+        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let url = URL(string: trimmed) {
+            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
+                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
+                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+        }
+
+        return trimmed.lowercased()
+    }
+
+    private func decodeQRCodePayload(from data: Data) -> String? {
+        guard let ciImage = CIImage(data: data) else { return nil }
+        let detector = CIDetector(
+            ofType: CIDetectorTypeQRCode,
+            context: nil,
+            options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]
+        )
+        let features = detector?.features(in: ciImage) as? [CIQRCodeFeature]
+        return features?.first?.messageString
+    }
+
+    private func setCreateStatus(_ message: String, isError: Bool) {
+        isCreateError = isError
+        createStatusMessage = message
+
+        clearCreateMessageTask?.cancel()
+        guard !isError else { return }
+
+        let current = message
+        clearCreateMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, createStatusMessage == current, !isCreateError {
+                createStatusMessage = nil
+            }
+        }
+    }
+
+    private func setSaveStatus(_ message: String, isError: Bool) {
+        isSaveError = isError
+        saveStatusMessage = message
+
+        clearSaveMessageTask?.cancel()
+        guard !isError else { return }
+
+        let current = message
+        clearSaveMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, saveStatusMessage == current, !isSaveError {
+                saveStatusMessage = nil
+            }
+        }
+    }
+}

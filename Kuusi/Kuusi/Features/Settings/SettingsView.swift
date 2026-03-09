@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.colorScheme) private var colorScheme
+
     @State private var name = ""
     @State private var icon = "🌸"
     @State private var bgColour = "#A5C3DE"
@@ -18,30 +19,10 @@ struct SettingsView: View {
     @State private var quotaMB: Double = 5120
     @State private var plan = "free"
     @State private var isEditingName = false
-
-    @State private var createGroupName = ""
-    @State private var selectedGroupID: String?
-    @State private var editableGroupName = ""
-    @State private var groups: [GroupSummary] = []
-    @State private var createStatusMessage: String?
-    @State private var isCreateError = false
-    @State private var saveStatusMessage: String?
-    @State private var isSaveError = false
-    @State private var isCreating = false
-    @State private var isLoadingGroups = false
-    @State private var isSavingGroupName = false
-    @State private var isDeletingGroup = false
-    @State private var isDeleteConfirmPresented = false
-    @State private var isQRScannerPresented = false
-    @State private var isPhotoPickerPresented = false
-    @State private var isGroupQRCodeOverlayPresented = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
-    @State private var isJoiningGroup = false
-    @State private var clearCreateMessageTask: Task<Void, Never>?
-    @State private var clearSaveMessageTask: Task<Void, Never>?
+    @StateObject private var groupsViewModel = SettingsGroupsViewModel()
 
     private let userService = UserService()
-    private let groupService = GroupService()
     private let avatarColours = [
         "#A5C3DE", "#E6C7D0", "#C7C0E4", "#EAA5B8", "#B7D7C9",
         "#F1C994", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E"
@@ -64,24 +45,10 @@ struct SettingsView: View {
         "\(formatStorage(usageMB))/\(formatStorage(quotaMB))"
     }
 
-    private var selectedGroup: GroupSummary? {
-        guard let selectedGroupID else { return nil }
-        return groups.first(where: { $0.id == selectedGroupID })
-    }
-
-    private var appShareURL: URL {
-        URL(string: "https://apps.apple.com/app/id1234567890")!
-    }
-
-    private var selectedGroupInvitePayload: String? {
-        guard let selectedGroupID else { return nil }
-        return "kuusi://invite/\(selectedGroupID)"
-    }
-
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your storage")
-						.font(.title3.weight(.bold))
+                .font(.title3.weight(.bold))
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -105,7 +72,7 @@ struct SettingsView: View {
 
                 HStack(spacing: 6) {
                     Text("Need more storage?")
-										.font(.footnote.weight(.semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("Upgrade to premium.")
                         .font(.footnote.weight(.semibold))
@@ -125,10 +92,10 @@ struct SettingsView: View {
     private var subscriptionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Subscription")
-						.font(.title3.weight(.bold))
+                .font(.title3.weight(.bold))
 
             Text("Upgrade to premium, cancel anytime.")
-						.font(.footnote.weight(.medium))
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -168,7 +135,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Premium plan - £20.00 / year")
                             .font(.body.weight(.semibold))
-                        
+
                         Text("•  50GB storage\n•  Preview all photos\n•  Have up to 10 groups")
                             .font(.callout.weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
@@ -203,14 +170,14 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         if isEditingName {
                             Text("Hi,")
-														.font(.title3.weight(.bold))
+                                .font(.title3.weight(.bold))
                             TextField("Name", text: $name)
                                 .textFieldStyle(.plain)
-																.font(.title3.weight(.bold))
+                                .font(.title3.weight(.bold))
                                 .foregroundStyle(primaryText)
                         } else {
                             Text("Hi, \(name)")
-														.font(.title3.weight(.bold))
+                                .font(.title3.weight(.bold))
                         }
 
                         Button {
@@ -248,29 +215,7 @@ struct SettingsView: View {
                     }
 
                     profileCard
-                    GroupsSectionView(
-                        createGroupName: $createGroupName,
-                        selectedGroupID: $selectedGroupID,
-                        editableGroupName: $editableGroupName,
-                        groups: $groups,
-                        createStatusMessage: $createStatusMessage,
-                        saveStatusMessage: $saveStatusMessage,
-                        isLoadingGroups: $isLoadingGroups,
-                        isGroupQRCodeOverlayPresented: $isGroupQRCodeOverlayPresented,
-                        isDeleteConfirmPresented: $isDeleteConfirmPresented,
-                        isQRScannerPresented: $isQRScannerPresented,
-                        isPhotoPickerPresented: $isPhotoPickerPresented,
-                        isCreateError: isCreateError,
-                        isSaveError: isSaveError,
-                        isCreating: isCreating,
-                        isSavingGroupName: isSavingGroupName,
-                        isDeletingGroup: isDeletingGroup,
-                        isJoiningGroup: isJoiningGroup,
-                        selectedGroupInvitePayload: selectedGroupInvitePayload,
-                        appShareURL: appShareURL,
-                        onCreateGroup: createGroup,
-                        onSaveGroupName: saveGroupName
-                    )
+                    GroupsSectionView(viewModel: groupsViewModel)
 
                     VStack(alignment: .leading, spacing: 12) {
                         storageCard
@@ -316,41 +261,41 @@ struct SettingsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .refreshable {
                 await loadProfile()
-                await loadGroups()
+                await groupsViewModel.loadGroups()
             }
             .task {
                 if !hasLoaded {
                     await loadProfile()
-                    await loadGroups()
+                    await groupsViewModel.loadGroups()
                     hasLoaded = true
                 }
             }
             .photosPicker(
-                isPresented: $isPhotoPickerPresented,
+                isPresented: $groupsViewModel.isPhotoPickerPresented,
                 selection: $selectedQRCodePhoto,
                 matching: .images
             )
             .sheet(isPresented: $isEmojiPickerPresented) {
                 EmojiPickerSheet(selectedEmoji: $icon)
             }
-            .sheet(isPresented: $isQRScannerPresented) {
+            .sheet(isPresented: $groupsViewModel.isQRScannerPresented) {
                 QRCodeScannerSheet { payload in
                     Task {
-                        await joinGroupFromQRCodePayload(payload)
+                        await groupsViewModel.joinGroupFromQRCodePayload(payload)
                     }
                 }
             }
-            .sheet(isPresented: $isGroupQRCodeOverlayPresented) {
-                if let selectedGroupInvitePayload {
-                    GroupQRCodeOverlayView(payload: selectedGroupInvitePayload)
+            .sheet(isPresented: $groupsViewModel.isGroupQRCodeOverlayPresented) {
+                if let payload = groupsViewModel.selectedGroupInvitePayload {
+                    GroupQRCodeOverlayView(payload: payload)
                         .presentationDetents([.height(400)])
                         .presentationDragIndicator(.visible)
                 }
             }
-            .alert("Delete group?", isPresented: $isDeleteConfirmPresented) {
+            .alert("Delete group?", isPresented: $groupsViewModel.isDeleteConfirmPresented) {
                 Button("Delete", role: .destructive) {
                     Task {
-                        await deleteSelectedGroup()
+                        await groupsViewModel.deleteSelectedGroup()
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -360,25 +305,18 @@ struct SettingsView: View {
             .onChange(of: selectedQRCodePhoto) { _, newValue in
                 guard let newValue else { return }
                 Task {
-                    await handleSelectedQRCodePhoto(newValue)
+                    let data = try? await newValue.loadTransferable(type: Data.self)
+                    await groupsViewModel.handleSelectedQRCodePhotoData(data)
+                    selectedQRCodePhoto = nil
                 }
             }
             .onChange(of: message) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
-            .onChange(of: createStatusMessage) { _, newValue in
-                scheduleCreateMessageAutoClear(for: newValue)
-            }
-            .onChange(of: saveStatusMessage) { _, newValue in
-                scheduleSaveMessageAutoClear(for: newValue)
-            }
             .onDisappear {
                 clearMessageTask?.cancel()
                 clearMessageTask = nil
-                clearCreateMessageTask?.cancel()
-                clearCreateMessageTask = nil
-                clearSaveMessageTask?.cancel()
-                clearSaveMessageTask = nil
+                groupsViewModel.onDisappear()
             }
         }
     }
@@ -419,14 +357,18 @@ struct SettingsView: View {
                                             .stroke(.black.opacity(0.16), lineWidth: 1.2)
                                     }
                                 }
-                                .shadow(color: .black.opacity(bgColour == colour ? 0.12 : 0.05), radius: bgColour == colour ? 5 : 2, x: 0, y: 1)
+                                .shadow(
+                                    color: .black.opacity(bgColour == colour ? 0.12 : 0.05),
+                                    radius: bgColour == colour ? 5 : 2,
+                                    x: 0,
+                                    y: 1
+                                )
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-
         }
         .padding(16)
         .background(cardBackground)
@@ -481,183 +423,6 @@ struct SettingsView: View {
         }
     }
 
-    @MainActor
-    private func createGroup() async {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            isCreateError = true
-            createStatusMessage = "Please sign in first"
-            return
-        }
-
-        let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else {
-            isCreateError = true
-            createStatusMessage = "Fill in group name"
-            return
-        }
-
-        isCreating = true
-        defer { isCreating = false }
-
-        do {
-            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
-            createGroupName = ""
-            isCreateError = false
-            createStatusMessage = "Group created. Pull down to refresh."
-        } catch {
-            isCreateError = true
-            createStatusMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func loadGroups() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        isLoadingGroups = true
-        defer { isLoadingGroups = false }
-
-        do {
-            let fetched = try await groupService.fetchGroups(for: uid)
-            groups = fetched
-
-            if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
-                selectedGroupID = fetched.first?.id
-            }
-
-            if let selectedGroup {
-                editableGroupName = selectedGroup.name
-            } else {
-                editableGroupName = ""
-            }
-        } catch {
-            isCreateError = true
-            createStatusMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func saveGroupName() async {
-        guard let selectedGroupID else { return }
-        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        isSavingGroupName = true
-        defer { isSavingGroupName = false }
-
-        do {
-            try await groupService.updateGroupName(groupID: selectedGroupID, name: trimmed)
-            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
-                groups[index] = GroupSummary(
-                    id: groups[index].id,
-                    name: trimmed,
-                    members: groups[index].members,
-                    totalMemberCount: groups[index].totalMemberCount
-                )
-            }
-            isSaveError = false
-            saveStatusMessage = "Group updated"
-        } catch {
-            isSaveError = true
-            saveStatusMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func deleteSelectedGroup() async {
-        guard let selectedGroupID else { return }
-
-        isDeletingGroup = true
-        defer { isDeletingGroup = false }
-
-        do {
-            try await groupService.deleteGroup(groupID: selectedGroupID)
-            isSaveError = false
-            saveStatusMessage = "Group deleted. Pull down to refresh."
-        } catch {
-            isSaveError = true
-            saveStatusMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func handleSelectedQRCodePhoto(_ item: PhotosPickerItem) async {
-        defer { selectedQRCodePhoto = nil }
-
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                isSaveError = true
-                saveStatusMessage = "Failed to load image"
-                return
-            }
-            guard let payload = decodeQRCodePayload(from: data) else {
-                isSaveError = true
-                saveStatusMessage = "QR code was not found in the image"
-                return
-            }
-            await joinGroupFromQRCodePayload(payload)
-        } catch {
-            isSaveError = true
-            saveStatusMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func joinGroupFromQRCodePayload(_ payload: String) async {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            isSaveError = true
-            saveStatusMessage = "Please sign in first"
-            return
-        }
-        guard let groupID = extractGroupID(from: payload) else {
-            isSaveError = true
-            saveStatusMessage = "Invalid invite QR"
-            return
-        }
-
-        isJoiningGroup = true
-        defer { isJoiningGroup = false }
-
-        do {
-            try await groupService.joinGroup(groupID: groupID, uid: uid)
-            isSaveError = false
-            saveStatusMessage = "Joined group"
-        } catch {
-            isSaveError = true
-            saveStatusMessage = error.localizedDescription
-        }
-    }
-
-    private func extractGroupID(from payload: String) -> String? {
-        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        if let url = URL(string: trimmed) {
-            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
-                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                return groupID.isEmpty ? nil : groupID.lowercased()
-            }
-
-            let parts = url.pathComponents.filter { $0 != "/" }
-            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
-                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-                return groupID.isEmpty ? nil : groupID.lowercased()
-            }
-        }
-
-        return trimmed.lowercased()
-    }
-
-    private func decodeQRCodePayload(from data: Data) -> String? {
-        guard let ciImage = CIImage(data: data) else { return nil }
-        let detector = CIDetector(
-            ofType: CIDetectorTypeQRCode,
-            context: nil,
-            options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]
-        )
-        let features = detector?.features(in: ciImage) as? [CIQRCodeFeature]
-        return features?.first?.messageString
-    }
-
     private func scheduleMessageAutoClear(for value: String?) {
         clearMessageTask?.cancel()
         guard value != nil, !isError else { return }
@@ -667,32 +432,6 @@ struct SettingsView: View {
             try? await Task.sleep(nanoseconds: 2_500_000_000)
             if !Task.isCancelled, message == currentValue, !isError {
                 message = nil
-            }
-        }
-    }
-
-    private func scheduleCreateMessageAutoClear(for value: String?) {
-        clearCreateMessageTask?.cancel()
-        guard value != nil, !isCreateError else { return }
-
-        let currentValue = value
-        clearCreateMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, createStatusMessage == currentValue, !isCreateError {
-                createStatusMessage = nil
-            }
-        }
-    }
-
-    private func scheduleSaveMessageAutoClear(for value: String?) {
-        clearSaveMessageTask?.cancel()
-        guard value != nil, !isSaveError else { return }
-
-        let currentValue = value
-        clearSaveMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, saveStatusMessage == currentValue, !isSaveError {
-                saveStatusMessage = nil
             }
         }
     }

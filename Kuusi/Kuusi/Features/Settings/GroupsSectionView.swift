@@ -2,30 +2,7 @@ import SwiftUI
 
 struct GroupsSectionView: View {
     @Environment(\.colorScheme) private var colorScheme
-
-    @Binding var createGroupName: String
-    @Binding var selectedGroupID: String?
-    @Binding var editableGroupName: String
-    @Binding var groups: [GroupSummary]
-    @Binding var createStatusMessage: String?
-    @Binding var saveStatusMessage: String?
-    @Binding var isLoadingGroups: Bool
-    @Binding var isGroupQRCodeOverlayPresented: Bool
-    @Binding var isDeleteConfirmPresented: Bool
-    @Binding var isQRScannerPresented: Bool
-    @Binding var isPhotoPickerPresented: Bool
-
-    let isCreateError: Bool
-    let isSaveError: Bool
-    let isCreating: Bool
-    let isSavingGroupName: Bool
-    let isDeletingGroup: Bool
-    let isJoiningGroup: Bool
-    let selectedGroupInvitePayload: String?
-    let appShareURL: URL
-
-    let onCreateGroup: () async -> Void
-    let onSaveGroupName: () async -> Void
+    @ObservedObject var viewModel: SettingsGroupsViewModel
 
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var fieldBackground: Color {
@@ -34,34 +11,34 @@ struct GroupsSectionView: View {
     private var memberBorderColor: Color { AppTheme.cardBorder(for: colorScheme) }
 
     private var createStatusTextColor: Color {
-        isCreateError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+        viewModel.isCreateError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
     }
 
     private var saveStatusTextColor: Color {
-        isSaveError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+        viewModel.isSaveError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
     }
 
     private var canCreate: Bool {
-        !isCreating && !createGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !viewModel.isCreating && !viewModel.createGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var selectedGroup: GroupSummary? {
-        guard let selectedGroupID else { return nil }
-        return groups.first(where: { $0.id == selectedGroupID })
+        guard let selectedGroupID = viewModel.selectedGroupID else { return nil }
+        return viewModel.groups.first(where: { $0.id == selectedGroupID })
     }
 
     private var canSaveSelectedGroupName: Bool {
         guard let selectedGroup else { return false }
-        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !isSavingGroupName && !trimmed.isEmpty && trimmed != selectedGroup.name
+        let trimmed = viewModel.editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !viewModel.isSavingGroupName && !trimmed.isEmpty && trimmed != selectedGroup.name
     }
 
     private var canDeleteSelectedGroup: Bool {
-        selectedGroupID != nil && !isDeletingGroup
+        viewModel.selectedGroupID != nil && !viewModel.isDeletingGroup
     }
 
     private var canAddMemberByQRCode: Bool {
-        !isJoiningGroup
+        !viewModel.isJoiningGroup
     }
 
     var body: some View {
@@ -71,7 +48,7 @@ struct GroupsSectionView: View {
 
             createGroupCard
 
-            if let createStatusMessage {
+            if let createStatusMessage = viewModel.createStatusMessage {
                 Text(createStatusMessage)
                     .font(.footnote)
                     .foregroundStyle(createStatusTextColor)
@@ -91,7 +68,7 @@ struct GroupsSectionView: View {
             HStack(spacing: 10) {
                 TextField(
                     "",
-                    text: $createGroupName,
+                    text: $viewModel.createGroupName,
                     prompt: Text("group name")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -105,7 +82,7 @@ struct GroupsSectionView: View {
 
                 Button {
                     Task {
-                        await onCreateGroup()
+                        await viewModel.createGroup()
                     }
                 } label: {
                     Image(systemName: "checkmark")
@@ -126,10 +103,10 @@ struct GroupsSectionView: View {
 
     private var yourGroupsCard: some View {
         VStack(spacing: 12) {
-            if isLoadingGroups {
+            if viewModel.isLoadingGroups {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .leading)
-            } else if groups.isEmpty {
+            } else if viewModel.groups.isEmpty {
                 Text("No groups yet. Pull down to refresh.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -137,11 +114,11 @@ struct GroupsSectionView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
-                        ForEach(groups) { group in
-                            let isSelected = selectedGroupID == group.id
+                        ForEach(viewModel.groups) { group in
+                            let isSelected = viewModel.selectedGroupID == group.id
                             Button(group.name) {
-                                selectedGroupID = group.id
-                                editableGroupName = group.name
+                                viewModel.selectedGroupID = group.id
+                                viewModel.editableGroupName = group.name
                             }
                             .font(.footnote)
                             .foregroundStyle(isSelected ? Color.white : Color.accentColor)
@@ -164,7 +141,7 @@ struct GroupsSectionView: View {
 
                 TextField(
                     "",
-                    text: $editableGroupName,
+                    text: $viewModel.editableGroupName,
                     prompt: Text("group name")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -178,7 +155,7 @@ struct GroupsSectionView: View {
 
                 HStack(spacing: 10) {
                     Button {
-                        isGroupQRCodeOverlayPresented = true
+                        viewModel.isGroupQRCodeOverlayPresented = true
                     } label: {
                         Image(systemName: "qrcode")
                             .font(.system(size: 14, weight: .bold))
@@ -188,7 +165,7 @@ struct GroupsSectionView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(selectedGroupInvitePayload == nil)
+                    .disabled(viewModel.selectedGroupInvitePayload == nil)
 
                     if let selectedGroup {
                         HStack(spacing: -8) {
@@ -221,14 +198,14 @@ struct GroupsSectionView: View {
 
                     Spacer()
 
-                    if let saveStatusMessage {
+                    if let saveStatusMessage = viewModel.saveStatusMessage {
                         Text(saveStatusMessage)
                             .font(.footnote)
                             .foregroundStyle(saveStatusTextColor)
                     }
 
                     Button {
-                        isDeleteConfirmPresented = true
+                        viewModel.isDeleteConfirmPresented = true
                     } label: {
                         Image(systemName: "trash.fill")
                             .font(.system(size: 14, weight: .bold))
@@ -242,7 +219,7 @@ struct GroupsSectionView: View {
 
                     Button {
                         Task {
-                            await onSaveGroupName()
+                            await viewModel.saveGroupName()
                         }
                     } label: {
                         Image(systemName: "checkmark")
@@ -266,13 +243,13 @@ struct GroupsSectionView: View {
         VStack(alignment: .leading, spacing: 10) {
             Menu {
                 Button {
-                    isQRScannerPresented = true
+                    viewModel.isQRScannerPresented = true
                 } label: {
                     Label("Scan QR code", systemImage: "camera")
                 }
 
                 Button {
-                    isPhotoPickerPresented = true
+                    viewModel.isPhotoPickerPresented = true
                 } label: {
                     Label("Choose from Photos", systemImage: "photo.badge.magnifyingglass")
                 }
@@ -283,7 +260,7 @@ struct GroupsSectionView: View {
             .buttonStyle(.plain)
             .disabled(!canAddMemberByQRCode)
 
-            ShareLink(item: appShareURL) {
+            ShareLink(item: viewModel.appShareURL) {
                 Text("Tell your friends about this app?")
                     .appSecondaryTextLinkStyle()
             }
