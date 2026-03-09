@@ -39,6 +39,35 @@ extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
     }
+
+    func appTextLinkStyle() -> some View {
+        font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+    }
+
+    func appSecondaryTextLinkStyle() -> some View {
+        font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+    }
+}
+
+struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(Color.accentColor.opacity(isEnabled ? 1 : 0.55), in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == AppPrimaryCapsuleButtonStyle {
+    static var appPrimaryCapsule: AppPrimaryCapsuleButtonStyle { .init() }
 }
 
 extension Color {

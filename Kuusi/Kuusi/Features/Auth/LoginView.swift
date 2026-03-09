@@ -69,10 +69,8 @@ struct LoginView: View {
                             await appState.debugEnterMainTabs(selectedAccountID: appState.selectedDebugAccountID)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.accentColor)
+                    .buttonStyle(.appPrimaryCapsule)
                     .controlSize(.small)
-                    .font(.footnote)
                 }
                 .padding(.horizontal, 24)
             } else {
@@ -81,10 +79,8 @@ struct LoginView: View {
                         await appState.debugEnterMainTabs()
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.accentColor)
+                .buttonStyle(.appPrimaryCapsule)
                 .controlSize(.small)
-                .font(.footnote)
             }
 #endif
 

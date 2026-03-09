@@ -18,7 +18,8 @@ struct UnlockView: View {
                     await appState.unlockApp()
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimaryCapsule)
+            .controlSize(.regular)
 
             if let errorMessage = appState.errorMessage {
                 Text(errorMessage)
