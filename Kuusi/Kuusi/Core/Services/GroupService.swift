@@ -28,12 +28,13 @@ struct GroupSummary: Identifiable {
 final class GroupService {
     private let db = Firestore.firestore()
     private let groupMemberPreviewLimit = 3
+    private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
+    private static let cacheLock = NSLock()
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         let groupID = makeGroupID()
         let groupRef = db.collection("groups").document(groupID)
         let userRef = db.collection("users").document(ownerUID)
-        let ownerPreview = try await loadMemberPreview(uid: ownerUID)
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             db.runTransaction({ transaction, errorPointer in
@@ -60,7 +61,9 @@ final class GroupService {
             })
         }
 
-        return GroupSummary(id: groupID, name: groupName, members: [ownerPreview], totalMemberCount: 1)
+        let created = GroupSummary(id: groupID, name: groupName, members: [], totalMemberCount: 1)
+        appendCachedGroup(created, for: ownerUID)
+        return created
     }
 
     private func makeGroupID() -> String {
@@ -86,14 +89,16 @@ final class GroupService {
                 }
         }
 
-        var groups: [GroupSummary] = []
-        groups.reserveCapacity(snapshot.documents.count)
-
-        for document in snapshot.documents {
-            groups.append(try await makeGroupSummary(from: document, previewLimit: groupMemberPreviewLimit))
-        }
-
+        let groups = snapshot.documents.map(makeGroupSummaryWithoutPreviews(from:))
+        setCachedGroups(groups, for: uid)
         return groups
+    }
+
+    func loadMemberPreviews(groupID: String, limit: Int? = nil) async throws -> [GroupMemberPreview] {
+        let snapshot = try await getDocument(db.collection("groups").document(groupID))
+        let memberIDs = (snapshot.data()?["members"] as? [String]) ?? []
+        let previewIDs = Array(memberIDs.prefix(limit ?? groupMemberPreviewLimit))
+        return (try? await loadMemberPreviews(uids: previewIDs)) ?? []
     }
 
     func updateGroupName(groupID: String, name: String) async throws {
@@ -153,6 +158,22 @@ final class GroupService {
                 continuation.resume(returning: ())
             }
         }
+
+        for memberID in memberIDs {
+            removeCachedGroup(groupID: groupID, for: memberID)
+        }
+    }
+
+    func cachedGroups(for uid: String) -> [GroupSummary] {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        return Self.groupsCacheByUID[uid] ?? []
+    }
+
+    func setCachedGroups(_ groups: [GroupSummary], for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        Self.groupsCacheByUID[uid] = groups
     }
 
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
@@ -202,17 +223,33 @@ final class GroupService {
         return previews
     }
 
-    private func makeGroupSummary(from document: DocumentSnapshot, previewLimit: Int) async throws -> GroupSummary {
-        let data = document.data() ?? [:]
+    private func makeGroupSummaryWithoutPreviews(from document: QueryDocumentSnapshot) -> GroupSummary {
+        let data = document.data()
         let name = (data["name"] as? String) ?? "Untitled group"
         let memberIDs = (data["members"] as? [String]) ?? []
-        let previewIDs = Array(memberIDs.prefix(previewLimit))
-        let previews = (try? await loadMemberPreviews(uids: previewIDs)) ?? []
         return GroupSummary(
             id: document.documentID,
             name: name,
-            members: previews,
+            members: [],
             totalMemberCount: memberIDs.count
         )
+    }
+
+    private func appendCachedGroup(_ group: GroupSummary, for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        var groups = Self.groupsCacheByUID[uid] ?? []
+        if !groups.contains(where: { $0.id == group.id }) {
+            groups.append(group)
+            Self.groupsCacheByUID[uid] = groups
+        }
+    }
+
+    private func removeCachedGroup(groupID: String, for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        guard var groups = Self.groupsCacheByUID[uid] else { return }
+        groups.removeAll { $0.id == groupID }
+        Self.groupsCacheByUID[uid] = groups
     }
 }

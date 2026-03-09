@@ -26,6 +26,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     private let groupService = GroupService()
     private var clearCreateMessageTask: Task<Void, Never>?
     private var clearSaveMessageTask: Task<Void, Never>?
+    private var previewLoadedGroupIDs: Set<String> = []
 
     var selectedGroupInvitePayload: String? {
         guard let selectedGroupID else { return nil }
@@ -57,8 +58,14 @@ final class SettingsGroupsViewModel: ObservableObject {
         defer { isCreating = false }
 
         do {
-            _ = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
+            let created = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
             createGroupName = ""
+            groups.append(created)
+            selectedGroupID = created.id
+            editableGroupName = created.name
+            previewLoadedGroupIDs.remove(created.id)
+            cacheGroupsForCurrentUser()
+            await loadSelectedGroupPreviewIfNeeded(force: true)
             setCreateStatus("Group created. Pull down to refresh.", isError: false)
         } catch {
             setCreateStatus(error.localizedDescription, isError: true)
@@ -73,6 +80,7 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             let fetched = try await groupService.fetchGroups(for: uid)
             groups = fetched
+            previewLoadedGroupIDs.removeAll()
 
             if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
                 selectedGroupID = fetched.first?.id
@@ -81,12 +89,22 @@ final class SettingsGroupsViewModel: ObservableObject {
             if let selectedGroupID,
                let selectedGroup = fetched.first(where: { $0.id == selectedGroupID }) {
                 editableGroupName = selectedGroup.name
+                await loadSelectedGroupPreviewIfNeeded(force: true)
             } else {
                 editableGroupName = ""
             }
         } catch {
             setCreateStatus(error.localizedDescription, isError: true)
         }
+    }
+
+    func selectGroup(_ id: String) async {
+        guard selectedGroupID != id else { return }
+        selectedGroupID = id
+        if let selected = groups.first(where: { $0.id == id }) {
+            editableGroupName = selected.name
+        }
+        await loadSelectedGroupPreviewIfNeeded(force: false)
     }
 
     func saveGroupName() async {
@@ -107,6 +125,7 @@ final class SettingsGroupsViewModel: ObservableObject {
                     totalMemberCount: groups[index].totalMemberCount
                 )
             }
+            cacheGroupsForCurrentUser()
             setSaveStatus("Group updated", isError: false)
         } catch {
             setSaveStatus(error.localizedDescription, isError: true)
@@ -121,6 +140,12 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.deleteGroup(groupID: selectedGroupID)
+            groups.removeAll { $0.id == selectedGroupID }
+            previewLoadedGroupIDs.remove(selectedGroupID)
+            self.selectedGroupID = groups.first?.id
+            editableGroupName = groups.first?.name ?? ""
+            cacheGroupsForCurrentUser()
+            await loadSelectedGroupPreviewIfNeeded(force: false)
             setSaveStatus("Group deleted. Pull down to refresh.", isError: false)
         } catch {
             setSaveStatus(error.localizedDescription, isError: true)
@@ -154,9 +179,22 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.joinGroup(groupID: groupID, uid: uid)
-            setSaveStatus("Joined group", isError: false)
+            setSaveStatus("Joined group. Pull down to refresh.", isError: false)
         } catch {
             setSaveStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func loadCachedGroupsOnly() {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let cached = groupService.cachedGroups(for: uid)
+        groups = cached
+        if selectedGroupID == nil || !cached.contains(where: { $0.id == selectedGroupID }) {
+            selectedGroupID = cached.first?.id
+        }
+        if let selectedGroupID,
+           let selected = cached.first(where: { $0.id == selectedGroupID }) {
+            editableGroupName = selected.name
         }
     }
 
@@ -221,5 +259,27 @@ final class SettingsGroupsViewModel: ObservableObject {
                 saveStatusMessage = nil
             }
         }
+    }
+
+    private func loadSelectedGroupPreviewIfNeeded(force: Bool) async {
+        guard let selectedGroupID else { return }
+        if !force && previewLoadedGroupIDs.contains(selectedGroupID) { return }
+        guard let index = groups.firstIndex(where: { $0.id == selectedGroupID }) else { return }
+
+        let previews = (try? await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: 3)) ?? []
+        let existing = groups[index]
+        groups[index] = GroupSummary(
+            id: existing.id,
+            name: existing.name,
+            members: previews,
+            totalMemberCount: existing.totalMemberCount
+        )
+        previewLoadedGroupIDs.insert(selectedGroupID)
+        cacheGroupsForCurrentUser()
+    }
+
+    private func cacheGroupsForCurrentUser() {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        groupService.setCachedGroups(groups, for: uid)
     }
 }

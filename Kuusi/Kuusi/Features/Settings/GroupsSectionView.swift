@@ -117,8 +117,9 @@ struct GroupsSectionView: View {
                         ForEach(viewModel.groups) { group in
                             let isSelected = viewModel.selectedGroupID == group.id
                             Button(group.name) {
-                                viewModel.selectedGroupID = group.id
-                                viewModel.editableGroupName = group.name
+                                Task {
+                                    await viewModel.selectGroup(group.id)
+                                }
                             }
                             .font(.footnote)
                             .foregroundStyle(isSelected ? Color.white : Color.accentColor)

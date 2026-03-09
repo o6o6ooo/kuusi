@@ -14,7 +14,6 @@ struct UploadOverlayView: View {
     @State private var hashtagInput = ""
     @State private var hashtags: [String] = []
     @State private var isUploading = false
-    @State private var isLoadingGroups = false
     @State private var message: String?
     @State private var isError = false
 
@@ -109,7 +108,7 @@ struct UploadOverlayView: View {
                 Task { await loadImages(from: newValue) }
             }
             .task {
-                await loadGroups()
+                loadCachedGroupsOnly()
             }
         }
     }
@@ -167,9 +166,7 @@ struct UploadOverlayView: View {
 
     private var groupPicker: some View {
         Menu {
-            if isLoadingGroups {
-                Text("Loading...")
-            } else if groups.isEmpty {
+            if groups.isEmpty {
                 Text("No groups")
             } else {
                 ForEach(groups) { group in
@@ -224,21 +221,12 @@ struct UploadOverlayView: View {
             }
     }
 
-    @MainActor
-    private func loadGroups() async {
+    private func loadCachedGroupsOnly() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-        isLoadingGroups = true
-        defer { isLoadingGroups = false }
-
-        do {
-            let fetched = try await groupService.fetchGroups(for: uid)
-            groups = fetched
-            if selectedGroupID == nil {
-                selectedGroupID = fetched.first?.id
-            }
-        } catch {
-            message = error.localizedDescription
-            isError = true
+        let cached = groupService.cachedGroups(for: uid)
+        groups = cached
+        if selectedGroupID == nil {
+            selectedGroupID = cached.first?.id
         }
     }
 

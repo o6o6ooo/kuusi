@@ -83,10 +83,6 @@ final class AppState: ObservableObject {
             )
             let user = try await authService.signIn(payload: payload)
 
-            let formatter = PersonNameComponentsFormatter()
-            let suggestedName = credential.fullName.map { formatter.string(from: $0) }
-            try await userService.ensureUserDocument(for: user, suggestedName: suggestedName)
-
             errorMessage = nil
             currentUser = user
             route = .locked
@@ -130,12 +126,6 @@ final class AppState: ObservableObject {
             let selected = selectedAccountID ?? selectedDebugAccountID
             let account = try resolveDebugAccount(id: selected)
             let user = try await signInOrCreateDebugUser(account: account)
-
-            try await userService.ensureUserDocument(
-                for: user,
-                suggestedName: account.suggestedName ?? "Sakura Wallace",
-                suggestedEmail: user.email
-            )
 
             currentUser = user
             errorMessage = nil
