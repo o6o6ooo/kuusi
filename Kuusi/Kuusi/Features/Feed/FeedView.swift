@@ -156,7 +156,7 @@ struct FeedView: View {
                 return
             }
             let groupIDs = groupService.cachedGroups(for: uid).map(\.id)
-            photos = try await feedService.fetchRecentPhotos(groupIDs: groupIDs, limit: 6)
+            photos = try await feedService.fetchRecentPhotos(userID: uid, groupIDs: groupIDs, limit: 6)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -243,22 +243,13 @@ struct FeedView: View {
 
         let newValue = !photo.isFavourite
         do {
-            try await feedService.setFavourite(photoID: photo.id, isFavourite: newValue)
+            guard let uid = Auth.auth().currentUser?.uid else {
+                feedMessage = "Please sign in first."
+                return
+            }
+            try await feedService.setFavourite(photoID: photo.id, userID: uid, isFavourite: newValue)
             if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                let existing = photos[index]
-                photos[index] = FeedPhoto(
-                    id: existing.id,
-                    photoURL: existing.photoURL,
-                    thumbnailURL: existing.thumbnailURL,
-                    groupID: existing.groupID,
-                    postedBy: existing.postedBy,
-                    year: existing.year,
-                    hashtags: existing.hashtags,
-                    isFavourite: newValue,
-                    sizeMB: existing.sizeMB,
-                    aspectRatio: existing.aspectRatio,
-                    createdAt: existing.createdAt
-                )
+                photos[index] = photos[index].withFavourite(newValue)
             }
             feedMessage = newValue ? "Added to favourites." : "Removed from favourites."
         } catch {

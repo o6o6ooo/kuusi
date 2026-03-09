@@ -9,7 +9,7 @@ struct FeedPhoto: Identifiable {
     let postedBy: String?
     let year: Int?
     let hashtags: [String]
-    let isFavourite: Bool
+    var isFavourite: Bool
     let sizeMB: Double?
     let aspectRatio: Double?
     let createdAt: Date?
@@ -24,7 +24,7 @@ extension FeedPhoto {
         self.postedBy = data["posted_by"] as? String
         self.year = data["year"] as? Int
         self.hashtags = (data["hashtags"] as? [String]) ?? []
-        self.isFavourite = (data["favourite"] as? Bool) ?? (data["Favourite"] as? Bool) ?? false
+        self.isFavourite = false
         self.sizeMB = data["size_mb"] as? Double
         self.aspectRatio = data["aspect_ratio"] as? Double
         if let ts = data["created_at"] as? Timestamp {
@@ -32,5 +32,11 @@ extension FeedPhoto {
         } else {
             self.createdAt = nil
         }
+    }
+
+    func withFavourite(_ isFavourite: Bool) -> FeedPhoto {
+        var copy = self
+        copy.isFavourite = isFavourite
+        return copy
     }
 }

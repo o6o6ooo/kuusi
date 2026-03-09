@@ -33,6 +33,7 @@ final class UserService {
             "quota_mb": defaultFreeQuotaMB,
             "usage_mb": 0.0,
             "groups": [],
+            "favourites": [],
             "createdAt": FieldValue.serverTimestamp()
         ]
         try await setDocument(ref, data: payload, merge: false)

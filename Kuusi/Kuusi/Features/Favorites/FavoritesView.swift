@@ -94,7 +94,7 @@ struct FavoritesView: View {
                 return
             }
             let groupIDs = groupService.cachedGroups(for: uid).map(\.id)
-            photos = try await feedService.fetchFavouritePhotos(groupIDs: groupIDs, limit: 6)
+            photos = try await feedService.fetchFavouritePhotos(userID: uid, groupIDs: groupIDs, limit: 6)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

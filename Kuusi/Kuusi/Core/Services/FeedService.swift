@@ -5,11 +5,12 @@ import Foundation
 final class FeedService {
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
-    private let favouriteField = "favourite"
+    private let favouritesField = "favourites"
 
-    func fetchRecentPhotos(groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
+    func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
         let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
         guard !visibleGroupIDs.isEmpty else { return [] }
+        let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
 
         let query = db.collection("photos")
             .whereField("group_id", in: Array(visibleGroupIDs))
@@ -34,48 +35,53 @@ final class FeedService {
         }
 
         return photos
+            .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             .prefix(limit)
             .map { $0 }
     }
 
-    func fetchFavouritePhotos(groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
+    func fetchFavouritePhotos(userID: String, groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
         let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
         guard !visibleGroupIDs.isEmpty else { return [] }
+        let favouriteIDs = Array(try await fetchFavouriteIDs(userID: userID))
+        guard !favouriteIDs.isEmpty else { return [] }
 
-        let query = db.collection("photos")
-            .whereField("group_id", in: Array(visibleGroupIDs))
-            .limit(to: max(limit * 6, 30))
+        let chunks = favouriteIDs.chunked(into: 10)
+        var docs: [QueryDocumentSnapshot] = []
+        docs.reserveCapacity(favouriteIDs.count)
 
-        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
-            query.getDocuments { snapshot, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let snapshot else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
-                    return
-                }
-                continuation.resume(returning: snapshot)
+        for chunk in chunks {
+            let query = db.collection("photos")
+                .whereField(FieldPath.documentID(), in: chunk)
+            let snapshot = try await fetchQuery(query)
+            docs.append(contentsOf: snapshot.documents)
+        }
+
+        let visibleGroups = Set(visibleGroupIDs)
+        let photos = docs
+            .map { FeedPhoto(id: $0.documentID, data: $0.data()) }
+            .filter { photo in
+                guard let groupID = photo.groupID else { return false }
+                return visibleGroups.contains(groupID)
             }
-        }
-
-        let photos = snapshot.documents.map { doc in
-            FeedPhoto(id: doc.documentID, data: doc.data())
-        }
 
         return photos
-            .filter(\.isFavourite)
+            .map { $0.withFavourite(true) }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             .prefix(limit)
             .map { $0 }
     }
 
-    func setFavourite(photoID: String, isFavourite: Bool) async throws {
-        let ref = db.collection("photos").document(photoID)
+    func setFavourite(photoID: String, userID: String, isFavourite: Bool) async throws {
+        let ref = db.collection("users").document(userID)
+        let payload: [String: Any] = [
+            favouritesField: isFavourite
+                ? FieldValue.arrayUnion([photoID])
+                : FieldValue.arrayRemove([photoID])
+        ]
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ref.setData([favouriteField: isFavourite], merge: true) { error in
+            ref.setData(payload, merge: true) { error in
                 if let error {
                     continuation.resume(throwing: error)
                     return
@@ -114,6 +120,7 @@ final class FeedService {
         }
 
         try await commitBatch(batch)
+        try await setFavourite(photoID: photo.id, userID: requesterUID, isFavourite: false)
     }
 
     private func deleteStorageObject(urlString: String) async throws {
@@ -146,5 +153,55 @@ final class FeedService {
                 continuation.resume(returning: ())
             }
         }
+    }
+
+    private func fetchQuery(_ query: Query) async throws -> QuerySnapshot {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
+            query.getDocuments { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+    }
+
+    private func fetchFavouriteIDs(userID: String) async throws -> Set<String> {
+        let ref = db.collection("users").document(userID)
+        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<DocumentSnapshot, Error>) in
+            ref.getDocument { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+        let ids = (snapshot.data()?[favouritesField] as? [String]) ?? []
+        return Set(ids)
+    }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        var result: [[Element]] = []
+        result.reserveCapacity((count + size - 1) / size)
+        var index = 0
+        while index < count {
+            let end = Swift.min(index + size, count)
+            result.append(Array(self[index..<end]))
+            index += size
+        }
+        return result
     }
 }
