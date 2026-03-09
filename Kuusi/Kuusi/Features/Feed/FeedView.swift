@@ -18,6 +18,7 @@ struct FeedView: View {
     @State private var pendingDeletePhoto: FeedPhoto?
 
     private let feedService = FeedService()
+    private let groupService = GroupService()
 
     var body: some View {
         NavigationStack {
@@ -149,7 +150,13 @@ struct FeedView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            photos = try await feedService.fetchRecentPhotos(limit: 6)
+            guard let uid = Auth.auth().currentUser?.uid else {
+                photos = []
+                errorMessage = nil
+                return
+            }
+            let groupIDs = groupService.cachedGroups(for: uid).map(\.id)
+            photos = try await feedService.fetchRecentPhotos(groupIDs: groupIDs, limit: 6)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

@@ -7,33 +7,12 @@ final class FeedService {
     private let storage = Storage.storage()
     private let favouriteField = "favourite"
 
-    func fetchRecentPhotos(limit: Int = 15) async throws -> [FeedPhoto] {
+    func fetchRecentPhotos(groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
+        let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
+        guard !visibleGroupIDs.isEmpty else { return [] }
+
         let query = db.collection("photos")
-            .order(by: "created_at", descending: true)
-            .limit(to: limit)
-
-        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
-            query.getDocuments { snapshot, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let snapshot else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
-                    return
-                }
-                continuation.resume(returning: snapshot)
-            }
-        }
-
-        return snapshot.documents.map { doc in
-            FeedPhoto(id: doc.documentID, data: doc.data())
-        }
-    }
-
-    func fetchFavouritePhotos(limit: Int = 10) async throws -> [FeedPhoto] {
-        let query = db.collection("photos")
-            .whereField(favouriteField, isEqualTo: true)
+            .whereField("group_id", in: Array(visibleGroupIDs))
             .limit(to: max(limit * 3, 15))
 
         let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
@@ -55,6 +34,39 @@ final class FeedService {
         }
 
         return photos
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    func fetchFavouritePhotos(groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
+        let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
+        guard !visibleGroupIDs.isEmpty else { return [] }
+
+        let query = db.collection("photos")
+            .whereField("group_id", in: Array(visibleGroupIDs))
+            .limit(to: max(limit * 6, 30))
+
+        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
+            query.getDocuments { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+
+        let photos = snapshot.documents.map { doc in
+            FeedPhoto(id: doc.documentID, data: doc.data())
+        }
+
+        return photos
+            .filter(\.isFavourite)
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             .prefix(limit)
             .map { $0 }

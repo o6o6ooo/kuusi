@@ -1,3 +1,4 @@
+import FirebaseAuth
 import SwiftUI
 import UIKit
 
@@ -13,6 +14,7 @@ struct FavoritesView: View {
     @State private var measuringAspectRatioIDs: Set<String> = []
 
     private let feedService = FeedService()
+    private let groupService = GroupService()
 
     var body: some View {
         NavigationStack {
@@ -86,7 +88,13 @@ struct FavoritesView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            photos = try await feedService.fetchFavouritePhotos(limit: 6)
+            guard let uid = Auth.auth().currentUser?.uid else {
+                photos = []
+                errorMessage = nil
+                return
+            }
+            let groupIDs = groupService.cachedGroups(for: uid).map(\.id)
+            photos = try await feedService.fetchFavouritePhotos(groupIDs: groupIDs, limit: 6)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
