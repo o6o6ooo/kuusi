@@ -202,16 +202,7 @@ struct SettingsView: View {
                                 await saveProfile()
                             }
                         }
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(cardBorder.opacity(0.7), lineWidth: 1)
-                        }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.appPrimaryCapsule)
                     }
 
                     profileCard
