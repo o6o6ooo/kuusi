@@ -9,7 +9,7 @@ struct UnlockView: View {
             Image(systemName: "faceid")
                 .font(.system(size: 56))
             Text("Unlock Kuusi")
-                .font(.title2.bold())
+						.font(.title2.weight(.bold))
             Text("Use Face ID or Touch ID")
                 .foregroundStyle(.secondary)
 

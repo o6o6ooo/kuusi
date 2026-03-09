@@ -15,7 +15,7 @@ struct LoginView: View {
                 .accessibilityHidden(true)
 
             Text("Kuusi")
-                .font(.system(size: 30, weight: .bold))
+						.font(.title.weight(.bold))
             Text("Share photos with your loved ones")
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 8)

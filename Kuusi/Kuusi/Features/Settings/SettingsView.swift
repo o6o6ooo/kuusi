@@ -112,13 +112,13 @@ struct SettingsView: View {
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your storage")
-                .font(.system(size: 20, weight: .bold))
+						.font(.title3.weight(.bold))
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Spacer()
                     Text(usageText)
-                        .font(.headline.weight(.semibold))
+                        .font(.body.weight(.semibold))
                 }
 
                 GeometryReader { proxy in
@@ -136,10 +136,10 @@ struct SettingsView: View {
 
                 HStack(spacing: 6) {
                     Text("Need more storage?")
-										.font(.subheadline.weight(.semibold))
+										.font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("Upgrade to premium.")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(primaryText)
                 }
             }
@@ -156,10 +156,10 @@ struct SettingsView: View {
     private var subscriptionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Subscription")
-                .font(.system(size: 20, weight: .bold))
+						.font(.title3.weight(.bold))
 
             Text("Upgrade to premium, cancel anytime.")
-						.font(.subheadline.weight(.semibold))
+						.font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -171,10 +171,10 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Free plan")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.body.weight(.semibold))
 
                         Text("•  5GB storage\n•  Preview photos up to 2 years\n•  Have up to 3 groups")
-                            .font(.subheadline.weight(.medium))
+                            .font(.callout.weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -198,10 +198,10 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Premium plan - £20.00 / year")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.body.weight(.semibold))
                         
                         Text("•  50GB storage\n•  Preview all photos\n•  Have up to 10 groups")
-                            .font(.subheadline.weight(.medium))
+                            .font(.callout.weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,14 +234,14 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         if isEditingName {
                             Text("Hi,")
-                                .font(.system(size: 20, weight: .bold))
+														.font(.title3.weight(.bold))
                             TextField("Name", text: $name)
                                 .textFieldStyle(.plain)
-                                .font(.system(size: 20, weight: .bold))
+																.font(.title3.weight(.bold))
                                 .foregroundStyle(primaryText)
                         } else {
                             Text("Hi, \(name)")
-                                .font(.system(size: 20, weight: .bold))
+														.font(.title3.weight(.bold))
                         }
 
                         Button {
@@ -291,25 +291,25 @@ struct SettingsView: View {
                             }
                         } label: {
                             Text("Sign out")
-                                .font(.subheadline.weight(.semibold))
+                                .font(.body.weight(.semibold))
                                 .foregroundStyle(Color.accentColor)
                         }
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")
-                                .font(.caption.weight(.semibold))
+                                .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.secondary)
 
                             Text("Terms of service")
-                                .font(.caption.weight(.semibold))
+                                .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.secondary)
 
                             HStack(spacing: 4) {
                                 Text("Made with love by")
-                                    .font(.caption.weight(.semibold))
+                                    .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                 Link("Sakura Wallace", destination: URL(string: "https://github.com/o6o6ooo")!)
-                                    .font(.caption.weight(.semibold))
+                                    .font(.caption2.weight(.semibold))
                                     .foregroundStyle(Color.accentColor)
                             }
                         }
@@ -453,7 +453,7 @@ struct SettingsView: View {
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Create a group")
-                .font(.system(size: 20, weight: .bold))
+						.font(.title3.weight(.bold))
 
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
@@ -465,7 +465,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     )
                     .textFieldStyle(.plain)
-                    .font(.body)
+                    .font(.callout)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(fieldBackground)
@@ -498,7 +498,7 @@ struct SettingsView: View {
             }
 
             Text("Your groups")
-                .font(.system(size: 20, weight: .bold))
+						.font(.title3.weight(.bold))
                 .padding(.top, 8)
 
             VStack(spacing: 12) {
@@ -519,7 +519,7 @@ struct SettingsView: View {
                                     selectedGroupID = group.id
                                     editableGroupName = group.name
                                 }
-                                .font(.body)
+                                .font(.footnote)
                                 .foregroundStyle(isSelected ? Color.white : Color.accentColor)
                                 .padding(.horizontal, 14)
                                 .frame(height: 34)
@@ -546,7 +546,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     )
                     .textFieldStyle(.plain)
-                    .font(.body)
+                    .font(.callout)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(fieldBackground)
@@ -659,7 +659,7 @@ struct SettingsView: View {
 
             ShareLink(item: appShareURL) {
                 Text("Tell your friends about this app?")
-                    .font(.footnote.weight(.semibold))
+                    .font(.footnote.weight(.medium))
                     .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
@@ -969,7 +969,7 @@ private struct GroupQRCodeOverlayView: View {
 
                 ShareLink(item: payload) {
                     Text("Share QR code")
-                        .font(.footnote.weight(.semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
