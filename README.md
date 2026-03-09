@@ -1,127 +1,94 @@
-# 🌲 Kuusi
+# Kuusi
 
-**Kuusi** is a private family photo-sharing app built with **React Native (Expo)** and **Firebase**.  
-It focuses on privacy, simple sharing, and a calm, minimal design.  
-Currently optimized for **iPhone and iPad**, with a **PWA version planned** for Android users.
+Kuusi is a private family photo-sharing iOS app built with SwiftUI and Firebase.
 
----
+## Status
 
-## 🧭 Project Overview
-```
+This project is actively in development.
+
+- Implemented: authentication flow, profile/settings, groups management, QR join/share, upload overlay UI
+- In progress: core upload pipeline and production feed behavior
+
+## Tech Stack
+
+- iOS: SwiftUI (Xcode project)
+- Backend: Firebase
+- Auth: Sign in with Apple (plus Debug-only Email/Password sign-in)
+- Database: Cloud Firestore
+- Storage: Firebase Storage
+
+## Project Structure
+
+```text
 kuusi/
-├── apps/
-│   └── mobile/          # iOS app built with Expo (React Native)
-│
-├── packages/            # Shared modules (planned)
-│
-├── node_modules/        # Shared dependencies (managed at root)
-├── package.json         # Root monorepo config
-├── .vscode/             # Shared editor settings
-├── .gitignore
+├── Kuusi/                        # Xcode project root
+│   ├── Kuusi.xcodeproj
+│   └── Kuusi/
+│       ├── App/
+│       ├── Core/
+│       ├── Features/
+│       │   ├── Auth/
+│       │   ├── Feed/
+│       │   ├── Calendar/
+│       │   ├── Favorites/
+│       │   └── Settings/
+│       └── Assets.xcassets/
+├── docs/
+│   └── swift-migration-plan.md
 └── README.md
 ```
 
----
+## Getting Started
 
-## 🚀 Getting Started
+### 1. Open project
 
-### 1. Install dependencies
+Open:
 
-From the project root:
+- `Kuusi/Kuusi.xcodeproj`
 
-```bash
-npm install
-```
+### 2. Firebase config
 
-### 2. Run the iOS app
-```
-npm run start:mobile
-```
+- Place `GoogleService-Info.plist` under the app target (`Kuusi` group in Xcode)
+- Ensure Firebase iOS app bundle identifier matches the Xcode target bundle identifier
 
-## 🧩 Tech Stack
+### 3. Run
 
-| Layer | Technology |
-|-------|-------------|
-| Framework | [React Native (Expo)](https://expo.dev) |
-| Backend | [Firebase (Blaze Plan)](https://firebase.google.com) |
-| Database | Firestore |
-| Storage | Firebase Storage |
-| Authentication | Firebase Auth (Google Sign-In) |
-| Language | TypeScript |
-| Architecture | Monorepo (npm workspaces) |
+- Select iPhone/iPad simulator or real device
+- Build and run from Xcode
 
----
+## Debug Sign-In (DEBUG builds only)
 
-## ☁️ Firebase Setup
+`LoginView` supports Debug sign-in with environment variables from Xcode Scheme.
 
-Kuusi uses a **single Firebase project** for both iOS and Web (PWA) versions.
+Use either:
 
-- **iOS:** Connects via `GoogleService-Info.plist`
-- **Web (PWA):** Uses the same Firebase config for Firestore, Storage, and Auth
-- **Storage:** All photos are stored in Firebase Storage  
-- **Firestore:** Photo metadata (hashtags, year, group, etc.) is saved in the `photos` collection
+- Single account
+  - `DEBUG_TEST_EMAIL`
+  - `DEBUG_TEST_PASSWORD`
+  - `DEBUG_TEST_NAME` (optional)
 
----
+- Multiple accounts
+  - `DEBUG_TEST_USER_1_EMAIL`, `DEBUG_TEST_USER_1_PASSWORD`, `DEBUG_TEST_USER_1_NAME` (optional)
+  - `DEBUG_TEST_USER_2_EMAIL`, `DEBUG_TEST_USER_2_PASSWORD`, `DEBUG_TEST_USER_2_NAME` (optional)
+  - ...
 
-## 📱 App Features
+Configure in:
 
-- 🔒 Google Sign-In for secure family access  
-- 🖼️ Upload photos with metadata (hashtags, year, group ID)  
-- 🕓 Real-time shared photo feed  
-- ⭐ Favorite and hashtag filtering  
-- 💾 Local-only user data (no external accounts)  
-- 💻 Planned iPad-optimized layout  
+- Xcode > Product > Scheme > Edit Scheme > Run > Environment Variables
 
----
+## Security Notes
 
-## 🛠 Development Notes
+- `GoogleService-Info.plist` is ignored and should not be committed
+- Keep test credentials only in local scheme environment variables
+- Restrict Firebase rules and monitor usage/alerts in Firebase/GCP
 
-- **Platform:** iOS only (Android users will access the PWA)
-- **Storage Policy:** Firebase Blaze plan ensures secure upload and free-tier operation for small-scale usage
-- **Build Tool:** Expo CLI
-- **Monorepo:** Apps and future shared packages are managed via npm workspaces
+## Roadmap (Short-Term)
 
----
+- Finalize upload implementation (thumbnails/preview generation + metadata write)
+- Finalize feed loading/pagination behavior
+- Continue UI cleanup and component/view-model separation
 
-## 📘 Scripts
+## Author
 
-| Command | Description |
-|----------|-------------|
-| `npm install` | Install all dependencies (root + mobile) |
-| `npm run start:mobile` | Run the iOS Expo app |
-| `npm --workspace apps/mobile run ios` | Build & run iOS locally |
-| `npm run lint` | Run ESLint (if configured) |
+Sakura Wallace
 
----
-
-## 🧱 Planned Structure
-```
-packages/
-├── shared/        # Shared Firebase config & hooks (planned)
-├── ui/            # Shared UI components (planned)
-```
-
----
-
-## 🗺 Roadmap
-
-- [ ] Add Web (PWA) version for Android users  
-- [ ] Implement shared Firebase hooks in `/packages/shared`  
-- [ ] iPad UI optimization (2-column layout)  
-- [ ] Photo caching and offline mode  
-- [ ] Face ID authentication option  
-
----
-
-## 👩‍💻 Author
-
-Developed by **Sakura**,  
-a web and mobile app developer based in the UK 🇬🇧  
-Focused on small, private, privacy-first apps built with love 💚
-
----
-
-## 🪄 License
-
-This project is for **personal and family use only**.  
-No commercial redistribution is allowed.
