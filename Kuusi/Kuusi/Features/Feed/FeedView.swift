@@ -1,3 +1,4 @@
+import FirebaseAuth
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,8 @@ struct FeedView: View {
     @State private var feedMessage: String?
     @State private var measuredAspectRatios: [String: CGFloat] = [:]
     @State private var measuringAspectRatioIDs: Set<String> = []
+    @State private var deletingPhotoIDs: Set<String> = []
+    @State private var pendingDeletePhoto: FeedPhoto?
 
     private let feedService = FeedService()
 
@@ -52,10 +55,13 @@ struct FeedView: View {
                                                 ),
                                                 onTap: { selectedPhoto = photo },
                                                 onEdit: { feedMessage = "Edit is coming soon." },
-                                                onDelete: { feedMessage = "Delete is coming soon." },
+                                                onDelete: {
+                                                    pendingDeletePhoto = photo
+                                                },
                                                 onRequireAspectRatio: {
                                                     requestAspectRatioIfNeeded(for: photo)
-                                                }
+                                                },
+                                                isDeleting: deletingPhotoIDs.contains(photo.id)
                                             )
                                         }
                                     }
@@ -108,6 +114,27 @@ struct FeedView: View {
                 FeedPreviewSheet(photo: photo)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+            }
+            .alert("Delete photo?", isPresented: Binding(
+                get: { pendingDeletePhoto != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingDeletePhoto = nil
+                    }
+                }
+            )) {
+                Button("Delete", role: .destructive) {
+                    guard let photo = pendingDeletePhoto else { return }
+                    pendingDeletePhoto = nil
+                    Task {
+                        await deletePhoto(photo)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingDeletePhoto = nil
+                }
+            } message: {
+                Text("This will permanently delete the photo.")
             }
         }
     }
@@ -173,6 +200,29 @@ struct FeedView: View {
             return nil
         }
     }
+
+    private func deletePhoto(_ photo: FeedPhoto) async {
+        guard !deletingPhotoIDs.contains(photo.id) else { return }
+        guard let uid = Auth.auth().currentUser?.uid else {
+            feedMessage = "Please sign in first."
+            return
+        }
+
+        deletingPhotoIDs.insert(photo.id)
+        defer { deletingPhotoIDs.remove(photo.id) }
+
+        do {
+            try await feedService.deletePhoto(photo, requesterUID: uid)
+            photos.removeAll { $0.id == photo.id }
+            measuredAspectRatios[photo.id] = nil
+            if selectedPhoto?.id == photo.id {
+                selectedPhoto = nil
+            }
+            feedMessage = "Photo deleted."
+        } catch {
+            feedMessage = error.localizedDescription
+        }
+    }
 }
 
 private struct PhotoTile: View {
@@ -184,6 +234,7 @@ private struct PhotoTile: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onRequireAspectRatio: () -> Void
+    let isDeleting: Bool
 
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
@@ -202,6 +253,15 @@ private struct PhotoTile: View {
         .onTapGesture {
             onTap()
         }
+        .overlay {
+            if isDeleting {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.ultraThinMaterial)
+                    ProgressView()
+                }
+            }
+        }
         .contextMenu {
             Button {
                 onEdit()
@@ -215,6 +275,7 @@ private struct PhotoTile: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+        .disabled(isDeleting)
         .task {
             onRequireAspectRatio()
         }
