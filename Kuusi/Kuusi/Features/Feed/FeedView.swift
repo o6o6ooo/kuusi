@@ -6,6 +6,9 @@ import UIKit
 struct FeedView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var photos: [FeedPhoto] = []
+    @State private var groups: [GroupSummary] = []
+    @State private var selectedGroupID: String?
+    @State private var photosByGroupID: [String: [FeedPhoto]] = [:]
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isUploadOverlayPresented = false
@@ -23,70 +26,79 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading {
-                    ProgressView("Loading feed...")
-                } else if let errorMessage {
-                    ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-                } else if photos.isEmpty {
-                    ContentUnavailableView("No photos yet", systemImage: "photo")
+                if groups.isEmpty {
+                    ContentUnavailableView("No groups yet", systemImage: "person.3")
                 } else {
-                    GeometryReader { proxy in
-                        let spacing: CGFloat = 8
-                        let horizontalPadding: CGFloat = 12
-                        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
-                        let totalSpacing = spacing * CGFloat(columnCount - 1)
-                        let contentWidth = proxy.size.width - (horizontalPadding * 2)
-                        let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
-                        let columns = makeWaterfallColumns(
-                            photos: photos,
-                            columnCount: columnCount,
-                            columnWidth: columnWidth,
-                            spacing: spacing
-                        )
+                    VStack(spacing: 8) {
+                        feedGroupTabs
 
-                        ScrollView {
-                            HStack(alignment: .top, spacing: spacing) {
-                                ForEach(0..<columnCount, id: \.self) { columnIndex in
-                                    LazyVStack(spacing: spacing) {
-                                        ForEach(columns[columnIndex]) { photo in
-                                            PhotoTile(
-                                                photo: photo,
-                                                width: columnWidth,
-                                                displayAspectRatio: CGFloat(
-                                                    photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
-                                                ),
-                                                onTap: { selectedPhoto = photo },
-                                                onEdit: { feedMessage = "Edit is coming soon." },
-                                                onDelete: {
-                                                    pendingDeletePhoto = photo
-                                                },
-                                                onToggleFavourite: {
-                                                    Task { await toggleFavourite(photo) }
-                                                },
-                                                onRequireAspectRatio: {
-                                                    requestAspectRatioIfNeeded(for: photo)
-                                                },
-                                                isDeleting: deletingPhotoIDs.contains(photo.id),
-                                                isFavouriting: favouritingPhotoIDs.contains(photo.id)
-                                            )
+                        if isLoading {
+                            ProgressView("Loading feed...")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        } else if let errorMessage {
+                            ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                        } else if photos.isEmpty {
+                            ContentUnavailableView("No photos yet", systemImage: "photo")
+                        } else {
+                            GeometryReader { proxy in
+                                let spacing: CGFloat = 8
+                                let horizontalPadding: CGFloat = 12
+                                let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
+                                let totalSpacing = spacing * CGFloat(columnCount - 1)
+                                let contentWidth = proxy.size.width - (horizontalPadding * 2)
+                                let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
+                                let columns = makeWaterfallColumns(
+                                    photos: photos,
+                                    columnCount: columnCount,
+                                    columnWidth: columnWidth,
+                                    spacing: spacing
+                                )
+
+                                ScrollView {
+                                    HStack(alignment: .top, spacing: spacing) {
+                                        ForEach(0..<columnCount, id: \.self) { columnIndex in
+                                            LazyVStack(spacing: spacing) {
+                                                ForEach(columns[columnIndex]) { photo in
+                                                    PhotoTile(
+                                                        photo: photo,
+                                                        width: columnWidth,
+                                                        displayAspectRatio: CGFloat(
+                                                            photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
+                                                        ),
+                                                        onTap: { selectedPhoto = photo },
+                                                        onEdit: { feedMessage = "Edit is coming soon." },
+                                                        onDelete: {
+                                                            pendingDeletePhoto = photo
+                                                        },
+                                                        onToggleFavourite: {
+                                                            Task { await toggleFavourite(photo) }
+                                                        },
+                                                        onRequireAspectRatio: {
+                                                            requestAspectRatioIfNeeded(for: photo)
+                                                        },
+                                                        isDeleting: deletingPhotoIDs.contains(photo.id),
+                                                        isFavouriting: favouritingPhotoIDs.contains(photo.id)
+                                                    )
+                                                }
+                                            }
                                         }
+                                    }
+                                    .padding(.horizontal, horizontalPadding)
+                                    .padding(.vertical, 8)
+
+                                    if let feedMessage {
+                                        Text(feedMessage)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                            .padding(.top, 4)
+                                            .padding(.bottom, 8)
                                     }
                                 }
                             }
-                            .padding(.horizontal, horizontalPadding)
-                            .padding(.vertical, 8)
-
-                            if let feedMessage {
-                                Text(feedMessage)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 4)
-                                    .padding(.bottom, 8)
-                            }
                         }
-                        .refreshable {
-                            await fetchFeed()
-                        }
+                    }
+                    .refreshable {
+                        await refreshCurrentGroup()
                     }
                 }
             }
@@ -107,8 +119,8 @@ struct FeedView: View {
                 .padding(.leading, 14)
             }
             .task {
-                if photos.isEmpty {
-                    await fetchFeed()
+                if groups.isEmpty {
+                    await loadInitialFeed()
                 }
             }
             .sheet(isPresented: $isUploadOverlayPresented) {
@@ -145,8 +157,95 @@ struct FeedView: View {
         }
     }
 
+    private var feedGroupTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(groups) { group in
+                    Button {
+                        selectGroup(group.id)
+                    } label: {
+                        Text(group.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(
+                                selectedGroupID == group.id
+                                ? Color.white
+                                : Color.accentColor
+                            )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 9)
+                            .background(
+                                Capsule()
+                                    .fill(selectedGroupID == group.id ? Color.accentColor : .clear)
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.accentColor, lineWidth: 1.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.leading, 66)
+            .padding(.trailing, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+        }
+    }
+
     @MainActor
-    private func fetchFeed() async {
+    private func loadInitialFeed() async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            groups = []
+            photos = []
+            selectedGroupID = nil
+            photosByGroupID = [:]
+            errorMessage = nil
+            return
+        }
+
+        var cachedGroups = groupService.cachedGroups(for: uid)
+        if cachedGroups.isEmpty {
+            do {
+                cachedGroups = try await groupService.fetchGroups(for: uid)
+            } catch {
+                groups = []
+                photos = []
+                selectedGroupID = nil
+                photosByGroupID = [:]
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+
+        groups = cachedGroups
+        selectedGroupID = cachedGroups.first?.id
+        photos = []
+        errorMessage = nil
+        await fetchPhotosForSelectedGroup(forceReload: false)
+    }
+
+    @MainActor
+    private func refreshCurrentGroup() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        do {
+            let freshGroups = try await groupService.fetchGroups(for: uid)
+            groups = freshGroups
+            if let selectedGroupID, freshGroups.contains(where: { $0.id == selectedGroupID }) {
+                self.selectedGroupID = selectedGroupID
+            } else {
+                selectedGroupID = freshGroups.first?.id
+                photos = []
+            }
+            await fetchPhotosForSelectedGroup(forceReload: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func fetchPhotosForSelectedGroup(forceReload: Bool) async {
         isLoading = true
         defer { isLoading = false }
         do {
@@ -155,11 +254,38 @@ struct FeedView: View {
                 errorMessage = nil
                 return
             }
-            let groupIDs = groupService.cachedGroups(for: uid).map(\.id)
-            photos = try await feedService.fetchRecentPhotos(userID: uid, groupIDs: groupIDs, limit: 6)
+            guard let selectedGroupID else {
+                photos = []
+                errorMessage = nil
+                return
+            }
+
+            if !forceReload, let cachedPhotos = photosByGroupID[selectedGroupID] {
+                photos = cachedPhotos
+                errorMessage = nil
+                return
+            }
+
+            let loadedPhotos = try await feedService.fetchRecentPhotos(
+                userID: uid,
+                groupIDs: [selectedGroupID],
+                limit: 6
+            )
+            photosByGroupID[selectedGroupID] = loadedPhotos
+            photos = loadedPhotos
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func selectGroup(_ groupID: String) {
+        selectedGroupID = groupID
+        photos = photosByGroupID[groupID] ?? []
+        errorMessage = nil
+        Task {
+            await fetchPhotosForSelectedGroup(forceReload: false)
         }
     }
 
@@ -226,6 +352,9 @@ struct FeedView: View {
         do {
             try await feedService.deletePhoto(photo, requesterUID: uid)
             photos.removeAll { $0.id == photo.id }
+            if let selectedGroupID {
+                photosByGroupID[selectedGroupID] = photos
+            }
             measuredAspectRatios[photo.id] = nil
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = nil
@@ -250,6 +379,9 @@ struct FeedView: View {
             try await feedService.setFavourite(photoID: photo.id, userID: uid, isFavourite: newValue)
             if let index = photos.firstIndex(where: { $0.id == photo.id }) {
                 photos[index] = photos[index].withFavourite(newValue)
+                if let selectedGroupID {
+                    photosByGroupID[selectedGroupID] = photos
+                }
             }
             feedMessage = newValue ? "Added to favourites." : "Removed from favourites."
         } catch {
