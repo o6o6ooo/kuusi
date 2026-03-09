@@ -10,25 +10,16 @@ final class UploadService {
     func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
         var uploadedCount = 0
         var totalUploadedMB: Double = 0
+        let preparedImages = await prepareImagesForUpload(images)
 
-        for image in images {
-            let id = UUID().uuidString
+        for prepared in preparedImages {
+            let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
+            let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
 
-            guard
-                let previewData = resizedJPEGData(from: image, maxDimension: 1200, compression: 0.6),
-                let thumbData = resizedJPEGData(from: image, maxDimension: 180, compression: 0.45)
-            else {
-                continue
-            }
+            let previewURL = try await uploadData(prepared.previewData, at: previewPath)
+            let thumbURL = try await uploadData(prepared.thumbData, at: thumbPath)
 
-            let previewPath = "photos/\(userID)/\(id)_preview.jpg"
-            let thumbPath = "photos/\(userID)/\(id)_thumb.jpg"
-
-            let previewURL = try await uploadData(previewData, at: previewPath)
-            let thumbURL = try await uploadData(thumbData, at: thumbPath)
-
-            let sizeMB = Double(previewData.count + thumbData.count) / 1024.0 / 1024.0
-            totalUploadedMB += sizeMB
+            totalUploadedMB += prepared.sizeMB
             uploadedCount += 1
 
             let payload: [String: Any] = [
@@ -38,7 +29,7 @@ final class UploadService {
                 "posted_by": userID,
                 "year": year,
                 "hashtags": hashtags,
-                "size_mb": Double(round(100 * sizeMB) / 100),
+                "size_mb": Double(round(100 * prepared.sizeMB) / 100),
                 "created_at": FieldValue.serverTimestamp()
             ]
 
@@ -47,6 +38,33 @@ final class UploadService {
 
         if uploadedCount > 0 {
             try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
+        }
+    }
+
+    private func prepareImagesForUpload(_ images: [UIImage]) async -> [PreparedImage] {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let prepared: [PreparedImage] = images.compactMap { image in
+                    let id = UUID().uuidString
+
+                    guard
+                        let previewData = self.resizedJPEGData(from: image, maxDimension: 1200, compression: 0.6),
+                        let thumbData = self.resizedJPEGData(from: image, maxDimension: 180, compression: 0.45)
+                    else {
+                        return nil
+                    }
+
+                    let sizeMB = Double(previewData.count + thumbData.count) / 1024.0 / 1024.0
+                    return PreparedImage(
+                        id: id,
+                        previewData: previewData,
+                        thumbData: thumbData,
+                        sizeMB: sizeMB
+                    )
+                }
+
+                continuation.resume(returning: prepared)
+            }
         }
     }
 
@@ -125,4 +143,11 @@ final class UploadService {
             }
         }
     }
+}
+
+private struct PreparedImage {
+    let id: String
+    let previewData: Data
+    let thumbData: Data
+    let sizeMB: Double
 }

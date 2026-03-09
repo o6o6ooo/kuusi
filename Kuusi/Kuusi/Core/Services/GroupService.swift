@@ -30,6 +30,8 @@ final class GroupService {
     private let groupMemberPreviewLimit = 3
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
     private static let cacheLock = NSLock()
+    private static let defaults = UserDefaults.standard
+    private static let cacheKeyPrefix = "groups_cache_v1_"
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         let groupID = makeGroupID()
@@ -167,13 +169,37 @@ final class GroupService {
     func cachedGroups(for uid: String) -> [GroupSummary] {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
-        return Self.groupsCacheByUID[uid] ?? []
+        if let cached = Self.groupsCacheByUID[uid] {
+            return cached
+        }
+
+        guard
+            let data = Self.defaults.data(forKey: Self.cacheKey(for: uid)),
+            let decoded = try? JSONDecoder().decode([CachedGroup].self, from: data)
+        else {
+            return []
+        }
+
+        let groups = decoded.map { $0.toGroupSummary() }
+        Self.groupsCacheByUID[uid] = groups
+        return groups
     }
 
     func setCachedGroups(_ groups: [GroupSummary], for uid: String) {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
         Self.groupsCacheByUID[uid] = groups
+        let encodable = groups.map(CachedGroup.init)
+        if let data = try? JSONEncoder().encode(encodable) {
+            Self.defaults.set(data, forKey: Self.cacheKey(for: uid))
+        }
+    }
+
+    func clearCachedGroups(for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        Self.groupsCacheByUID[uid] = nil
+        Self.defaults.removeObject(forKey: Self.cacheKey(for: uid))
     }
 
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
@@ -238,18 +264,80 @@ final class GroupService {
     private func appendCachedGroup(_ group: GroupSummary, for uid: String) {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
-        var groups = Self.groupsCacheByUID[uid] ?? []
+        var groups = Self.groupsCacheByUID[uid] ?? loadPersistedGroupsLocked(for: uid)
         if !groups.contains(where: { $0.id == group.id }) {
             groups.append(group)
             Self.groupsCacheByUID[uid] = groups
+            savePersistedGroupsLocked(groups, for: uid)
         }
     }
 
     private func removeCachedGroup(groupID: String, for uid: String) {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
-        guard var groups = Self.groupsCacheByUID[uid] else { return }
+        var groups = Self.groupsCacheByUID[uid] ?? loadPersistedGroupsLocked(for: uid)
         groups.removeAll { $0.id == groupID }
         Self.groupsCacheByUID[uid] = groups
+        savePersistedGroupsLocked(groups, for: uid)
+    }
+
+    private static func cacheKey(for uid: String) -> String {
+        "\(cacheKeyPrefix)\(uid)"
+    }
+
+    private func loadPersistedGroupsLocked(for uid: String) -> [GroupSummary] {
+        guard
+            let data = Self.defaults.data(forKey: Self.cacheKey(for: uid)),
+            let decoded = try? JSONDecoder().decode([CachedGroup].self, from: data)
+        else {
+            return []
+        }
+        return decoded.map { $0.toGroupSummary() }
+    }
+
+    private func savePersistedGroupsLocked(_ groups: [GroupSummary], for uid: String) {
+        let encodable = groups.map(CachedGroup.init)
+        if let data = try? JSONEncoder().encode(encodable) {
+            Self.defaults.set(data, forKey: Self.cacheKey(for: uid))
+        }
+    }
+}
+
+private struct CachedGroup: Codable {
+    let id: String
+    let name: String
+    let members: [CachedMember]
+    let totalMemberCount: Int
+
+    init(_ group: GroupSummary) {
+        id = group.id
+        name = group.name
+        members = group.members.map(CachedMember.init)
+        totalMemberCount = group.totalMemberCount
+    }
+
+    func toGroupSummary() -> GroupSummary {
+        GroupSummary(
+            id: id,
+            name: name,
+            members: members.map { $0.toPreview() },
+            totalMemberCount: totalMemberCount
+        )
+    }
+}
+
+private struct CachedMember: Codable {
+    let id: String
+    let icon: String
+    let bgColour: String
+
+    init(_ preview: GroupMemberPreview) {
+        id = preview.id
+        icon = preview.icon
+        bgColour = preview.bgColour
+    }
+
+    func toPreview() -> GroupMemberPreview {
+        GroupMemberPreview(id: id, icon: icon, bgColour: bgColour)
     }
 }

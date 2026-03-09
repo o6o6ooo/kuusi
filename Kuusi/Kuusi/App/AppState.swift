@@ -49,7 +49,9 @@ final class AppState: ObservableObject {
     private let authService = AppleAuthService()
     private let userService = UserService()
     private let biometricAuthService = BiometricAuthService()
+    private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
+    private var prefetchedGroupsUID: String?
 
     init() {
 #if DEBUG
@@ -107,6 +109,7 @@ final class AppState: ObservableObject {
             currentUser = nil
             route = .signedOut
             errorMessage = nil
+            prefetchedGroupsUID = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -151,6 +154,7 @@ final class AppState: ObservableObject {
                 guard let user else {
                     self.currentUser = nil
                     self.route = .signedOut
+                    self.prefetchedGroupsUID = nil
                     return
                 }
 
@@ -164,6 +168,7 @@ final class AppState: ObservableObject {
                 }
 
                 await self.ensureUserDocumentIfNeeded(for: user)
+                await self.prefetchGroupsIfNeeded(for: user.uid)
                 self.currentUser = user
                 self.route = .locked
             }
@@ -289,5 +294,15 @@ final class AppState: ObservableObject {
             suggestedName: suggestedName,
             suggestedEmail: suggestedEmail
         )
+    }
+
+    private func prefetchGroupsIfNeeded(for uid: String) async {
+        guard prefetchedGroupsUID != uid else { return }
+        do {
+            _ = try await groupService.fetchGroups(for: uid)
+            prefetchedGroupsUID = uid
+        } catch {
+            // Keep retrying on next auth-state callback if prefetch fails.
+        }
     }
 }
