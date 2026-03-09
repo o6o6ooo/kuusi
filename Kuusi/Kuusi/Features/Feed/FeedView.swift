@@ -32,7 +32,7 @@ struct FeedView: View {
                     GeometryReader { proxy in
                         let spacing: CGFloat = 8
                         let horizontalPadding: CGFloat = 12
-                        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 2
+                        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
                         let totalSpacing = spacing * CGFloat(columnCount - 1)
                         let contentWidth = proxy.size.width - (horizontalPadding * 2)
                         let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
@@ -149,7 +149,7 @@ struct FeedView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            photos = try await feedService.fetchRecentPhotos(limit: 10)
+            photos = try await feedService.fetchRecentPhotos(limit: 6)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

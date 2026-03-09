@@ -34,7 +34,7 @@ final class FeedService {
     func fetchFavouritePhotos(limit: Int = 10) async throws -> [FeedPhoto] {
         let query = db.collection("photos")
             .whereField(favouriteField, isEqualTo: true)
-            .limit(to: max(limit * 5, 25))
+            .limit(to: max(limit * 3, 15))
 
         let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
             query.getDocuments { snapshot, error in
