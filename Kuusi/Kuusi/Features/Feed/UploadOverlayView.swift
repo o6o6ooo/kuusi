@@ -31,8 +31,17 @@ struct UploadOverlayView: View {
         return groups.first(where: { $0.id == selectedGroupID })?.name ?? "group"
     }
 
+    private var parsedYear: Int? {
+        let trimmed = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Int(trimmed)
+    }
+
     private var canUpload: Bool {
-        !selectedImages.isEmpty && !isUploading
+        !selectedImages.isEmpty &&
+        !isUploading &&
+        selectedGroupID != nil &&
+        parsedYear != nil
     }
 
     var body: some View {
@@ -267,8 +276,17 @@ struct UploadOverlayView: View {
             return
         }
 
-        let year = Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines))
-            ?? Calendar.current.component(.year, from: Date())
+        guard let groupID = selectedGroupID else {
+            message = "Select a group."
+            isError = true
+            return
+        }
+
+        guard let year = parsedYear else {
+            message = "Enter a valid year."
+            isError = true
+            return
+        }
 
         isUploading = true
         defer { isUploading = false }
@@ -277,7 +295,7 @@ struct UploadOverlayView: View {
             try await uploadService.upload(
                 images: selectedImages,
                 userID: uid,
-                groupID: selectedGroupID ?? "default",
+                groupID: groupID,
                 year: year,
                 hashtags: hashtags
             )
