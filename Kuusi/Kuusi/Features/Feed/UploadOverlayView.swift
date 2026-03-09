@@ -42,9 +42,14 @@ struct UploadOverlayView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     topContent
 
-                    groupPicker
-                    yearField
-                    hashtagsField
+                    VStack(spacing: 12) {
+                        groupPicker
+                        yearField
+                        hashtagsField
+                    }
+                    .padding(14)
+                    .background(cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
 
                     if !hashtags.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -77,12 +82,12 @@ struct UploadOverlayView: View {
                             if isUploading {
                                 ProgressView()
                                     .tint(.white)
-                                    .frame(width: 118)
+                                    .frame(minWidth: 54)
                             } else {
                                 Text("Upload")
-                                    .frame(width: 118)
                             }
                         }
+                        .frame(minWidth: 96)
                         .buttonStyle(.appPrimaryCapsule)
                         .controlSize(.regular)
                         .disabled(!canUpload)
@@ -94,12 +99,9 @@ struct UploadOverlayView: View {
                             .foregroundStyle(isError ? AppTheme.errorText : primaryText.opacity(0.8))
                     }
                 }
-                .padding(18)
-                .foregroundStyle(primaryText)
-                .background(cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                .foregroundStyle(primaryText)
             }
             .screenTheme()
             .toolbar(.hidden, for: .navigationBar)
