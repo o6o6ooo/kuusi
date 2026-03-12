@@ -9,11 +9,11 @@ struct MainTabView: View {
                 }
                 .accessibilityLabel("Feed")
 
-            HashtagsView()
+            YearsView()
                 .tabItem {
-                    Image(systemName: "number")
+                    Image(systemName: "calendar")
                 }
-                .accessibilityLabel("Hashtags")
+                .accessibilityLabel("Years")
 
             FavoritesView()
                 .tabItem {

@@ -121,7 +121,7 @@ struct GroupsSectionView: View {
                                     await viewModel.selectGroup(group.id)
                                 }
                             }
-                            .font(.footnote)
+                            .font(.footnote.weight(.semibold))
                             .foregroundStyle(isSelected ? Color.white : Color.accentColor)
                             .padding(.horizontal, 14)
                             .frame(height: 34)

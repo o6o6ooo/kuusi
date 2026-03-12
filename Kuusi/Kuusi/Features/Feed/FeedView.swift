@@ -200,7 +200,7 @@ struct FeedView: View {
                     Button(group.name) {
                         selectGroup(group.id)
                     }
-                    .font(.footnote)
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(isSelected ? Color.white : accentColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
