@@ -22,14 +22,16 @@ struct FeedView: View {
 
     private let feedService = FeedService()
     private let groupService = GroupService()
+    private var accentColor: Color { AppTheme.accent(for: colorScheme) }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if groups.isEmpty {
-                    ContentUnavailableView("No groups yet", systemImage: "person.3")
-                } else {
-                    VStack(spacing: 8) {
+            GeometryReader { proxy in
+                VStack(spacing: 8) {
+                    if groups.isEmpty {
+                        ContentUnavailableView("No groups yet", systemImage: "person.3")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
                         feedGroupTabs
 
                         if isLoading {
@@ -37,70 +39,72 @@ struct FeedView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         } else if let errorMessage {
                             ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else if photos.isEmpty {
                             ContentUnavailableView("No photos yet", systemImage: "photo")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
-                            GeometryReader { proxy in
-                                let spacing: CGFloat = 8
-                                let horizontalPadding: CGFloat = 12
-                                let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
-                                let totalSpacing = spacing * CGFloat(columnCount - 1)
-                                let contentWidth = proxy.size.width - (horizontalPadding * 2)
-                                let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
-                                let columns = makeWaterfallColumns(
-                                    photos: photos,
-                                    columnCount: columnCount,
-                                    columnWidth: columnWidth,
-                                    spacing: spacing
-                                )
+                            let spacing: CGFloat = 8
+                            let horizontalPadding: CGFloat = 12
+                            let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
+                            let totalSpacing = spacing * CGFloat(columnCount - 1)
+                            let contentWidth = proxy.size.width - (horizontalPadding * 2)
+                            let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
+                            let columns = makeWaterfallColumns(
+                                photos: photos,
+                                columnCount: columnCount,
+                                columnWidth: columnWidth,
+                                spacing: spacing
+                            )
 
-                                ScrollView {
-                                    HStack(alignment: .top, spacing: spacing) {
-                                        ForEach(0..<columnCount, id: \.self) { columnIndex in
-                                            LazyVStack(spacing: spacing) {
-                                                ForEach(columns[columnIndex]) { photo in
-                                                    PhotoTile(
-                                                        photo: photo,
-                                                        width: columnWidth,
-                                                        displayAspectRatio: CGFloat(
-                                                            photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
-                                                        ),
-                                                        onTap: { selectedPhoto = photo },
-                                                        onEdit: { feedMessage = "Edit is coming soon." },
-                                                        onDelete: {
-                                                            pendingDeletePhoto = photo
-                                                        },
-                                                        onToggleFavourite: {
-                                                            Task { await toggleFavourite(photo) }
-                                                        },
-                                                        onRequireAspectRatio: {
-                                                            requestAspectRatioIfNeeded(for: photo)
-                                                        },
-                                                        isDeleting: deletingPhotoIDs.contains(photo.id),
-                                                        isFavouriting: favouritingPhotoIDs.contains(photo.id)
-                                                    )
-                                                }
+                            ScrollView {
+                                HStack(alignment: .top, spacing: spacing) {
+                                    ForEach(0..<columnCount, id: \.self) { columnIndex in
+                                        LazyVStack(spacing: spacing) {
+                                            ForEach(columns[columnIndex]) { photo in
+                                                PhotoTile(
+                                                    photo: photo,
+                                                    width: columnWidth,
+                                                    displayAspectRatio: CGFloat(
+                                                        photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
+                                                    ),
+                                                    onTap: { selectedPhoto = photo },
+                                                    onEdit: { feedMessage = "Edit is coming soon." },
+                                                    onDelete: {
+                                                        pendingDeletePhoto = photo
+                                                    },
+                                                    onToggleFavourite: {
+                                                        Task { await toggleFavourite(photo) }
+                                                    },
+                                                    onRequireAspectRatio: {
+                                                        requestAspectRatioIfNeeded(for: photo)
+                                                    },
+                                                    isDeleting: deletingPhotoIDs.contains(photo.id),
+                                                    isFavouriting: favouritingPhotoIDs.contains(photo.id)
+                                                )
                                             }
                                         }
                                     }
-                                    .padding(.horizontal, horizontalPadding)
-                                    .padding(.vertical, 8)
-
-                                    if let feedMessage {
-                                        Text(feedMessage)
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                            .padding(.top, 4)
-                                            .padding(.bottom, 8)
-                                    }
                                 }
+                                .padding(.horizontal, horizontalPadding)
+                                .padding(.top, 2)
+                                .padding(.bottom, 8)
+
+                                if let feedMessage {
+                                    Text(feedMessage)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.top, 4)
+                                        .padding(.bottom, 8)
+                                }
+                            }
+                            .refreshable {
+                                await refreshCurrentGroup()
                             }
                         }
                     }
-                    .refreshable {
-                        await refreshCurrentGroup()
-                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .screenTheme()
             .toolbar(.hidden, for: .navigationBar)
@@ -159,39 +163,37 @@ struct FeedView: View {
 
     private var feedGroupTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            LazyHStack(spacing: 10) {
                 ForEach(groups) { group in
-                    Button {
+                    let isSelected = selectedGroupID == group.id
+                    Button(group.name) {
                         selectGroup(group.id)
-                    } label: {
-                        Text(group.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(
-                                selectedGroupID == group.id
-                                ? Color.white
-                                : Color.accentColor
-                            )
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 9)
-                            .background(
-                                Capsule()
-                                    .fill(selectedGroupID == group.id ? Color.accentColor : .clear)
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.accentColor, lineWidth: 1.5)
-                            )
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(isSelected ? Color.white : accentColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .padding(.horizontal, 14)
+                    .frame(height: 34)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? accentColor : Color.clear)
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(accentColor, lineWidth: 1)
                     }
                     .buttonStyle(.plain)
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.leading, 66)
             .padding(.trailing, 12)
             .padding(.top, 8)
             .padding(.bottom, 2)
         }
+        .frame(height: 52)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @MainActor

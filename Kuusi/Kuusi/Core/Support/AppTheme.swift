@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct AppTheme {
+    static func accent(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color(hex: "#607CAC") : Color(hex: "#5C9BD1")
+    }
+
     static func pageBackground(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? Color(hex: "#1E2633") : Color(hex: "#FFFFFF")
     }
@@ -53,6 +57,7 @@ extension View {
 
 struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -60,7 +65,7 @@ struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background(Color.accentColor.opacity(isEnabled ? 1 : 0.55), in: Capsule())
+            .background(AppTheme.accent(for: colorScheme).opacity(isEnabled ? 1 : 0.55), in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
