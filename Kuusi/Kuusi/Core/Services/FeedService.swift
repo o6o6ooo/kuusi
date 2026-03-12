@@ -11,10 +11,11 @@ final class FeedService {
         let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
         guard !visibleGroupIDs.isEmpty else { return [] }
         let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
+        let fetchLimit = max(limit + 4, limit)
 
         let query = db.collection("photos")
             .whereField("group_id", in: Array(visibleGroupIDs))
-            .limit(to: max(limit * 3, 15))
+            .limit(to: fetchLimit)
 
         let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
             query.getDocuments { snapshot, error in

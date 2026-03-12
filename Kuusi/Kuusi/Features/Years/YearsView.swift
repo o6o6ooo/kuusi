@@ -262,7 +262,7 @@ struct YearsView: View {
             let loadedPhotos = try await feedService.fetchRecentPhotos(
                 userID: uid,
                 groupIDs: [selectedGroupID],
-                limit: 24
+                limit: 8
             )
             photosByGroupID[selectedGroupID] = loadedPhotos
             applySelectedYear(from: loadedPhotos)
