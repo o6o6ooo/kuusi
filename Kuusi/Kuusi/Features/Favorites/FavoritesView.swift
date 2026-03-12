@@ -203,14 +203,20 @@ private struct FavoritesPreviewSheet: View {
             }
 
             if !photo.hashtags.isEmpty {
-                Text(photo.hashtags.prefix(6).map { "#\($0)" }.joined(separator: " "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("No hashtags")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(photo.hashtags, id: \.self) { hashtag in
+                            Text("#\(hashtag)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
+
+            Text(String(photo.year ?? 0))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
         .screenTheme()
