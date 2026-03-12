@@ -28,8 +28,20 @@ extension AppUser {
         self.icon = (data["icon"] as? String) ?? "🌸"
         self.bgColour = (data["bgColour"] as? String) ?? "#A5C3DE"
         let premium = (data["premium"] as? Bool) ?? false
-        self.plan = (data["plan"] as? String) ?? (premium ? "premium" : "free")
-        self.quotaMB = (data["quota_mb"] as? Double) ?? (plan == "premium" ? 51200.0 : 5120.0)
+        let resolvedPlan = (data["plan"] as? String) ?? (premium ? "premium" : "free")
+        let appPlan = AppPlan(rawPlan: resolvedPlan)
+        let storedQuota = data["quota_mb"] as? Double
+
+        self.plan = appPlan.rawValue
+        if let storedQuota {
+            if appPlan == .free, storedQuota == 5120.0 {
+                self.quotaMB = appPlan.quotaMB
+            } else {
+                self.quotaMB = storedQuota
+            }
+        } else {
+            self.quotaMB = appPlan.quotaMB
+        }
         self.usageMB = (data["usage_mb"] as? Double) ?? ((data["upload_total_mb"] as? Double) ?? 0)
         self.groups = (data["groups"] as? [String]) ?? []
     }

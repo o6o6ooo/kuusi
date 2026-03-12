@@ -22,6 +22,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isPhotoPickerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
     @Published var isJoiningGroup = false
+    @Published private(set) var currentPlan: AppPlan = .free
 
     private let groupService = GroupService()
     private var clearCreateMessageTask: Task<Void, Never>?
@@ -42,9 +43,17 @@ final class SettingsGroupsViewModel: ObservableObject {
         clearSaveMessageTask = nil
     }
 
+    func updateCurrentPlan(_ plan: String) {
+        currentPlan = AppPlan(rawPlan: plan)
+    }
+
     func createGroup() async {
         guard let uid = Auth.auth().currentUser?.uid else {
             setCreateStatus("Please sign in first", isError: true)
+            return
+        }
+        guard groups.count < currentPlan.maxGroups else {
+            setCreateStatus("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups.", isError: true)
             return
         }
 
@@ -171,6 +180,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         }
         guard let groupID = extractGroupID(from: payload) else {
             setSaveStatus("Invalid invite QR", isError: true)
+            return
+        }
+        guard groups.contains(where: { $0.id == groupID }) || groups.count < currentPlan.maxGroups else {
+            setSaveStatus("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups.", isError: true)
             return
         }
 

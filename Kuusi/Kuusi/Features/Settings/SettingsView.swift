@@ -16,8 +16,8 @@ struct SettingsView: View {
     @State private var isEmojiPickerPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
-    @State private var quotaMB: Double = 5120
-    @State private var plan = "free"
+    @State private var quotaMB: Double = AppPlan.free.quotaMB
+    @State private var plan = AppPlan.free.rawValue
     @State private var isEditingName = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
@@ -35,6 +35,7 @@ struct SettingsView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
+    private var currentPlan: AppPlan { AppPlan(rawPlan: plan) }
 
     private var usageRatio: Double {
         guard quotaMB > 0 else { return 0 }
@@ -74,9 +75,12 @@ struct SettingsView: View {
                     Text("Need more storage?")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text("Upgrade to premium.")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(primaryText)
+                    Button("Upgrade to premium.") {
+                        showBillingPlaceholder()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
                 }
             }
             .padding(14)
@@ -109,7 +113,7 @@ struct SettingsView: View {
                         Text("Free plan")
                             .font(.body.weight(.semibold))
 
-                        Text("•  5GB storage\n•  Preview photos up to 2 years\n•  Have up to 3 groups")
+                        Text(AppPlan.free.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
                             .font(.callout.weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -133,10 +137,10 @@ struct SettingsView: View {
                         .frame(width: 84)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Premium plan - £20.00 / year")
+                        Text("Premium plan - \(AppPlan.premium.priceLabel ?? "")")
                             .font(.body.weight(.semibold))
 
-                        Text("•  50GB storage\n•  Preview all photos\n•  Have up to 10 groups")
+                        Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
                             .font(.callout.weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -156,9 +160,12 @@ struct SettingsView: View {
                 Text("Already got premium?")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("Restore purchases.")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(primaryText)
+                Button("Restore purchases.") {
+                    showBillingPlaceholder()
+                }
+                .buttonStyle(.plain)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
             }
         }
     }
@@ -381,6 +388,7 @@ struct SettingsView: View {
                 usageMB = user.usageMB
                 quotaMB = user.quotaMB
                 plan = user.plan
+                groupsViewModel.updateCurrentPlan(user.plan)
             }
         } catch {
             message = error.localizedDescription
@@ -425,6 +433,11 @@ struct SettingsView: View {
                 message = nil
             }
         }
+    }
+
+    private func showBillingPlaceholder() {
+        message = "In-app purchases will be added after App Store setup."
+        isError = false
     }
 
     private func formatStorage(_ mb: Double) -> String {
