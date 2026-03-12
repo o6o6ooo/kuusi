@@ -1,9 +1,9 @@
 import SwiftUI
 
-struct CalendarView: View {
+struct HashtagsView: View {
     var body: some View {
         NavigationStack {
-            ContentUnavailableView("No photos yet", systemImage: "calendar")
+            ContentUnavailableView("No photos yet", systemImage: "number")
                 .screenTheme()
                 .toolbar(.hidden, for: .navigationBar)
         }

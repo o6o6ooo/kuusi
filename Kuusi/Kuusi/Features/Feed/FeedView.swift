@@ -8,6 +8,7 @@ struct FeedView: View {
     @State private var photos: [FeedPhoto] = []
     @State private var groups: [GroupSummary] = []
     @State private var selectedGroupID: String?
+    @State private var selectedHashtag: String?
     @State private var photosByGroupID: [String: [FeedPhoto]] = [:]
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -23,6 +24,30 @@ struct FeedView: View {
     private let feedService = FeedService()
     private let groupService = GroupService()
     private var accentColor: Color { AppTheme.accent(for: colorScheme) }
+    private var currentGroupPhotos: [FeedPhoto] {
+        guard let selectedGroupID else { return photos }
+        return photosByGroupID[selectedGroupID] ?? photos
+    }
+    private var availableHashtags: [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for photo in currentGroupPhotos {
+            for hashtag in photo.hashtags {
+                let trimmed = hashtag.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                let normalized = trimmed.lowercased()
+                guard seen.insert(normalized).inserted else { continue }
+                ordered.append(trimmed)
+            }
+        }
+        return ordered
+    }
+    private var displayedPhotos: [FeedPhoto] {
+        guard let selectedHashtag else { return photos }
+        return photos.filter { photo in
+            photo.hashtags.contains { $0.caseInsensitiveCompare(selectedHashtag) == .orderedSame }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,6 +58,9 @@ struct FeedView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         feedGroupTabs
+                        if !availableHashtags.isEmpty {
+                            feedHashtagTabs
+                        }
 
                         if isLoading {
                             ProgressView("Loading feed...")
@@ -40,8 +68,11 @@ struct FeedView: View {
                         } else if let errorMessage {
                             ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if photos.isEmpty {
+                        } else if currentGroupPhotos.isEmpty {
                             ContentUnavailableView("No photos yet", systemImage: "photo")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if displayedPhotos.isEmpty {
+                            ContentUnavailableView("No photos for this hashtag", systemImage: "number")
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             let spacing: CGFloat = 8
@@ -51,7 +82,7 @@ struct FeedView: View {
                             let contentWidth = proxy.size.width - (horizontalPadding * 2)
                             let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
                             let columns = makeWaterfallColumns(
-                                photos: photos,
+                                photos: displayedPhotos,
                                 columnCount: columnCount,
                                 columnWidth: columnWidth,
                                 spacing: spacing
@@ -196,6 +227,56 @@ struct FeedView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var feedHashtagTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
+                Button("All") {
+                    selectedHashtag = nil
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(selectedHashtag == nil ? Color.white : accentColor)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .background(
+                    Capsule()
+                        .fill(selectedHashtag == nil ? accentColor : Color.clear)
+                )
+                .overlay {
+                    Capsule()
+                        .strokeBorder(accentColor, lineWidth: 1)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(availableHashtags, id: \.self) { hashtag in
+                    let isSelected = selectedHashtag == hashtag
+                    Button("#\(hashtag)") {
+                        selectedHashtag = hashtag
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isSelected ? Color.white : accentColor)
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .frame(height: 30)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? accentColor : Color.clear)
+                    )
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(accentColor, lineWidth: 1)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.leading, 12)
+            .padding(.trailing, 12)
+        }
+        .frame(height: 38)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     @MainActor
     private func loadInitialFeed() async {
         guard let uid = Auth.auth().currentUser?.uid else {
@@ -223,6 +304,7 @@ struct FeedView: View {
 
         groups = cachedGroups
         selectedGroupID = cachedGroups.first?.id
+        selectedHashtag = nil
         photos = []
         errorMessage = nil
         await fetchPhotosForSelectedGroup(forceReload: false)
@@ -240,6 +322,7 @@ struct FeedView: View {
                 selectedGroupID = freshGroups.first?.id
                 photos = []
             }
+            selectedHashtag = nil
             await fetchPhotosForSelectedGroup(forceReload: true)
         } catch {
             errorMessage = error.localizedDescription
@@ -284,6 +367,7 @@ struct FeedView: View {
     @MainActor
     private func selectGroup(_ groupID: String) {
         selectedGroupID = groupID
+        selectedHashtag = nil
         photos = photosByGroupID[groupID] ?? []
         errorMessage = nil
         Task {
