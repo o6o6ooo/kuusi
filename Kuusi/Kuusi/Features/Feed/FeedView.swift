@@ -2,6 +2,12 @@ import FirebaseAuth
 import SwiftUI
 import UIKit
 
+private struct FeedEditError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? { message }
+}
+
 @MainActor
 struct FeedView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -19,7 +25,9 @@ struct FeedView: View {
     @State private var measuringAspectRatioIDs: Set<String> = []
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
+    @State private var editingPhotoIDs: Set<String> = []
     @State private var pendingDeletePhoto: FeedPhoto?
+    @State private var editingPhoto: FeedPhoto?
 
     private let feedService = FeedService()
     private let groupService = GroupService()
@@ -100,7 +108,7 @@ struct FeedView: View {
                                                         photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
                                                     ),
                                                     onTap: { selectedPhoto = photo },
-                                                    onEdit: { feedMessage = "Edit is coming soon." },
+                                                    onEdit: { editingPhoto = photo },
                                                     onDelete: {
                                                         pendingDeletePhoto = photo
                                                     },
@@ -111,7 +119,8 @@ struct FeedView: View {
                                                         requestAspectRatioIfNeeded(for: photo)
                                                     },
                                                     isDeleting: deletingPhotoIDs.contains(photo.id),
-                                                    isFavouriting: favouritingPhotoIDs.contains(photo.id)
+                                                    isFavouriting: favouritingPhotoIDs.contains(photo.id),
+                                                    isEditing: editingPhotoIDs.contains(photo.id)
                                                 )
                                             }
                                         }
@@ -167,6 +176,13 @@ struct FeedView: View {
                 FeedPreviewSheet(photo: photo)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $editingPhoto) { photo in
+                FeedEditSheet(photo: photo) { year, hashtags in
+                    await savePhotoEdits(photo: photo, year: year, hashtags: hashtags)
+                }
+                .presentationDetents([.height(330)])
+                .presentationDragIndicator(.visible)
             }
             .alert("Delete photo?", isPresented: Binding(
                 get: { pendingDeletePhoto != nil },
@@ -474,6 +490,37 @@ struct FeedView: View {
             feedMessage = error.localizedDescription
         }
     }
+
+    private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
+        guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(message: "Photo is already being updated.")) }
+        guard let uid = Auth.auth().currentUser?.uid else {
+            return .failure(FeedEditError(message: "Please sign in first."))
+        }
+
+        editingPhotoIDs.insert(photo.id)
+        defer { editingPhotoIDs.remove(photo.id) }
+
+        do {
+            try await feedService.updatePhotoMetadata(photo, requesterUID: uid, year: year, hashtags: hashtags)
+            let updated = photo.withMetadata(year: year, hashtags: hashtags)
+
+            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
+                photos[index] = updated
+            }
+            if let selectedGroupID, var cached = photosByGroupID[selectedGroupID],
+               let index = cached.firstIndex(where: { $0.id == photo.id }) {
+                cached[index] = updated
+                photosByGroupID[selectedGroupID] = cached
+            }
+            if selectedPhoto?.id == photo.id {
+                selectedPhoto = updated
+            }
+            editingPhoto = nil
+            return .success(())
+        } catch {
+            return .failure(FeedEditError(message: error.localizedDescription))
+        }
+    }
 }
 
 private struct PhotoTile: View {
@@ -488,6 +535,7 @@ private struct PhotoTile: View {
     let onRequireAspectRatio: () -> Void
     let isDeleting: Bool
     let isFavouriting: Bool
+    let isEditing: Bool
 
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
@@ -507,7 +555,7 @@ private struct PhotoTile: View {
             onTap()
         }
         .overlay {
-            if isDeleting {
+            if isDeleting || isEditing {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(.ultraThinMaterial)
@@ -537,9 +585,177 @@ private struct PhotoTile: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .disabled(isDeleting || isFavouriting)
+        .disabled(isDeleting || isFavouriting || isEditing)
         .task {
             onRequireAspectRatio()
+        }
+    }
+}
+
+private struct FeedEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    let photo: FeedPhoto
+    let onSave: @MainActor (_ year: Int, _ hashtags: [String]) async -> Result<Void, FeedEditError>
+
+    @State private var yearText: String
+    @State private var hashtagInput = ""
+    @State private var hashtags: [String]
+    @State private var errorMessage: String?
+    @State private var isSaving = false
+    @State private var clearErrorTask: Task<Void, Never>?
+
+    init(photo: FeedPhoto, onSave: @escaping @MainActor (_ year: Int, _ hashtags: [String]) async -> Result<Void, FeedEditError>) {
+        self.photo = photo
+        self.onSave = onSave
+        _yearText = State(initialValue: photo.year.map(String.init) ?? "")
+        _hashtags = State(initialValue: photo.hashtags)
+    }
+
+    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var fieldBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
+    }
+    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Spacer()
+                    Button("Save") {
+                        Task {
+                            await save()
+                        }
+                    }
+                    .buttonStyle(.appPrimaryCapsule)
+                    .disabled(isSaving)
+                }
+
+                VStack(spacing: 12) {
+                    yearField
+                    hashtagsField
+                }
+                .padding(14)
+                .background(cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                if !hashtags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(hashtags, id: \.self) { tag in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "xmark")
+                                        .font(.caption.weight(.medium))
+                                    Text(tag)
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.accentColor)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                                .onTapGesture {
+                                    hashtags.removeAll { $0 == tag }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.errorText)
+                }
+
+                Spacer()
+            }
+            .padding(16)
+            .screenTheme()
+            .toolbar(.hidden, for: .navigationBar)
+            .onDisappear {
+                clearErrorTask?.cancel()
+                clearErrorTask = nil
+            }
+        }
+    }
+
+    private var yearField: some View {
+        TextField("year", text: $yearText)
+            .keyboardType(.numberPad)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .foregroundStyle(primaryText)
+    }
+
+    private var hashtagsField: some View {
+        TextField("hashtags", text: $hashtagInput)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .foregroundStyle(primaryText)
+            .onSubmit {
+                addHashtagsFromInput()
+            }
+            .onChange(of: hashtagInput) { _, newValue in
+                if newValue.contains("\n") || newValue.contains(",") {
+                    addHashtagsFromInput()
+                }
+            }
+    }
+
+    private func addHashtagsFromInput() {
+        let separators = CharacterSet(charactersIn: ",\n\t ")
+        let tokens = hashtagInput
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { token -> String in
+                let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
+                return clean.lowercased()
+            }
+
+        for token in tokens where !hashtags.contains(token) {
+            hashtags.append(token)
+        }
+        hashtagInput = ""
+    }
+
+    @MainActor
+    private func save() async {
+        let trimmedYear = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let year = Int(trimmedYear), (1900...3000).contains(year) else {
+            showError("Enter a valid year.")
+            return
+        }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        switch await onSave(year, hashtags) {
+        case .success:
+            dismiss()
+        case .failure(let error):
+            showError(error.message)
+        }
+    }
+
+    private func showError(_ message: String) {
+        errorMessage = message
+        clearErrorTask?.cancel()
+        clearErrorTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, errorMessage == message {
+                errorMessage = nil
+            }
         }
     }
 }

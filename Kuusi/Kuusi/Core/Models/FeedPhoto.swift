@@ -39,4 +39,20 @@ extension FeedPhoto {
         copy.isFavourite = isFavourite
         return copy
     }
+
+    func withMetadata(year: Int, hashtags: [String]) -> FeedPhoto {
+        FeedPhoto(
+            id: id,
+            photoURL: photoURL,
+            thumbnailURL: thumbnailURL,
+            groupID: groupID,
+            postedBy: postedBy,
+            year: year,
+            hashtags: hashtags,
+            isFavourite: isFavourite,
+            sizeMB: sizeMB,
+            aspectRatio: aspectRatio,
+            createdAt: createdAt
+        )
+    }
 }

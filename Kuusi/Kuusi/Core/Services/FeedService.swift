@@ -92,6 +92,30 @@ final class FeedService {
         }
     }
 
+    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID: String, year: Int, hashtags: [String]) async throws {
+        if let postedBy = photo.postedBy, postedBy != requesterUID {
+            throw NSError(domain: "FeedService", code: 403, userInfo: [
+                NSLocalizedDescriptionKey: "You can only edit your own photos."
+            ])
+        }
+
+        let ref = db.collection("photos").document(photo.id)
+        let payload: [String: Any] = [
+            "year": year,
+            "hashtags": hashtags
+        ]
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            ref.setData(payload, merge: true) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+
     func deletePhoto(_ photo: FeedPhoto, requesterUID: String) async throws {
         if let postedBy = photo.postedBy, postedBy != requesterUID {
             throw NSError(domain: "FeedService", code: 403, userInfo: [
