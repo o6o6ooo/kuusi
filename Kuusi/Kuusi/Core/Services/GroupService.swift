@@ -14,6 +14,7 @@ enum GroupServiceError: LocalizedError {
 
 struct GroupMemberPreview: Identifiable {
     let id: String
+    let name: String
     let icon: String
     let bgColour: String
 }
@@ -99,7 +100,12 @@ final class GroupService {
     func loadMemberPreviews(groupID: String, limit: Int? = nil) async throws -> [GroupMemberPreview] {
         let snapshot = try await getDocument(db.collection("groups").document(groupID))
         let memberIDs = (snapshot.data()?["members"] as? [String]) ?? []
-        let previewIDs = Array(memberIDs.prefix(limit ?? groupMemberPreviewLimit))
+        let previewIDs: [String]
+        if let limit {
+            previewIDs = Array(memberIDs.prefix(limit))
+        } else {
+            previewIDs = memberIDs
+        }
         return (try? await loadMemberPreviews(uids: previewIDs)) ?? []
     }
 
@@ -235,6 +241,7 @@ final class GroupService {
         let data = snapshot.data() ?? [:]
         return GroupMemberPreview(
             id: uid,
+            name: (data["name"] as? String) ?? "Kuusi User",
             icon: (data["icon"] as? String) ?? "🌸",
             bgColour: (data["bgColour"] as? String) ?? "#A5C3DE"
         )
@@ -307,7 +314,7 @@ final class GroupService {
             id: group.id,
             name: group.name,
             members: group.members.map {
-                CachedMember(id: $0.id, icon: $0.icon, bgColour: $0.bgColour)
+                CachedMember(id: $0.id, name: $0.name, icon: $0.icon, bgColour: $0.bgColour)
             },
             totalMemberCount: group.totalMemberCount
         )
@@ -332,10 +339,11 @@ private struct CachedGroup: Codable {
 
 private struct CachedMember: Codable {
     let id: String
+    let name: String?
     let icon: String
     let bgColour: String
 
     func toPreview() -> GroupMemberPreview {
-        GroupMemberPreview(id: id, icon: icon, bgColour: bgColour)
+        GroupMemberPreview(id: id, name: name ?? "Kuusi User", icon: icon, bgColour: bgColour)
     }
 }

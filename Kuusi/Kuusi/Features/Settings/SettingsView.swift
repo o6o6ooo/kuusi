@@ -290,6 +290,11 @@ struct SettingsView: View {
                         .presentationDragIndicator(.visible)
                 }
             }
+            .sheet(isPresented: $groupsViewModel.isMemberListPresented) {
+                GroupMembersOverlayView(members: groupsViewModel.selectedGroupMembers)
+                    .presentationDetents([.height(280)])
+                    .presentationDragIndicator(.visible)
+            }
             .alert("Delete group?", isPresented: $groupsViewModel.isDeleteConfirmPresented) {
                 Button("Delete", role: .destructive) {
                     Task {

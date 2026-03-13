@@ -21,8 +21,10 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isQRScannerPresented = false
     @Published var isPhotoPickerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
+    @Published var isMemberListPresented = false
     @Published var isJoiningGroup = false
     @Published private(set) var currentPlan: AppPlan = .free
+    @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
     private let groupService = GroupService()
     private var clearCreateMessageTask: Task<Void, Never>?
@@ -45,6 +47,16 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func updateCurrentPlan(_ plan: String) {
         currentPlan = AppPlan(rawPlan: plan)
+    }
+
+    func presentMemberList() async {
+        guard let selectedGroupID else { return }
+        do {
+            selectedGroupMembers = try await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: nil)
+            isMemberListPresented = true
+        } catch {
+            setSaveStatus(error.localizedDescription, isError: true)
+        }
     }
 
     func createGroup() async {

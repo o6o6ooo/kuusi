@@ -169,32 +169,39 @@ struct GroupsSectionView: View {
                     .disabled(viewModel.selectedGroupInvitePayload == nil)
 
                     if let selectedGroup {
-                        HStack(spacing: -8) {
-                            ForEach(selectedGroup.members) { member in
-                                Text(member.icon)
-                                    .font(.system(size: 18))
-                                    .frame(width: 36, height: 36)
-                                    .background(Color(hex: member.bgColour))
-                                    .clipShape(Circle())
-                                    .overlay {
-                                        Circle()
-                                            .stroke(memberBorderColor, lineWidth: 2)
-                                    }
+                        Button {
+                            Task {
+                                await viewModel.presentMemberList()
                             }
-                            let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
-                            if remainingCount > 0 {
-                                Text("+\(remainingCount)")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
-                                    .frame(width: 36, height: 36)
-                                    .background(fieldBackground)
-                                    .clipShape(Circle())
-                                    .overlay {
-                                        Circle()
-                                            .stroke(memberBorderColor, lineWidth: 2)
-                                    }
+                        } label: {
+                            HStack(spacing: -8) {
+                                ForEach(selectedGroup.members) { member in
+                                    Text(member.icon)
+                                        .font(.system(size: 18))
+                                        .frame(width: 36, height: 36)
+                                        .background(Color(hex: member.bgColour))
+                                        .clipShape(Circle())
+                                        .overlay {
+                                            Circle()
+                                                .stroke(memberBorderColor, lineWidth: 2)
+                                        }
+                                }
+                                let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
+                                if remainingCount > 0 {
+                                    Text("+\(remainingCount)")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
+                                        .frame(width: 36, height: 36)
+                                        .background(fieldBackground)
+                                        .clipShape(Circle())
+                                        .overlay {
+                                            Circle()
+                                                .stroke(memberBorderColor, lineWidth: 2)
+                                        }
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
 
                     Spacer()
