@@ -17,6 +17,7 @@ struct GroupMemberPreview: Identifiable {
     let name: String
     let icon: String
     let bgColour: String
+    let isOwner: Bool
 }
 
 struct GroupSummary: Identifiable {
@@ -99,14 +100,16 @@ final class GroupService {
 
     func loadMemberPreviews(groupID: String, limit: Int? = nil) async throws -> [GroupMemberPreview] {
         let snapshot = try await getDocument(db.collection("groups").document(groupID))
-        let memberIDs = (snapshot.data()?["members"] as? [String]) ?? []
+        let data = snapshot.data() ?? [:]
+        let memberIDs = (data["members"] as? [String]) ?? []
+        let ownerUID = data["owner_uid"] as? String
         let previewIDs: [String]
         if let limit {
             previewIDs = Array(memberIDs.prefix(limit))
         } else {
             previewIDs = memberIDs
         }
-        return (try? await loadMemberPreviews(uids: previewIDs)) ?? []
+        return (try? await loadMemberPreviews(uids: previewIDs, ownerUID: ownerUID)) ?? []
     }
 
     func updateGroupName(groupID: String, name: String) async throws {
@@ -236,22 +239,23 @@ final class GroupService {
         }
     }
 
-    private func loadMemberPreview(uid: String) async throws -> GroupMemberPreview {
+    private func loadMemberPreview(uid: String, ownerUID: String?) async throws -> GroupMemberPreview {
         let snapshot = try await getDocument(db.collection("users").document(uid))
         let data = snapshot.data() ?? [:]
         return GroupMemberPreview(
             id: uid,
             name: (data["name"] as? String) ?? "Kuusi User",
             icon: (data["icon"] as? String) ?? "🌸",
-            bgColour: (data["bgColour"] as? String) ?? "#A5C3DE"
+            bgColour: (data["bgColour"] as? String) ?? "#A5C3DE",
+            isOwner: uid == ownerUID
         )
     }
 
-    private func loadMemberPreviews(uids: [String]) async throws -> [GroupMemberPreview] {
+    private func loadMemberPreviews(uids: [String], ownerUID: String?) async throws -> [GroupMemberPreview] {
         var previews: [GroupMemberPreview] = []
         previews.reserveCapacity(uids.count)
         for uid in uids {
-            previews.append(try await loadMemberPreview(uid: uid))
+            previews.append(try await loadMemberPreview(uid: uid, ownerUID: ownerUID))
         }
         return previews
     }
@@ -314,7 +318,13 @@ final class GroupService {
             id: group.id,
             name: group.name,
             members: group.members.map {
-                CachedMember(id: $0.id, name: $0.name, icon: $0.icon, bgColour: $0.bgColour)
+                CachedMember(
+                    id: $0.id,
+                    name: $0.name,
+                    icon: $0.icon,
+                    bgColour: $0.bgColour,
+                    isOwner: $0.isOwner
+                )
             },
             totalMemberCount: group.totalMemberCount
         )
@@ -342,8 +352,15 @@ private struct CachedMember: Codable {
     let name: String?
     let icon: String
     let bgColour: String
+    let isOwner: Bool?
 
     func toPreview() -> GroupMemberPreview {
-        GroupMemberPreview(id: id, name: name ?? "Kuusi User", icon: icon, bgColour: bgColour)
+        GroupMemberPreview(
+            id: id,
+            name: name ?? "Kuusi User",
+            icon: icon,
+            bgColour: bgColour,
+            isOwner: isOwner ?? false
+        )
     }
 }

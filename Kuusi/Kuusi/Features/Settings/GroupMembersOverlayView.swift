@@ -6,6 +6,7 @@ struct GroupMembersOverlayView: View {
 
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var ownerBadgeBackground: Color { AppTheme.accent(for: colorScheme) }
 
     var body: some View {
         NavigationStack {
@@ -13,11 +14,23 @@ struct GroupMembersOverlayView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(members) { member in
                         HStack(spacing: 12) {
-                            Text(member.icon)
-                                .font(.system(size: 22))
-                                .frame(width: 42, height: 42)
-                                .background(Color(hex: member.bgColour))
-                                .clipShape(Circle())
+                            ZStack(alignment: .topTrailing) {
+                                Text(member.icon)
+                                    .font(.system(size: 22))
+                                    .frame(width: 42, height: 42)
+                                    .background(Color(hex: member.bgColour))
+                                    .clipShape(Circle())
+
+                                if member.isOwner {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 7, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 14, height: 14)
+                                        .background(ownerBadgeBackground)
+                                        .clipShape(Circle())
+                                        .offset(x: 3, y: -3)
+                                }
+                            }
 
                             Text(member.name)
                                 .font(.body.weight(.medium))
