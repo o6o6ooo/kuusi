@@ -1,12 +1,14 @@
 import Combine
 import Foundation
 import StoreKit
+import UIKit
 
 enum SubscriptionStoreError: LocalizedError {
     case productUnavailable
     case purchasePending
     case purchaseCancelled
     case purchaseUnverified
+    case manageSubscriptionsUnavailable
     case unknown
 
     var errorDescription: String? {
@@ -19,6 +21,8 @@ enum SubscriptionStoreError: LocalizedError {
             return "Purchase was cancelled."
         case .purchaseUnverified:
             return "Purchase could not be verified."
+        case .manageSubscriptionsUnavailable:
+            return "Subscriptions can be managed from your Apple account settings."
         case .unknown:
             return "Purchase failed."
         }
@@ -29,6 +33,8 @@ enum SubscriptionStoreError: LocalizedError {
 final class SubscriptionStore: ObservableObject {
     @Published private(set) var premiumProduct: Product?
     @Published private(set) var isPremiumActive = false
+    @Published private(set) var renewalDate: Date?
+    @Published private(set) var willAutoRenew = false
     @Published private(set) var isLoadingProducts = false
     @Published private(set) var isPurchasing = false
     @Published private(set) var isRestoring = false
@@ -108,21 +114,63 @@ final class SubscriptionStore: ObservableObject {
         await refreshEntitlements()
     }
 
+    func openManageSubscriptions() async throws {
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first else {
+            throw SubscriptionStoreError.manageSubscriptionsUnavailable
+        }
+
+        try await AppStore.showManageSubscriptions(in: windowScene)
+        await refreshEntitlements()
+    }
+
     var premiumPriceLabel: String? {
         premiumProduct.map { "\($0.displayPrice) / year" } ?? AppPlan.premium.priceLabel
     }
 
     private func refreshEntitlements() async {
         var premiumActive = false
+        var nextRenewalDate: Date?
+        var autoRenew = false
+
+        if let subscription = premiumProduct?.subscription {
+            do {
+                let statuses = try await subscription.status
+                for status in statuses {
+                    let transaction = try? verifiedTransaction(from: status.transaction)
+                    let renewalInfo = try? verifiedTransaction(from: status.renewalInfo)
+                    guard let transaction, transaction.productID == premiumProductID else { continue }
+
+                    switch status.state {
+                    case .subscribed, .inGracePeriod, .inBillingRetryPeriod:
+                        premiumActive = true
+                        nextRenewalDate = transaction.expirationDate
+                        autoRenew = renewalInfo?.willAutoRenew ?? false
+                    case .expired, .revoked:
+                        if nextRenewalDate == nil {
+                            nextRenewalDate = transaction.expirationDate
+                        }
+                    default:
+                        break
+                    }
+                }
+            } catch {
+                // Keep current-entitlements fallback below.
+            }
+        }
 
         for await result in Transaction.currentEntitlements {
             guard let transaction = try? verifiedTransaction(from: result) else { continue }
             if transaction.productID == premiumProductID {
                 premiumActive = true
+                nextRenewalDate = transaction.expirationDate ?? nextRenewalDate
             }
         }
 
         isPremiumActive = premiumActive
+        renewalDate = nextRenewalDate
+        willAutoRenew = premiumActive && autoRenew
     }
 
     private func observeTransactionUpdates() -> Task<Void, Never> {

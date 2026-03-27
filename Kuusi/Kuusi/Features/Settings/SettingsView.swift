@@ -16,6 +16,7 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var name = ""
     @State private var icon = "🌸"
@@ -26,6 +27,7 @@ struct SettingsView: View {
     @State private var isEmojiPickerPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var clearBillingMessageTask: Task<Void, Never>?
+    @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
     @State private var isEditingName = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
@@ -48,6 +50,11 @@ struct SettingsView: View {
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
     private var currentPlan: AppPlan { subscriptionStore.isPremiumActive ? .premium : .free }
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
+    private var premiumRenewalText: String? {
+        guard let renewalDate = subscriptionStore.renewalDate else { return nil }
+        let label = subscriptionStore.willAutoRenew ? "Renews on" : "Expires on"
+        return "\(label) \(formatDate(renewalDate))"
+    }
 
     private var usageRatio: Double {
         guard effectiveQuotaMB > 0 else { return 0 }
@@ -140,40 +147,19 @@ struct SettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                Task {
-                    await purchasePremium()
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 24, weight: .regular))
-                            .opacity(currentPlan == .premium ? 1 : 0)
-                            .frame(width: 84)
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Premium - \(subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel ?? "")")
-                                .font(.body.weight(.semibold))
-
-                            Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
-                                .font(.callout.weight(.medium))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            if currentPlan == .free {
+                Button {
+                    Task {
+                        await purchasePremium()
                     }
+                } label: {
+                    premiumSubscriptionCardContent
                 }
-                .padding(14)
+                .buttonStyle(SubscriptionCardButtonStyle())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardBackground)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(cardBorder, lineWidth: 1)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else {
+                premiumSubscriptionCardContent
             }
-            .buttonStyle(SubscriptionCardButtonStyle())
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             if let billingMessage {
                 Text(billingMessage)
@@ -197,6 +183,51 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var premiumSubscriptionCardContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 24, weight: .regular))
+                    .opacity(currentPlan == .premium ? 1 : 0)
+                    .frame(width: 84)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Premium - \(subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel ?? "")")
+                        .font(.body.weight(.semibold))
+
+                    Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
+                        .font(.callout.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let premiumRenewalText, currentPlan == .premium {
+                        Text(premiumRenewalText)
+                            .font(.callout.weight(.medium))
+                    }
+
+                    if currentPlan == .premium {
+                        Button(subscriptionStore.willAutoRenew ? "Cancel subscription" : "Continue subscription") {
+                            Task {
+                                await openManageSubscriptions()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Color.accentColor)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(cardBorder, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     var body: some View {
@@ -302,6 +333,13 @@ struct SettingsView: View {
             .onChange(of: subscriptionStore.isPremiumActive) { _, _ in
                 syncPlanDependentState()
             }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await subscriptionStore.prepare()
+                    syncPlanDependentState()
+                }
+            }
             .photosPicker(
                 isPresented: $groupsViewModel.isPhotoPickerPresented,
                 selection: $selectedQRCodePhoto,
@@ -358,6 +396,8 @@ struct SettingsView: View {
                 clearMessageTask = nil
                 clearBillingMessageTask?.cancel()
                 clearBillingMessageTask = nil
+                subscriptionRefreshTask?.cancel()
+                subscriptionRefreshTask = nil
                 groupsViewModel.onDisappear()
             }
         }
@@ -522,6 +562,18 @@ struct SettingsView: View {
         }
     }
 
+    @MainActor
+    private func openManageSubscriptions() async {
+        do {
+            try await subscriptionStore.openManageSubscriptions()
+            syncPlanDependentState()
+            scheduleSubscriptionRefresh()
+        } catch {
+            billingMessage = error.localizedDescription
+            isBillingError = true
+        }
+    }
+
     private func syncPlanDependentState() {
         groupsViewModel.updateCurrentPlan(currentPlan)
     }
@@ -539,5 +591,25 @@ struct SettingsView: View {
             return "\(Int(mb.rounded()))MB"
         }
         return String(format: "%.0fMB", mb)
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func scheduleSubscriptionRefresh() {
+        subscriptionRefreshTask?.cancel()
+        subscriptionRefreshTask = Task { @MainActor in
+            for delay in [300_000_000, 1_000_000_000, 2_500_000_000] {
+                try? await Task.sleep(nanoseconds: UInt64(delay))
+                if Task.isCancelled { return }
+                await subscriptionStore.prepare()
+                syncPlanDependentState()
+            }
+        }
     }
 }
