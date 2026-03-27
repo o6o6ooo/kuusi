@@ -11,12 +11,14 @@ import SwiftUI
 struct KuusiApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
+    @StateObject private var subscriptionStore = SubscriptionStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .controlSize(.small)
                 .environmentObject(appState)
+                .environmentObject(subscriptionStore)
         }
     }
 }

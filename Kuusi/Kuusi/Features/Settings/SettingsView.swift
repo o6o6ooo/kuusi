@@ -3,8 +3,18 @@ import Foundation
 import PhotosUI
 import SwiftUI
 
+private struct SubscriptionCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.97 : 1)
+            .scaleEffect(configuration.isPressed ? 0.995 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var name = ""
@@ -15,11 +25,13 @@ struct SettingsView: View {
     @State private var hasLoaded = false
     @State private var isEmojiPickerPresented = false
     @State private var clearMessageTask: Task<Void, Never>?
+    @State private var clearBillingMessageTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
-    @State private var quotaMB: Double = AppPlan.free.quotaMB
     @State private var plan = AppPlan.free.rawValue
     @State private var isEditingName = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
+    @State private var billingMessage: String?
+    @State private var isBillingError = false
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
 
     private let userService = UserService()
@@ -35,15 +47,17 @@ struct SettingsView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
-    private var currentPlan: AppPlan { AppPlan(rawPlan: plan) }
+    private var storedPlan: AppPlan { AppPlan(rawPlan: plan) }
+    private var currentPlan: AppPlan { subscriptionStore.currentPlan(fallback: storedPlan) }
+    private var effectiveQuotaMB: Double { currentPlan.quotaMB }
 
     private var usageRatio: Double {
-        guard quotaMB > 0 else { return 0 }
-        return min(max(usageMB / quotaMB, 0), 1)
+        guard effectiveQuotaMB > 0 else { return 0 }
+        return min(max(usageMB / effectiveQuotaMB, 0), 1)
     }
 
     private var usageText: String {
-        "\(formatStorage(usageMB))/\(formatStorage(quotaMB))"
+        "\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
     }
 
     private var storageCard: some View {
@@ -75,12 +89,9 @@ struct SettingsView: View {
                     Text("Need more storage?")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Button("Upgrade to premium.") {
-                        showBillingPlaceholder()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    Text("Upgrade to premium.")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
                 }
             }
             .padding(14)
@@ -106,11 +117,11 @@ struct SettingsView: View {
                 HStack(alignment: .center, spacing: 8) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 24, weight: .regular))
-                        .opacity(plan == "free" ? 1 : 0)
+                        .opacity(currentPlan == .free ? 1 : 0)
                         .frame(width: 84)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Free plan")
+                        Text("Free")
                             .font(.body.weight(.semibold))
 
                         Text(AppPlan.free.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
@@ -129,39 +140,55 @@ struct SettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 24, weight: .regular))
-                        .opacity(plan == "premium" ? 1 : 0)
-                        .frame(width: 84)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Premium plan - \(AppPlan.premium.priceLabel ?? "")")
-                            .font(.body.weight(.semibold))
-
-                        Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
-                            .font(.callout.weight(.medium))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                Task {
+                    await purchasePremium()
                 }
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 24, weight: .regular))
+                            .opacity(currentPlan == .premium ? 1 : 0)
+                            .frame(width: 84)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Premium - \(subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel ?? "")")
+                                .font(.body.weight(.semibold))
+
+                            Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
+                                .font(.callout.weight(.medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(cardBorder, lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
-            .padding(14)
-            .background(cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(cardBorder, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .buttonStyle(SubscriptionCardButtonStyle())
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let billingMessage {
+                Text(billingMessage)
+                    .font(.footnote)
+                    .foregroundStyle(isBillingError ? errorText : .secondary)
+            }
 
             HStack(spacing: 6) {
                 Text("Already got premium?")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Button("Restore purchases.") {
-                    showBillingPlaceholder()
+                    Task {
+                        await restorePurchases()
+                    }
                 }
                 .buttonStyle(.plain)
                 .font(.footnote.weight(.semibold))
@@ -268,6 +295,9 @@ struct SettingsView: View {
                     hasLoaded = true
                 }
             }
+            .onChange(of: subscriptionStore.isPremiumActive) { _, _ in
+                syncPlanDependentState()
+            }
             .photosPicker(
                 isPresented: $groupsViewModel.isPhotoPickerPresented,
                 selection: $selectedQRCodePhoto,
@@ -316,9 +346,14 @@ struct SettingsView: View {
             .onChange(of: message) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
+            .onChange(of: billingMessage) { _, newValue in
+                scheduleBillingMessageAutoClear(for: newValue)
+            }
             .onDisappear {
                 clearMessageTask?.cancel()
                 clearMessageTask = nil
+                clearBillingMessageTask?.cancel()
+                clearBillingMessageTask = nil
                 groupsViewModel.onDisappear()
             }
         }
@@ -391,9 +426,8 @@ struct SettingsView: View {
                 icon = user.icon
                 bgColour = user.bgColour
                 usageMB = user.usageMB
-                quotaMB = user.quotaMB
                 plan = user.plan
-                groupsViewModel.updateCurrentPlan(user.plan)
+                syncPlanDependentState()
             }
         } catch {
             message = error.localizedDescription
@@ -440,9 +474,53 @@ struct SettingsView: View {
         }
     }
 
-    private func showBillingPlaceholder() {
-        message = "In-app purchases will be added after App Store setup."
-        isError = false
+    private func scheduleBillingMessageAutoClear(for value: String?) {
+        clearBillingMessageTask?.cancel()
+        guard value != nil else { return }
+
+        let currentValue = value
+        clearBillingMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled, billingMessage == currentValue {
+                billingMessage = nil
+            }
+        }
+    }
+
+    @MainActor
+    private func purchasePremium() async {
+        do {
+            try await subscriptionStore.purchasePremium()
+            syncPlanDependentState()
+            billingMessage = "Premium unlocked"
+            isBillingError = false
+        } catch let error as SubscriptionStoreError {
+            if case .purchaseCancelled = error {
+                return
+            }
+            billingMessage = error.localizedDescription
+            isBillingError = true
+        } catch {
+            billingMessage = error.localizedDescription
+            isBillingError = true
+        }
+    }
+
+    @MainActor
+    private func restorePurchases() async {
+        do {
+            try await subscriptionStore.restorePurchases()
+            syncPlanDependentState()
+            billingMessage = currentPlan == .premium ? "Purchases restored" : "No active purchases found"
+            isBillingError = false
+        } catch {
+            billingMessage = error.localizedDescription
+            isBillingError = true
+        }
+    }
+
+    private func syncPlanDependentState() {
+        groupsViewModel.updateCurrentPlan(currentPlan.rawValue)
     }
 
     private func formatStorage(_ mb: Double) -> String {

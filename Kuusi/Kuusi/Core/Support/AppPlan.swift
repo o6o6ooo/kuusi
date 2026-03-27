@@ -44,6 +44,15 @@ enum AppPlan: String {
         }
     }
 
+    var productID: String? {
+        switch self {
+        case .free:
+            return nil
+        case .premium:
+            return "com.swallace.kuusi.premium.annual"
+        }
+    }
+
     var featureLines: [String] {
         switch self {
         case .free:
