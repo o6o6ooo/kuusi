@@ -205,15 +205,19 @@ struct SettingsView: View {
                     .presentationDetents([.height(280)])
                     .presentationDragIndicator(.visible)
             }
-            .alert("Delete group?", isPresented: $groupsViewModel.isDeleteConfirmPresented) {
-                Button("Delete", role: .destructive) {
+            .alert(groupsViewModel.destructiveActionTitle, isPresented: $groupsViewModel.isDeleteConfirmPresented) {
+                Button(groupsViewModel.destructiveActionButtonTitle, role: .destructive) {
                     Task {
-                        await groupsViewModel.deleteSelectedGroup()
+                        if groupsViewModel.currentUserIsSelectedGroupOwner {
+                            await groupsViewModel.deleteSelectedGroup()
+                        } else {
+                            await groupsViewModel.leaveSelectedGroup()
+                        }
                     }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will remove the group for all members.")
+                Text(groupsViewModel.destructiveActionMessage)
             }
             .onChange(of: selectedQRCodePhoto) { _, newValue in
                 guard let newValue else { return }

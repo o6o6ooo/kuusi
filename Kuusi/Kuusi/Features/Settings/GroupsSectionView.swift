@@ -215,11 +215,11 @@ struct GroupsSectionView: View {
                     Button {
                         viewModel.isDeleteConfirmPresented = true
                     } label: {
-                        Image(systemName: "trash.fill")
+                        Image(systemName: viewModel.currentUserIsSelectedGroupOwner ? "trash.fill" : "rectangle.portrait.and.arrow.right")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(width: 34, height: 34)
-                            .background(AppTheme.errorText.opacity(0.7))
+														.background(AppTheme.errorText.opacity(0.7))
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)

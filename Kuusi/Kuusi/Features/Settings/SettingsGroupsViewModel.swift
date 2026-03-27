@@ -31,6 +31,35 @@ final class SettingsGroupsViewModel: ObservableObject {
     private var clearSaveMessageTask: Task<Void, Never>?
     private var previewLoadedGroupIDs: Set<String> = []
 
+    var selectedGroup: GroupSummary? {
+        guard let selectedGroupID else { return nil }
+        return groups.first(where: { $0.id == selectedGroupID })
+    }
+
+    var currentUserIsSelectedGroupOwner: Bool {
+        guard
+            let uid = Auth.auth().currentUser?.uid,
+            let selectedGroup
+        else {
+            return false
+        }
+        return selectedGroup.ownerUID == uid
+    }
+
+    var destructiveActionTitle: String {
+        currentUserIsSelectedGroupOwner ? "Delete group?" : "Leave group?"
+    }
+
+    var destructiveActionMessage: String {
+        currentUserIsSelectedGroupOwner
+            ? "This will remove the group for all members."
+            : "You will be removed from this group."
+    }
+
+    var destructiveActionButtonTitle: String {
+        currentUserIsSelectedGroupOwner ? "Delete" : "Leave"
+    }
+
     var selectedGroupInvitePayload: String? {
         guard let selectedGroupID else { return nil }
         return "kuusi://invite/\(selectedGroupID)"
@@ -142,6 +171,7 @@ final class SettingsGroupsViewModel: ObservableObject {
                 groups[index] = GroupSummary(
                     id: groups[index].id,
                     name: trimmed,
+                    ownerUID: groups[index].ownerUID,
                     members: groups[index].members,
                     totalMemberCount: groups[index].totalMemberCount
                 )
@@ -168,6 +198,31 @@ final class SettingsGroupsViewModel: ObservableObject {
             cacheGroupsForCurrentUser()
             await loadSelectedGroupPreviewIfNeeded(force: false)
             setSaveStatus("Group deleted. Pull down to refresh.", isError: false)
+        } catch {
+            setSaveStatus(error.localizedDescription, isError: true)
+        }
+    }
+
+    func leaveSelectedGroup() async {
+        guard
+            let selectedGroupID,
+            let uid = Auth.auth().currentUser?.uid
+        else {
+            return
+        }
+
+        isDeletingGroup = true
+        defer { isDeletingGroup = false }
+
+        do {
+            try await groupService.leaveGroup(groupID: selectedGroupID, uid: uid)
+            groups.removeAll { $0.id == selectedGroupID }
+            previewLoadedGroupIDs.remove(selectedGroupID)
+            self.selectedGroupID = groups.first?.id
+            editableGroupName = groups.first?.name ?? ""
+            cacheGroupsForCurrentUser()
+            await loadSelectedGroupPreviewIfNeeded(force: false)
+            setSaveStatus("Left group. Pull down to refresh.", isError: false)
         } catch {
             setSaveStatus(error.localizedDescription, isError: true)
         }
@@ -296,6 +351,7 @@ final class SettingsGroupsViewModel: ObservableObject {
         groups[index] = GroupSummary(
             id: existing.id,
             name: existing.name,
+            ownerUID: existing.ownerUID,
             members: previews,
             totalMemberCount: existing.totalMemberCount
         )

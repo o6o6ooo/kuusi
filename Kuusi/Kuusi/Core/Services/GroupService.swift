@@ -23,6 +23,7 @@ struct GroupMemberPreview: Identifiable {
 struct GroupSummary: Identifiable {
     let id: String
     let name: String
+    let ownerUID: String
     let members: [GroupMemberPreview]
     let totalMemberCount: Int
 }
@@ -65,7 +66,7 @@ final class GroupService {
             })
         }
 
-        let created = GroupSummary(id: groupID, name: groupName, members: [], totalMemberCount: 1)
+        let created = GroupSummary(id: groupID, name: groupName, ownerUID: ownerUID, members: [], totalMemberCount: 1)
         appendCachedGroup(created, for: ownerUID)
         return created
     }
@@ -175,6 +176,38 @@ final class GroupService {
         }
     }
 
+    func leaveGroup(groupID: String, uid: String) async throws {
+        let groupRef = db.collection("groups").document(groupID)
+        let userRef = db.collection("users").document(uid)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer in
+                do {
+                    let groupSnapshot = try transaction.getDocument(groupRef)
+                    guard groupSnapshot.exists else {
+                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
+                        return nil
+                    }
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+
+                transaction.updateData(["members": FieldValue.arrayRemove([uid])], forDocument: groupRef)
+                transaction.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
+                return nil
+            }, completion: { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            })
+        }
+
+        removeCachedGroup(groupID: groupID, for: uid)
+    }
+
     func cachedGroups(for uid: String) -> [GroupSummary] {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
@@ -263,10 +296,12 @@ final class GroupService {
     private func makeGroupSummaryWithoutPreviews(from document: QueryDocumentSnapshot) -> GroupSummary {
         let data = document.data()
         let name = (data["name"] as? String) ?? "Untitled group"
+        let ownerUID = (data["owner_uid"] as? String) ?? ""
         let memberIDs = (data["members"] as? [String]) ?? []
         return GroupSummary(
             id: document.documentID,
             name: name,
+            ownerUID: ownerUID,
             members: [],
             totalMemberCount: memberIDs.count
         )
@@ -317,6 +352,7 @@ final class GroupService {
         CachedGroup(
             id: group.id,
             name: group.name,
+            ownerUID: group.ownerUID,
             members: group.members.map {
                 CachedMember(
                     id: $0.id,
@@ -334,6 +370,7 @@ final class GroupService {
 private struct CachedGroup: Codable {
     let id: String
     let name: String
+    let ownerUID: String?
     let members: [CachedMember]
     let totalMemberCount: Int
 
@@ -341,6 +378,7 @@ private struct CachedGroup: Codable {
         GroupSummary(
             id: id,
             name: name,
+            ownerUID: ownerUID ?? "",
             members: members.map { $0.toPreview() },
             totalMemberCount: totalMemberCount
         )
