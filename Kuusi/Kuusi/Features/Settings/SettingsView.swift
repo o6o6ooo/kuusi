@@ -83,13 +83,15 @@ struct SettingsView: View {
                 }
                 .frame(height: 22)
 
-                HStack(spacing: 6) {
-                    Text("Need more storage?")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Upgrade to premium.")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
+                if currentPlan == .free {
+                    HStack(spacing: 6) {
+                        Text("Need more storage?")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text("Upgrade to premium.")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
                 }
             }
             .padding(14)
@@ -179,18 +181,20 @@ struct SettingsView: View {
                     .foregroundStyle(isBillingError ? errorText : .secondary)
             }
 
-            HStack(spacing: 6) {
-                Text("Already got premium?")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Button("Restore purchases.") {
-                    Task {
-                        await restorePurchases()
+            if currentPlan == .free {
+                HStack(spacing: 6) {
+                    Text("Already got premium?")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Button("Restore purchases.") {
+                        Task {
+                            await restorePurchases()
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
             }
         }
     }
