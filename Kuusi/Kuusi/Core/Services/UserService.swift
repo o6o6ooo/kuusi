@@ -4,7 +4,6 @@ import Foundation
 
 final class UserService {
     private let db = Firestore.firestore()
-    private let defaultPlan = AppPlan.free
 
     func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
         let ref = db.collection("users").document(user.uid)
@@ -29,8 +28,6 @@ final class UserService {
             "email": email,
             "icon": "🌸",
             "bgColour": "#A5C3DE",
-            "plan": defaultPlan.rawValue,
-            "quota_mb": defaultPlan.quotaMB,
             "usage_mb": 0.0,
             "groups": [],
             "favourites": [],

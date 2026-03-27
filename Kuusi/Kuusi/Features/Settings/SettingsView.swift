@@ -27,7 +27,6 @@ struct SettingsView: View {
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var clearBillingMessageTask: Task<Void, Never>?
     @State private var usageMB: Double = 0
-    @State private var plan = AppPlan.free.rawValue
     @State private var isEditingName = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var billingMessage: String?
@@ -47,8 +46,7 @@ struct SettingsView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var errorText: Color { AppTheme.errorText }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
-    private var storedPlan: AppPlan { AppPlan(rawPlan: plan) }
-    private var currentPlan: AppPlan { subscriptionStore.currentPlan(fallback: storedPlan) }
+    private var currentPlan: AppPlan { subscriptionStore.isPremiumActive ? .premium : .free }
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
 
     private var usageRatio: Double {
@@ -290,8 +288,10 @@ struct SettingsView: View {
             }
             .task {
                 if !hasLoaded {
+                    await subscriptionStore.prepare()
                     await loadProfile()
                     await groupsViewModel.loadGroups()
+                    syncPlanDependentState()
                     hasLoaded = true
                 }
             }
@@ -426,7 +426,6 @@ struct SettingsView: View {
                 icon = user.icon
                 bgColour = user.bgColour
                 usageMB = user.usageMB
-                plan = user.plan
                 syncPlanDependentState()
             }
         } catch {
@@ -520,7 +519,7 @@ struct SettingsView: View {
     }
 
     private func syncPlanDependentState() {
-        groupsViewModel.updateCurrentPlan(currentPlan.rawValue)
+        groupsViewModel.updateCurrentPlan(currentPlan)
     }
 
     private func formatStorage(_ mb: Double) -> String {

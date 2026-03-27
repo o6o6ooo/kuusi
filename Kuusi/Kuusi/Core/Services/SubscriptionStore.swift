@@ -108,13 +108,9 @@ final class SubscriptionStore: ObservableObject {
         await refreshEntitlements()
     }
 
-    func currentPlan(fallback: AppPlan) -> AppPlan {
-        isPremiumActive ? .premium : fallback
+    var premiumPriceLabel: String? {
+        premiumProduct.map { "\($0.displayPrice) / year" } ?? AppPlan.premium.priceLabel
     }
-
-	var premiumPriceLabel: String? {
-			premiumProduct.map { "\($0.displayPrice) / year" } ?? AppPlan.premium.priceLabel
-	}
 
     private func refreshEntitlements() async {
         var premiumActive = false

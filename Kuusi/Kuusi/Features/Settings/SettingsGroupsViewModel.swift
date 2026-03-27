@@ -45,8 +45,8 @@ final class SettingsGroupsViewModel: ObservableObject {
         clearSaveMessageTask = nil
     }
 
-    func updateCurrentPlan(_ plan: String) {
-        currentPlan = AppPlan(rawPlan: plan)
+    func updateCurrentPlan(_ plan: AppPlan) {
+        currentPlan = plan
     }
 
     func presentMemberList() async {

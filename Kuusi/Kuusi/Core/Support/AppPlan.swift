@@ -4,10 +4,6 @@ enum AppPlan: String {
     case free
     case premium
 
-    init(rawPlan: String?) {
-        self = AppPlan(rawValue: rawPlan ?? "") ?? .free
-    }
-
     var quotaMB: Double {
         switch self {
         case .free:
