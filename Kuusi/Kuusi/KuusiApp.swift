@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct KuusiApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
     @StateObject private var subscriptionStore = SubscriptionStore()
@@ -19,6 +20,9 @@ struct KuusiApp: App {
                 .controlSize(.small)
                 .environmentObject(appState)
                 .environmentObject(subscriptionStore)
+                .onChange(of: scenePhase) { _, newPhase in
+                    appState.handleScenePhaseChange(newPhase)
+                }
         }
     }
 }

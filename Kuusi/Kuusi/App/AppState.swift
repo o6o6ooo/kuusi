@@ -2,6 +2,7 @@ import AuthenticationServices
 import Combine
 import FirebaseAuth
 import Foundation
+import SwiftUI
 
 enum DebugCredentialsError: LocalizedError {
     case missingEnvironmentVariables
@@ -52,6 +53,7 @@ final class AppState: ObservableObject {
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
+    private var shouldUnlockAfterInteractiveSignIn = false
 
     init() {
 #if DEBUG
@@ -78,6 +80,7 @@ final class AppState: ObservableObject {
         }
 
         do {
+            shouldUnlockAfterInteractiveSignIn = true
             let payload = AppleSignInPayload(
                 idToken: tokenString,
                 rawNonce: rawNonce,
@@ -87,8 +90,9 @@ final class AppState: ObservableObject {
 
             errorMessage = nil
             currentUser = user
-            route = .locked
+            route = .signedIn
         } catch {
+            shouldUnlockAfterInteractiveSignIn = false
             errorMessage = error.localizedDescription
         }
     }
@@ -128,12 +132,14 @@ final class AppState: ObservableObject {
         do {
             let selected = selectedAccountID ?? selectedDebugAccountID
             let account = try resolveDebugAccount(id: selected)
+            shouldUnlockAfterInteractiveSignIn = true
             let user = try await signInOrCreateDebugUser(account: account)
 
             currentUser = user
             errorMessage = nil
-            route = .locked
+            route = .signedIn
         } catch {
+            shouldUnlockAfterInteractiveSignIn = false
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
                 errorMessage = "Enable Email/Password provider in Firebase Authentication for debug login."
@@ -146,6 +152,13 @@ final class AppState: ObservableObject {
         }
     }
 #endif
+
+    func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        guard newPhase == .background else { return }
+        guard currentUser != nil, route == .signedIn else { return }
+        route = .locked
+        errorMessage = nil
+    }
 
     private func observeAuthState() {
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
@@ -170,7 +183,12 @@ final class AppState: ObservableObject {
                 await self.ensureUserDocumentIfNeeded(for: user)
                 await self.prefetchGroupsIfNeeded(for: user.uid)
                 self.currentUser = user
-                self.route = .locked
+                if self.shouldUnlockAfterInteractiveSignIn {
+                    self.route = .signedIn
+                    self.shouldUnlockAfterInteractiveSignIn = false
+                } else {
+                    self.route = .locked
+                }
             }
         }
     }
