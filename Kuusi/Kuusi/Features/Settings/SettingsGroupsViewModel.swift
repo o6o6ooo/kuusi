@@ -265,19 +265,6 @@ final class SettingsGroupsViewModel: ObservableObject {
         }
     }
 
-    func loadCachedGroupsOnly() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        let cached = groupService.cachedGroups(for: uid)
-        groups = cached
-        if selectedGroupID == nil || !cached.contains(where: { $0.id == selectedGroupID }) {
-            selectedGroupID = cached.first?.id
-        }
-        if let selectedGroupID,
-           let selected = cached.first(where: { $0.id == selectedGroupID }) {
-            editableGroupName = selected.name
-        }
-    }
-
     private func extractGroupID(from payload: String) -> String? {
         let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
