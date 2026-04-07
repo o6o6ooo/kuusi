@@ -1,27 +1,16 @@
-import FirebaseAuth
 import SwiftUI
-import UIKit
 
 @MainActor
 struct YearsView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var groups: [GroupSummary] = []
-    @State private var selectedGroupID: String?
+    @StateObject private var photoCollection = PhotoCollectionViewModel()
     @State private var selectedYear: Int?
-    @State private var photosByGroupID: [String: [FeedPhoto]] = [:]
     @State private var selectedPhoto: FeedPhoto?
-    @State private var measuredAspectRatios: [String: CGFloat] = [:]
-    @State private var measuringAspectRatioIDs: Set<String> = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
 
-    private let feedService = FeedService()
-    private let groupService = GroupService()
     private var accentColor: Color { AppTheme.accent(for: colorScheme) }
 
     private var currentGroupPhotos: [FeedPhoto] {
-        guard let selectedGroupID else { return [] }
-        return photosByGroupID[selectedGroupID] ?? []
+        photoCollection.currentGroupPhotos
     }
 
     private var availableYears: [Int] {
@@ -37,7 +26,7 @@ struct YearsView: View {
         NavigationStack {
             GeometryReader { proxy in
                 VStack(spacing: 8) {
-                    if groups.isEmpty {
+                    if photoCollection.groups.isEmpty {
                         ContentUnavailableView("No groups yet", systemImage: "person.3")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -55,9 +44,13 @@ struct YearsView: View {
             .screenTheme()
             .toolbar(.hidden, for: .navigationBar)
             .task {
-                if groups.isEmpty {
-                    await loadInitialYears()
+                if photoCollection.groups.isEmpty {
+                    await photoCollection.loadInitial(limit: 8)
+                    applySelectedYear(from: currentGroupPhotos)
                 }
+            }
+            .onChange(of: photoCollection.currentGroupPhotoSignature) { _, _ in
+                applySelectedYear(from: currentGroupPhotos)
             }
             .sheet(item: $selectedPhoto) { photo in
                 PhotoPreviewOverlayView(photo: photo)
@@ -69,10 +62,10 @@ struct YearsView: View {
 
     @ViewBuilder
     private func content(for availableWidth: CGFloat) -> some View {
-        if isLoading {
+        if photoCollection.isLoading {
             ProgressView("Loading years...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        } else if let errorMessage {
+        } else if let errorMessage = photoCollection.errorMessage {
             ContentUnavailableView("Failed to load years", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if currentGroupPhotos.isEmpty {
@@ -85,9 +78,9 @@ struct YearsView: View {
             PhotoGridView(
                 photos: displayedPhotos,
                 availableWidth: availableWidth,
-                measuredAspectRatios: measuredAspectRatios,
+                measuredAspectRatios: photoCollection.measuredAspectRatios,
                 onTap: { selectedPhoto = $0 },
-                onRequireAspectRatio: requestAspectRatioIfNeeded
+                onRequireAspectRatio: photoCollection.requestAspectRatioIfNeeded
             ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
                 YearsPhotoTile(
                     photo: photo,
@@ -106,10 +99,10 @@ struct YearsView: View {
     private var yearGroupTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 10) {
-                ForEach(groups) { group in
-                    let isSelected = selectedGroupID == group.id
+                ForEach(photoCollection.groups) { group in
+                    let isSelected = photoCollection.selectedGroupID == group.id
                     Button(group.name) {
-                        selectGroup(group.id)
+                        photoCollection.selectGroup(group.id, limit: 8)
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(isSelected ? Color.white : accentColor)
@@ -170,84 +163,9 @@ struct YearsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func loadInitialYears() async {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            groups = []
-            selectedGroupID = nil
-            selectedYear = nil
-            photosByGroupID = [:]
-            errorMessage = nil
-            return
-        }
-
-        var cachedGroups = groupService.cachedGroups(for: uid)
-        if cachedGroups.isEmpty {
-            do {
-                cachedGroups = try await groupService.fetchGroups(for: uid)
-            } catch {
-                groups = []
-                selectedGroupID = nil
-                selectedYear = nil
-                photosByGroupID = [:]
-                errorMessage = error.localizedDescription
-                return
-            }
-        }
-
-        groups = cachedGroups
-        selectedGroupID = cachedGroups.first?.id
-        errorMessage = nil
-        await fetchPhotosForSelectedGroup(forceReload: false)
-    }
-
     private func refreshCurrentGroup() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        do {
-            let freshGroups = try await groupService.fetchGroups(for: uid)
-            groups = freshGroups
-            if let selectedGroupID, freshGroups.contains(where: { $0.id == selectedGroupID }) {
-                self.selectedGroupID = selectedGroupID
-            } else {
-                selectedGroupID = freshGroups.first?.id
-            }
-            await fetchPhotosForSelectedGroup(forceReload: true)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func fetchPhotosForSelectedGroup(forceReload: Bool) async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            guard let uid = Auth.auth().currentUser?.uid else {
-                errorMessage = nil
-                return
-            }
-            guard let selectedGroupID else {
-                selectedYear = nil
-                errorMessage = nil
-                return
-            }
-
-            if !forceReload, let cachedPhotos = photosByGroupID[selectedGroupID] {
-                applySelectedYear(from: cachedPhotos)
-                errorMessage = nil
-                return
-            }
-
-            let loadedPhotos = try await feedService.fetchRecentPhotos(
-                userID: uid,
-                groupIDs: [selectedGroupID],
-                limit: 8
-            )
-            photosByGroupID[selectedGroupID] = loadedPhotos
-            applySelectedYear(from: loadedPhotos)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        await photoCollection.refresh(limit: 8)
+        applySelectedYear(from: currentGroupPhotos)
     }
 
     private func applySelectedYear(from photos: [FeedPhoto]) {
@@ -259,40 +177,6 @@ struct YearsView: View {
         }
     }
 
-    private func selectGroup(_ groupID: String) {
-        selectedGroupID = groupID
-        errorMessage = nil
-        Task {
-            await fetchPhotosForSelectedGroup(forceReload: false)
-        }
-    }
-
-    private func requestAspectRatioIfNeeded(for photo: FeedPhoto) {
-        // TODO: Remove this fallback after all legacy photos have aspect_ratio.
-        if photo.aspectRatio != nil { return }
-        if measuredAspectRatios[photo.id] != nil { return }
-        if measuringAspectRatioIDs.contains(photo.id) { return }
-        guard let urlString = photo.thumbnailURL ?? photo.photoURL else { return }
-
-        measuringAspectRatioIDs.insert(photo.id)
-        Task {
-            let ratio = await measureAspectRatio(from: urlString)
-            measuringAspectRatioIDs.remove(photo.id)
-            guard let ratio else { return }
-            measuredAspectRatios[photo.id] = ratio
-        }
-    }
-
-    nonisolated private func measureAspectRatio(from urlString: String) async -> CGFloat? {
-        guard let url = URL(string: urlString) else { return nil }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let image = UIImage(data: data), image.size.height > 0 else { return nil }
-            return CGFloat(image.size.width / image.size.height)
-        } catch {
-            return nil
-        }
-    }
 }
 
 private struct YearsPhotoTile: View {

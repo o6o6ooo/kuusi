@@ -11,18 +11,11 @@ private struct FeedEditError: LocalizedError {
 @MainActor
 struct FeedView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var photos: [FeedPhoto] = []
-    @State private var groups: [GroupSummary] = []
-    @State private var selectedGroupID: String?
+    @StateObject private var photoCollection = PhotoCollectionViewModel()
     @State private var selectedHashtag: String?
-    @State private var photosByGroupID: [String: [FeedPhoto]] = [:]
-    @State private var isLoading = false
-    @State private var errorMessage: String?
     @State private var isUploadOverlayPresented = false
     @State private var selectedPhoto: FeedPhoto?
     @State private var feedMessage: String?
-    @State private var measuredAspectRatios: [String: CGFloat] = [:]
-    @State private var measuringAspectRatioIDs: Set<String> = []
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
     @State private var editingPhotoIDs: Set<String> = []
@@ -30,11 +23,9 @@ struct FeedView: View {
     @State private var editingPhoto: FeedPhoto?
 
     private let feedService = FeedService()
-    private let groupService = GroupService()
     private var accentColor: Color { AppTheme.accent(for: colorScheme) }
     private var currentGroupPhotos: [FeedPhoto] {
-        guard let selectedGroupID else { return photos }
-        return photosByGroupID[selectedGroupID] ?? photos
+        photoCollection.currentGroupPhotos
     }
     private var availableHashtags: [String] {
         var seen = Set<String>()
@@ -51,8 +42,8 @@ struct FeedView: View {
         return ordered
     }
     private var displayedPhotos: [FeedPhoto] {
-        guard let selectedHashtag else { return photos }
-        return photos.filter { photo in
+        guard let selectedHashtag else { return currentGroupPhotos }
+        return currentGroupPhotos.filter { photo in
             photo.hashtags.contains { $0.caseInsensitiveCompare(selectedHashtag) == .orderedSame }
         }
     }
@@ -61,7 +52,7 @@ struct FeedView: View {
         NavigationStack {
             GeometryReader { proxy in
                 VStack(spacing: 8) {
-                    if groups.isEmpty {
+                    if photoCollection.groups.isEmpty {
                         ContentUnavailableView("No groups yet", systemImage: "person.3")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -70,10 +61,10 @@ struct FeedView: View {
                             feedHashtagTabs
                         }
 
-                        if isLoading {
+                        if photoCollection.isLoading {
                             ProgressView("Loading feed...")
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                        } else if let errorMessage {
+                        } else if let errorMessage = photoCollection.errorMessage {
                             ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else if currentGroupPhotos.isEmpty {
@@ -86,9 +77,9 @@ struct FeedView: View {
                             PhotoGridView(
                                 photos: displayedPhotos,
                                 availableWidth: proxy.size.width,
-                                measuredAspectRatios: measuredAspectRatios,
+                                measuredAspectRatios: photoCollection.measuredAspectRatios,
                                 onTap: { selectedPhoto = $0 },
-                                onRequireAspectRatio: requestAspectRatioIfNeeded
+                                onRequireAspectRatio: photoCollection.requestAspectRatioIfNeeded
                             ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
                                 PhotoTile(
                                     photo: photo,
@@ -141,8 +132,8 @@ struct FeedView: View {
                 .padding(.leading, 14)
             }
             .task {
-                if groups.isEmpty {
-                    await loadInitialFeed()
+                if photoCollection.groups.isEmpty {
+                    await photoCollection.loadInitial(limit: 6)
                 }
             }
             .sheet(isPresented: $isUploadOverlayPresented) {
@@ -189,10 +180,11 @@ struct FeedView: View {
     private var feedGroupTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 10) {
-                ForEach(groups) { group in
-                    let isSelected = selectedGroupID == group.id
+                ForEach(photoCollection.groups) { group in
+                    let isSelected = photoCollection.selectedGroupID == group.id
                     Button(group.name) {
-                        selectGroup(group.id)
+                        selectedHashtag = nil
+                        photoCollection.selectGroup(group.id, limit: 6)
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(isSelected ? Color.white : accentColor)
@@ -272,128 +264,9 @@ struct FeedView: View {
     }
 
     @MainActor
-    private func loadInitialFeed() async {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            groups = []
-            photos = []
-            selectedGroupID = nil
-            photosByGroupID = [:]
-            errorMessage = nil
-            return
-        }
-
-        var cachedGroups = groupService.cachedGroups(for: uid)
-        if cachedGroups.isEmpty {
-            do {
-                cachedGroups = try await groupService.fetchGroups(for: uid)
-            } catch {
-                groups = []
-                photos = []
-                selectedGroupID = nil
-                photosByGroupID = [:]
-                errorMessage = error.localizedDescription
-                return
-            }
-        }
-
-        groups = cachedGroups
-        selectedGroupID = cachedGroups.first?.id
-        selectedHashtag = nil
-        photos = []
-        errorMessage = nil
-        await fetchPhotosForSelectedGroup(forceReload: false)
-    }
-
-    @MainActor
     private func refreshCurrentGroup() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        do {
-            let freshGroups = try await groupService.fetchGroups(for: uid)
-            groups = freshGroups
-            if let selectedGroupID, freshGroups.contains(where: { $0.id == selectedGroupID }) {
-                self.selectedGroupID = selectedGroupID
-            } else {
-                selectedGroupID = freshGroups.first?.id
-                photos = []
-            }
-            selectedHashtag = nil
-            await fetchPhotosForSelectedGroup(forceReload: true)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func fetchPhotosForSelectedGroup(forceReload: Bool) async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            guard let uid = Auth.auth().currentUser?.uid else {
-                photos = []
-                errorMessage = nil
-                return
-            }
-            guard let selectedGroupID else {
-                photos = []
-                errorMessage = nil
-                return
-            }
-
-            if !forceReload, let cachedPhotos = photosByGroupID[selectedGroupID] {
-                photos = cachedPhotos
-                errorMessage = nil
-                return
-            }
-
-            let loadedPhotos = try await feedService.fetchRecentPhotos(
-                userID: uid,
-                groupIDs: [selectedGroupID],
-                limit: 6
-            )
-            photosByGroupID[selectedGroupID] = loadedPhotos
-            photos = loadedPhotos
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func selectGroup(_ groupID: String) {
-        selectedGroupID = groupID
         selectedHashtag = nil
-        photos = photosByGroupID[groupID] ?? []
-        errorMessage = nil
-        Task {
-            await fetchPhotosForSelectedGroup(forceReload: false)
-        }
-    }
-
-    private func requestAspectRatioIfNeeded(for photo: FeedPhoto) {
-        // TODO: Remove this fallback after all legacy photos have aspect_ratio.
-        if photo.aspectRatio != nil { return }
-        if measuredAspectRatios[photo.id] != nil { return }
-        if measuringAspectRatioIDs.contains(photo.id) { return }
-        guard let urlString = photo.thumbnailURL ?? photo.photoURL else { return }
-
-        measuringAspectRatioIDs.insert(photo.id)
-        Task {
-            let ratio = await measureAspectRatio(from: urlString)
-            measuringAspectRatioIDs.remove(photo.id)
-            guard let ratio else { return }
-            measuredAspectRatios[photo.id] = ratio
-        }
-    }
-
-    nonisolated private func measureAspectRatio(from urlString: String) async -> CGFloat? {
-        guard let url = URL(string: urlString) else { return nil }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let image = UIImage(data: data), image.size.height > 0 else { return nil }
-            return CGFloat(image.size.width / image.size.height)
-        } catch {
-            return nil
-        }
+        await photoCollection.refresh(limit: 6)
     }
 
     private func deletePhoto(_ photo: FeedPhoto) async {
@@ -408,11 +281,8 @@ struct FeedView: View {
 
         do {
             try await feedService.deletePhoto(photo, requesterUID: uid)
-            photos.removeAll { $0.id == photo.id }
-            if let selectedGroupID {
-                photosByGroupID[selectedGroupID] = photos
-            }
-            measuredAspectRatios[photo.id] = nil
+            photoCollection.removePhoto(id: photo.id)
+            photoCollection.clearMeasuredAspectRatio(for: photo.id)
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = nil
             }
@@ -434,12 +304,7 @@ struct FeedView: View {
                 return
             }
             try await feedService.setFavourite(photoID: photo.id, userID: uid, isFavourite: newValue)
-            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                photos[index] = photos[index].withFavourite(newValue)
-                if let selectedGroupID {
-                    photosByGroupID[selectedGroupID] = photos
-                }
-            }
+            photoCollection.replacePhoto(photo.withFavourite(newValue))
             feedMessage = newValue ? "Added to favourites." : "Removed from favourites."
         } catch {
             feedMessage = error.localizedDescription
@@ -458,15 +323,7 @@ struct FeedView: View {
         do {
             try await feedService.updatePhotoMetadata(photo, requesterUID: uid, year: year, hashtags: hashtags)
             let updated = photo.withMetadata(year: year, hashtags: hashtags)
-
-            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                photos[index] = updated
-            }
-            if let selectedGroupID, var cached = photosByGroupID[selectedGroupID],
-               let index = cached.firstIndex(where: { $0.id == photo.id }) {
-                cached[index] = updated
-                photosByGroupID[selectedGroupID] = cached
-            }
+            photoCollection.replacePhoto(updated)
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = updated
             }
