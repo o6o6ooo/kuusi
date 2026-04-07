@@ -83,53 +83,31 @@ struct FeedView: View {
                             ContentUnavailableView("No photos for this hashtag", systemImage: "number")
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
-                            let spacing: CGFloat = 8
-                            let horizontalPadding: CGFloat = 12
-                            let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
-                            let totalSpacing = spacing * CGFloat(columnCount - 1)
-                            let contentWidth = proxy.size.width - (horizontalPadding * 2)
-                            let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
-                            let columns = makeWaterfallColumns(
+                            PhotoGridView(
                                 photos: displayedPhotos,
-                                columnCount: columnCount,
-                                columnWidth: columnWidth,
-                                spacing: spacing
-                            )
-
-                            ScrollView {
-                                HStack(alignment: .top, spacing: spacing) {
-                                    ForEach(0..<columnCount, id: \.self) { columnIndex in
-                                        LazyVStack(spacing: spacing) {
-                                            ForEach(columns[columnIndex]) { photo in
-                                                PhotoTile(
-                                                    photo: photo,
-                                                    width: columnWidth,
-                                                    displayAspectRatio: CGFloat(
-                                                        photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
-                                                    ),
-                                                    onTap: { selectedPhoto = photo },
-                                                    onEdit: { editingPhoto = photo },
-                                                    onDelete: {
-                                                        pendingDeletePhoto = photo
-                                                    },
-                                                    onToggleFavourite: {
-                                                        Task { await toggleFavourite(photo) }
-                                                    },
-                                                    onRequireAspectRatio: {
-                                                        requestAspectRatioIfNeeded(for: photo)
-                                                    },
-                                                    isDeleting: deletingPhotoIDs.contains(photo.id),
-                                                    isFavouriting: favouritingPhotoIDs.contains(photo.id),
-                                                    isEditing: editingPhotoIDs.contains(photo.id)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal, horizontalPadding)
-                                .padding(.top, 2)
-                                .padding(.bottom, 8)
-
+                                availableWidth: proxy.size.width,
+                                measuredAspectRatios: measuredAspectRatios,
+                                onTap: { selectedPhoto = $0 },
+                                onRequireAspectRatio: requestAspectRatioIfNeeded
+                            ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
+                                PhotoTile(
+                                    photo: photo,
+                                    width: columnWidth,
+                                    displayAspectRatio: displayAspectRatio,
+                                    onTap: onTap,
+                                    onEdit: { editingPhoto = photo },
+                                    onDelete: {
+                                        pendingDeletePhoto = photo
+                                    },
+                                    onToggleFavourite: {
+                                        Task { await toggleFavourite(photo) }
+                                    },
+                                    onRequireAspectRatio: onRequireAspectRatio,
+                                    isDeleting: deletingPhotoIDs.contains(photo.id),
+                                    isFavouriting: favouritingPhotoIDs.contains(photo.id),
+                                    isEditing: editingPhotoIDs.contains(photo.id)
+                                )
+                            } footer: {
                                 if let feedMessage {
                                     Text(feedMessage)
                                         .font(.footnote)
@@ -389,29 +367,6 @@ struct FeedView: View {
         Task {
             await fetchPhotosForSelectedGroup(forceReload: false)
         }
-    }
-
-    private func makeWaterfallColumns(
-        photos: [FeedPhoto],
-        columnCount: Int,
-        columnWidth: CGFloat,
-        spacing: CGFloat
-    ) -> [[FeedPhoto]] {
-        guard columnCount > 0 else { return [] }
-        var columns = Array(repeating: [FeedPhoto](), count: columnCount)
-        var heights = Array(repeating: CGFloat.zero, count: columnCount)
-
-        for photo in photos {
-            let ratio = max(
-                CGFloat(photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)),
-                0.35
-            )
-            let tileHeight = columnWidth / ratio
-            let shortest = heights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-            columns[shortest].append(photo)
-            heights[shortest] += tileHeight + spacing
-        }
-        return columns
     }
 
     private func requestAspectRatioIfNeeded(for photo: FeedPhoto) {
