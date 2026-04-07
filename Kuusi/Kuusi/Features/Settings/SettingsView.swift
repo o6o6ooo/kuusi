@@ -189,7 +189,7 @@ struct SettingsView: View {
 
         let currentValue = value
         clearBillingMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
             if !Task.isCancelled, billingMessage == currentValue {
                 billingMessage = nil
             }

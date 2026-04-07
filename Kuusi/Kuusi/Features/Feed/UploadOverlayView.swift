@@ -16,6 +16,7 @@ struct UploadOverlayView: View {
     @State private var isUploading = false
     @State private var message: String?
     @State private var isError = false
+    @State private var clearMessageTask: Task<Void, Never>?
 
     private let uploadService = UploadService()
     private let groupService = GroupService()
@@ -104,7 +105,7 @@ struct UploadOverlayView: View {
                     if let message {
                         Text(message)
                             .font(.footnote)
-                            .foregroundStyle(isError ? AppTheme.errorText : primaryText.opacity(0.8))
+                            .foregroundStyle(isError ? AppTheme.errorText : .secondary)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -115,6 +116,13 @@ struct UploadOverlayView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }
+            }
+            .onChange(of: message) { _, newValue in
+                scheduleMessageAutoClear(for: newValue)
+            }
+            .onDisappear {
+                clearMessageTask?.cancel()
+                clearMessageTask = nil
             }
             .task {
                 loadCachedGroupsOnly()
@@ -308,6 +316,19 @@ struct UploadOverlayView: View {
         } catch {
             message = error.localizedDescription
             isError = true
+        }
+    }
+
+    private func scheduleMessageAutoClear(for value: String?) {
+        clearMessageTask?.cancel()
+        guard value != nil, !isError else { return }
+
+        let currentValue = value
+        clearMessageTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled, message == currentValue, !isError {
+                message = nil
+            }
         }
     }
 }
