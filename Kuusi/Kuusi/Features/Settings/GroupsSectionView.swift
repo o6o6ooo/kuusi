@@ -11,11 +11,11 @@ struct GroupsSectionView: View {
     private var memberBorderColor: Color { AppTheme.cardBorder(for: colorScheme) }
 
     private var createStatusTextColor: Color {
-        viewModel.isCreateError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+        viewModel.isCreateError ? AppTheme.errorText : .secondary
     }
 
     private var saveStatusTextColor: Color {
-        viewModel.isSaveError ? AppTheme.errorText : AppTheme.primaryText(for: colorScheme).opacity(0.7)
+        viewModel.isSaveError ? AppTheme.errorText : .secondary
     }
 
     private var canCreate: Bool {
@@ -59,6 +59,13 @@ struct GroupsSectionView: View {
                 .padding(.top, 8)
 
             yourGroupsCard
+
+            if let saveStatusMessage = viewModel.saveStatusMessage {
+                Text(saveStatusMessage)
+                    .font(.footnote)
+                    .foregroundStyle(saveStatusTextColor)
+            }
+
             groupActionLinks
         }
     }
@@ -205,12 +212,6 @@ struct GroupsSectionView: View {
                     }
 
                     Spacer()
-
-                    if let saveStatusMessage = viewModel.saveStatusMessage {
-                        Text(saveStatusMessage)
-                            .font(.footnote)
-                            .foregroundStyle(saveStatusTextColor)
-                    }
 
                     Button {
                         viewModel.isDeleteConfirmPresented = true
