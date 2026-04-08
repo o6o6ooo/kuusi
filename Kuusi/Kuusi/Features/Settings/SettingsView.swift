@@ -13,8 +13,7 @@ struct SettingsView: View {
     @State private var clearBillingMessageTask: Task<Void, Never>?
     @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var selectedQRCodePhoto: PhotosPickerItem?
-    @State private var billingMessage: String?
-    @State private var isBillingError = false
+    @State private var billingMessage: InlineMessage?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -51,7 +50,6 @@ struct SettingsView: View {
                         SubscriptionView(
                             currentPlan: currentPlan,
                             billingMessage: billingMessage,
-                            isBillingError: isBillingError,
                             usageRatio: usageRatio,
                             usageText: usageText,
                             renewalText: premiumRenewalText,
@@ -183,17 +181,13 @@ struct SettingsView: View {
         }
     }
 
-    private func scheduleBillingMessageAutoClear(for value: String?) {
+    private func scheduleBillingMessageAutoClear(for value: InlineMessage?) {
         clearBillingMessageTask?.cancel()
-        guard value != nil else { return }
-
-        let currentValue = value
-        clearBillingMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, billingMessage == currentValue {
-                billingMessage = nil
-            }
-        }
+        clearBillingMessageTask = InlineMessageAutoClear.schedule(
+            for: value,
+            currentMessage: { billingMessage },
+            clear: { billingMessage = nil }
+        )
     }
 
     @MainActor
@@ -201,17 +195,14 @@ struct SettingsView: View {
         do {
             try await subscriptionStore.purchasePremium()
             syncPlanDependentState()
-            billingMessage = "Premium unlocked"
-            isBillingError = false
+            billingMessage = .success("Premium unlocked")
         } catch let error as SubscriptionStoreError {
             if case .purchaseCancelled = error {
                 return
             }
-            billingMessage = error.localizedDescription
-            isBillingError = true
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
         } catch {
-            billingMessage = error.localizedDescription
-            isBillingError = true
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
         }
     }
 
@@ -220,11 +211,9 @@ struct SettingsView: View {
         do {
             try await subscriptionStore.restorePurchases()
             syncPlanDependentState()
-            billingMessage = currentPlan == .premium ? "Purchases restored" : "No active purchases found"
-            isBillingError = false
+            billingMessage = .success(currentPlan == .premium ? "Purchases restored" : "No active purchases found")
         } catch {
-            billingMessage = error.localizedDescription
-            isBillingError = true
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
         }
     }
 
@@ -235,8 +224,7 @@ struct SettingsView: View {
             syncPlanDependentState()
             scheduleSubscriptionRefresh()
         } catch {
-            billingMessage = error.localizedDescription
-            isBillingError = true
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
         }
     }
 

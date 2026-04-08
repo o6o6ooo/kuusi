@@ -10,14 +10,6 @@ struct GroupsSectionView: View {
     }
     private var memberBorderColor: Color { AppTheme.cardBorder(for: colorScheme) }
 
-    private var createStatusTextColor: Color {
-        viewModel.isCreateError ? AppTheme.errorText : .secondary
-    }
-
-    private var saveStatusTextColor: Color {
-        viewModel.isSaveError ? AppTheme.errorText : .secondary
-    }
-
     private var canCreate: Bool {
         !viewModel.isCreating && !viewModel.createGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -49,9 +41,7 @@ struct GroupsSectionView: View {
             createGroupCard
 
             if let createStatusMessage = viewModel.createStatusMessage {
-                Text(createStatusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(createStatusTextColor)
+                InlineMessageView(message: createStatusMessage)
             }
 
             Text("Your groups")
@@ -61,9 +51,7 @@ struct GroupsSectionView: View {
             yourGroupsCard
 
             if let saveStatusMessage = viewModel.saveStatusMessage {
-                Text(saveStatusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(saveStatusTextColor)
+                InlineMessageView(message: saveStatusMessage)
             }
 
             groupActionLinks

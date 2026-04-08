@@ -14,8 +14,7 @@ struct UploadOverlayView: View {
     @State private var hashtagInput = ""
     @State private var hashtags: [String] = []
     @State private var isUploading = false
-    @State private var message: String?
-    @State private var isError = false
+    @State private var inlineMessage: InlineMessage?
     @State private var clearMessageTask: Task<Void, Never>?
 
     private let uploadService = UploadService()
@@ -102,10 +101,8 @@ struct UploadOverlayView: View {
                         .disabled(!canUpload)
                     }
 
-                    if let message {
-                        Text(message)
-                            .font(.footnote)
-                            .foregroundStyle(isError ? AppTheme.errorText : .secondary)
+                    if let inlineMessage {
+                        InlineMessageView(message: inlineMessage)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -117,7 +114,7 @@ struct UploadOverlayView: View {
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }
             }
-            .onChange(of: message) { _, newValue in
+            .onChange(of: inlineMessage) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
             .onDisappear {
@@ -279,20 +276,17 @@ struct UploadOverlayView: View {
     @MainActor
     private func upload() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            message = "Please sign in first."
-            isError = true
+            inlineMessage = .error("Please sign in first.")
             return
         }
 
         guard let groupID = selectedGroupID else {
-            message = "Select a group."
-            isError = true
+            inlineMessage = .error("Select a group.")
             return
         }
 
         guard let year = parsedYear else {
-            message = "Enter a valid year."
-            isError = true
+            inlineMessage = .error("Enter a valid year.")
             return
         }
 
@@ -311,24 +305,18 @@ struct UploadOverlayView: View {
             pickerItems = []
             hashtagInput = ""
             hashtags = []
-            message = "Upload completed."
-            isError = false
+            inlineMessage = .success("Upload completed.")
         } catch {
-            message = error.localizedDescription
-            isError = true
+            inlineMessage = .error(error.localizedDescription)
         }
     }
 
-    private func scheduleMessageAutoClear(for value: String?) {
+    private func scheduleMessageAutoClear(for value: InlineMessage?) {
         clearMessageTask?.cancel()
-        guard value != nil, !isError else { return }
-
-        let currentValue = value
-        clearMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, message == currentValue, !isError {
-                message = nil
-            }
-        }
+        clearMessageTask = InlineMessageAutoClear.schedule(
+            for: value,
+            currentMessage: { inlineMessage },
+            clear: { inlineMessage = nil }
+        )
     }
 }

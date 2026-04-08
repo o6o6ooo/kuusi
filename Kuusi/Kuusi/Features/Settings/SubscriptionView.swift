@@ -14,8 +14,7 @@ struct SubscriptionView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let currentPlan: AppPlan
-    let billingMessage: String?
-    let isBillingError: Bool
+    let billingMessage: InlineMessage?
     let usageRatio: Double
     let usageText: String
     let renewalText: String?
@@ -28,8 +27,6 @@ struct SubscriptionView: View {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
-    private var errorText: Color { AppTheme.errorText }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             storageCard
@@ -130,9 +127,7 @@ struct SubscriptionView: View {
             }
 
             if let billingMessage {
-                Text(billingMessage)
-                    .font(.footnote)
-                    .foregroundStyle(isBillingError ? errorText : .secondary)
+                InlineMessageView(message: billingMessage)
             }
 
             if currentPlan == .free {

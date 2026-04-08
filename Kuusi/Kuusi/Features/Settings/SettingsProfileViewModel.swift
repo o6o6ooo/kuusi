@@ -8,8 +8,7 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var icon = "🌸"
     @Published var bgColour = "#A5C3DE"
     @Published var usageMB: Double = 0
-    @Published var message: String?
-    @Published var isError = false
+    @Published var inlineMessage: InlineMessage?
     @Published var isEditingName = false
 
     private let userService = UserService()
@@ -29,8 +28,7 @@ final class SettingsProfileViewModel: ObservableObject {
             bgColour = user.bgColour
             usageMB = user.usageMB
         } catch {
-            message = error.localizedDescription
-            isError = true
+            setInlineMessage(.error(error.localizedDescription))
         }
     }
 
@@ -41,8 +39,7 @@ final class SettingsProfileViewModel: ObservableObject {
         let cleanIcon = icon.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanName.isEmpty else {
-            message = "Name cannot be empty."
-            isError = true
+            setInlineMessage(.error("Name cannot be empty."))
             return
         }
 
@@ -53,25 +50,29 @@ final class SettingsProfileViewModel: ObservableObject {
                 icon: cleanIcon.isEmpty ? "🌸" : cleanIcon,
                 bgColour: bgColour
             )
-            message = "Profile updated"
-            isError = false
-            scheduleMessageAutoClear(for: message)
+            setInlineMessage(.success("Profile updated"))
         } catch {
-            message = error.localizedDescription
-            isError = true
+            setInlineMessage(.error(error.localizedDescription))
         }
     }
 
-    func scheduleMessageAutoClear(for value: String?) {
+    private func setInlineMessage(_ message: InlineMessage) {
+        inlineMessage = message
         clearMessageTask?.cancel()
-        guard value != nil, !isError else { return }
-
-        let currentValue = value
-        clearMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, message == currentValue, !isError {
-                message = nil
+        clearMessageTask = InlineMessageAutoClear.schedule(
+            for: message,
+            currentMessage: { [weak self] in
+                self?.inlineMessage
+            },
+            clear: { [weak self] in
+                self?.inlineMessage = nil
             }
-        }
+        )
+    }
+
+    func clearInlineMessage() {
+        clearMessageTask?.cancel()
+        clearMessageTask = nil
+        inlineMessage = nil
     }
 }

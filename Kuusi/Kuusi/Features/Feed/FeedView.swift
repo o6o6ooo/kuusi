@@ -413,7 +413,7 @@ private struct FeedEditSheet: View {
     @State private var yearText: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
-    @State private var errorMessage: String?
+    @State private var inlineMessage: InlineMessage?
     @State private var isSaving = false
     @State private var clearErrorTask: Task<Void, Never>?
 
@@ -475,10 +475,8 @@ private struct FeedEditSheet: View {
                     }
                 }
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(AppTheme.errorText)
+                if let inlineMessage {
+                    InlineMessageView(message: inlineMessage)
                 }
 
                 Spacer()
@@ -561,13 +559,12 @@ private struct FeedEditSheet: View {
     }
 
     private func showError(_ message: String) {
-        errorMessage = message
         clearErrorTask?.cancel()
-        clearErrorTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, errorMessage == message {
-                errorMessage = nil
-            }
-        }
+        inlineMessage = .error(message, autoClearAfter: InlineMessage.successAutoClearInterval)
+        clearErrorTask = InlineMessageAutoClear.schedule(
+            for: inlineMessage,
+            currentMessage: { inlineMessage },
+            clear: { inlineMessage = nil }
+        )
     }
 }

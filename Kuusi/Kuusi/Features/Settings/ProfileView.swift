@@ -41,10 +41,8 @@ struct ProfileView: View {
 
                 Spacer()
 
-                if let message = viewModel.message, !viewModel.isError {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                if let inlineMessage = viewModel.inlineMessage, inlineMessage.tone == .success {
+                    InlineMessageView(message: inlineMessage)
                 }
 
                 Button("Save") {
@@ -109,10 +107,8 @@ struct ProfileView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
 
-            if let message = viewModel.message, viewModel.isError {
-                Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.errorText)
+            if let inlineMessage = viewModel.inlineMessage, inlineMessage.tone == .error {
+                InlineMessageView(message: inlineMessage)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

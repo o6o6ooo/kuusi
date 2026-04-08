@@ -9,10 +9,8 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var editableGroupName = ""
     @Published var groups: [GroupSummary] = []
-    @Published var createStatusMessage: String?
-    @Published var isCreateError = false
-    @Published var saveStatusMessage: String?
-    @Published var isSaveError = false
+    @Published var createStatusMessage: InlineMessage?
+    @Published var saveStatusMessage: InlineMessage?
     @Published var isCreating = false
     @Published var isLoadingGroups = false
     @Published var isSavingGroupName = false
@@ -297,35 +295,34 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     private func setCreateStatus(_ message: String, isError: Bool) {
-        isCreateError = isError
-        createStatusMessage = message
-
+        let inlineMessage: InlineMessage = isError ? .error(message) : .success(message)
         clearCreateMessageTask?.cancel()
-        guard !isError else { return }
-
-        let current = message
-        clearCreateMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, createStatusMessage == current, !isCreateError {
-                createStatusMessage = nil
+        createStatusMessage = inlineMessage
+        clearCreateMessageTask = InlineMessageAutoClear.schedule(
+            for: inlineMessage,
+            currentMessage: { [weak self] in
+                self?.createStatusMessage
+            },
+            clear: { [weak self] in
+                self?.createStatusMessage = nil
             }
-        }
+        )
     }
 
     private func setSaveStatus(_ message: String, isError: Bool) {
-        isSaveError = isError
-        saveStatusMessage = message
+        let inlineMessage: InlineMessage = isError ? .error(message) : .success(message)
+        saveStatusMessage = inlineMessage
 
         clearSaveMessageTask?.cancel()
-        guard !isError else { return }
-
-        let current = message
-        clearSaveMessageTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            if !Task.isCancelled, saveStatusMessage == current, !isSaveError {
-                saveStatusMessage = nil
+        clearSaveMessageTask = InlineMessageAutoClear.schedule(
+            for: inlineMessage,
+            currentMessage: { [weak self] in
+                self?.saveStatusMessage
+            },
+            clear: { [weak self] in
+                self?.saveStatusMessage = nil
             }
-        }
+        )
     }
 
     private func loadSelectedGroupPreviewIfNeeded(force: Bool) async {
