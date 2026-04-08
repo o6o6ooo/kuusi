@@ -45,6 +45,7 @@ struct UploadOverlayView: View {
     private var canUpload: Bool {
         !selectedImages.isEmpty &&
         !isUploading &&
+        !isImportingGooglePhotos &&
         selectedGroupID != nil &&
         parsedYear != nil
     }
@@ -84,6 +85,16 @@ struct UploadOverlayView: View {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    if isImportingGooglePhotos {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Importing photos from Google Photos...")
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -131,7 +142,7 @@ struct UploadOverlayView: View {
             .task {
                 loadCachedGroupsOnly()
             }
-            .sheet(item: $googlePickerSession, onDismiss: cancelGoogleImportIfNeeded) { session in
+            .sheet(item: $googlePickerSession) { session in
                 SafariSheetView(url: session.pickerURL)
             }
         }
@@ -365,6 +376,7 @@ struct UploadOverlayView: View {
         }
 
         isImportingGooglePhotos = true
+        inlineMessage = nil
 
         do {
             let authorizedSession = try await googleAccountService.preparePickerAuthorization(
@@ -387,16 +399,19 @@ struct UploadOverlayView: View {
                         selectedImages = images
                         pickerItems = []
                         googlePickerSession = nil
+                        googleImportTask = nil
                         isImportingGooglePhotos = false
                         inlineMessage = .success("\(images.count) photos imported from Google Photos")
                     }
                 } catch is CancellationError {
                     await MainActor.run {
+                        googleImportTask = nil
                         isImportingGooglePhotos = false
                     }
                 } catch {
                     await MainActor.run {
                         googlePickerSession = nil
+                        googleImportTask = nil
                         isImportingGooglePhotos = false
                         inlineMessage = .error(error.localizedDescription)
                     }
@@ -406,14 +421,5 @@ struct UploadOverlayView: View {
             isImportingGooglePhotos = false
             inlineMessage = .error(error.localizedDescription)
         }
-    }
-
-    @MainActor
-    private func cancelGoogleImportIfNeeded() {
-        guard isImportingGooglePhotos else { return }
-        googleImportTask?.cancel()
-        googleImportTask = nil
-        googlePickerSession = nil
-        isImportingGooglePhotos = false
     }
 }
