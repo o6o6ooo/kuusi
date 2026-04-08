@@ -1,6 +1,7 @@
 import Combine
 import FirebaseAuth
 import Foundation
+import UIKit
 
 @MainActor
 final class SettingsProfileViewModel: ObservableObject {
@@ -8,10 +9,14 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var icon = "🌸"
     @Published var bgColour = "#A5C3DE"
     @Published var usageMB: Double = 0
+    @Published var googleLinkedEmail = ""
+    @Published var isGoogleLinked = false
+    @Published var isGoogleAccountActionInFlight = false
     @Published var inlineMessage: InlineMessage?
     @Published var isEditingName = false
 
     private let userService = UserService()
+    private let googleAccountService = GoogleAccountService()
     private var clearMessageTask: Task<Void, Never>?
 
     deinit {
@@ -19,6 +24,7 @@ final class SettingsProfileViewModel: ObservableObject {
     }
 
     func loadProfile() async {
+        refreshGoogleConnectionState()
         guard let uid = Auth.auth().currentUser?.uid else { return }
 
         do {
@@ -27,6 +33,41 @@ final class SettingsProfileViewModel: ObservableObject {
             icon = user.icon
             bgColour = user.bgColour
             usageMB = user.usageMB
+        } catch {
+            setInlineMessage(.error(error.localizedDescription))
+        }
+    }
+
+    func connectGoogleAccount() async {
+        guard let presentingViewController = UIApplication.topViewController() else {
+            setInlineMessage(.error("Could not open Google Sign-In."))
+            return
+        }
+
+        isGoogleAccountActionInFlight = true
+        defer { isGoogleAccountActionInFlight = false }
+
+        do {
+            let linkedAccount = try await googleAccountService.connectCurrentUser(
+                presentingViewController: presentingViewController
+            )
+            googleLinkedEmail = linkedAccount.email
+            isGoogleLinked = linkedAccount.isLinked
+            setInlineMessage(.success("Google account connected"))
+        } catch {
+            setInlineMessage(.error(error.localizedDescription))
+        }
+    }
+
+    func disconnectGoogleAccount() async {
+        isGoogleAccountActionInFlight = true
+        defer { isGoogleAccountActionInFlight = false }
+
+        do {
+            try await googleAccountService.disconnectCurrentUser()
+            googleLinkedEmail = ""
+            isGoogleLinked = false
+            setInlineMessage(.success("Google account disconnected"))
         } catch {
             setInlineMessage(.error(error.localizedDescription))
         }
@@ -74,5 +115,11 @@ final class SettingsProfileViewModel: ObservableObject {
         clearMessageTask?.cancel()
         clearMessageTask = nil
         inlineMessage = nil
+    }
+
+    private func refreshGoogleConnectionState() {
+        let linkedAccount = googleAccountService.currentLinkedAccount(for: Auth.auth().currentUser)
+        googleLinkedEmail = linkedAccount.email
+        isGoogleLinked = linkedAccount.isLinked
     }
 }

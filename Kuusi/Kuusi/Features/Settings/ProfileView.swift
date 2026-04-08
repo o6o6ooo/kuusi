@@ -98,6 +98,45 @@ struct ProfileView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Google Photos")
+                                .font(.subheadline.weight(.semibold))
+                            Text(viewModel.isGoogleLinked ? "Connected as \(viewModel.googleLinkedEmail)" : "Not connected")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        if viewModel.isGoogleAccountActionInFlight {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if viewModel.isGoogleLinked {
+                            Button("Disconnect") {
+                                Task {
+                                    await viewModel.disconnectGoogleAccount()
+                                }
+                            }
+                            .buttonStyle(.appPrimaryCapsule)
+                            .controlSize(.small)
+                        } else {
+                            Button("Connect") {
+                                Task {
+                                    await viewModel.connectGoogleAccount()
+                                }
+                            }
+                            .buttonStyle(.appPrimaryCapsule)
+                            .controlSize(.small)
+                        }
+                    }
+
+                    Text("Connect once to import photos from Google Photos without changing your Apple sign-in.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(16)
             .background(cardBackground)

@@ -14,11 +14,16 @@ struct UploadOverlayView: View {
     @State private var hashtagInput = ""
     @State private var hashtags: [String] = []
     @State private var isUploading = false
+    @State private var isImportingGooglePhotos = false
     @State private var inlineMessage: InlineMessage?
+    @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
+    @State private var googleImportTask: Task<Void, Never>?
 
     private let uploadService = UploadService()
     private let groupService = GroupService()
+    private let googleAccountService = GoogleAccountService()
+    private let googlePhotosPickerService = GooglePhotosPickerService()
 
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var fieldBackground: Color {
@@ -120,9 +125,14 @@ struct UploadOverlayView: View {
             .onDisappear {
                 clearMessageTask?.cancel()
                 clearMessageTask = nil
+                googleImportTask?.cancel()
+                googleImportTask = nil
             }
             .task {
                 loadCachedGroupsOnly()
+            }
+            .sheet(item: $googlePickerSession, onDismiss: cancelGoogleImportIfNeeded) { session in
+                SafariSheetView(url: session.pickerURL)
             }
         }
     }
@@ -130,21 +140,48 @@ struct UploadOverlayView: View {
     @ViewBuilder
     private var topContent: some View {
         if selectedImages.isEmpty {
-            PhotosPicker(
-                selection: $pickerItems,
-                maxSelectionCount: 10,
-                matching: .images
-            ) {
-                HStack(spacing: 10) {
-                    Image(systemName: "folder")
-                        .font(.title2)
-                    Text("Choose photos")
-                        .font(.title3.weight(.semibold))
+            VStack(spacing: 12) {
+                PhotosPicker(
+                    selection: $pickerItems,
+                    maxSelectionCount: 10,
+                    matching: .images
+                ) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.title3.weight(.semibold))
+                        Text("Import from photo library")
+                            .font(.headline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .buttonStyle(.plain)
+                .padding(.top, 6)
+
+                Button {
+                    Task { await importFromGooglePhotos() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "globe")
+                            .font(.title3.weight(.semibold))
+                        if isImportingGooglePhotos {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text("Import from Google Photos")
+                                .font(.headline.weight(.semibold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
+                .disabled(isImportingGooglePhotos)
             }
-            .buttonStyle(.plain)
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -318,5 +355,65 @@ struct UploadOverlayView: View {
             currentMessage: { inlineMessage },
             clear: { inlineMessage = nil }
         )
+    }
+
+    @MainActor
+    private func importFromGooglePhotos() async {
+        guard let presentingViewController = UIApplication.topViewController() else {
+            inlineMessage = .error("Could not open Google Photos.")
+            return
+        }
+
+        isImportingGooglePhotos = true
+
+        do {
+            let authorizedSession = try await googleAccountService.preparePickerAuthorization(
+                presentingViewController: presentingViewController
+            )
+            let session = try await googlePhotosPickerService.createSession(
+                accessToken: authorizedSession.accessToken,
+                maxItemCount: 10
+            )
+
+            googlePickerSession = session
+            googleImportTask?.cancel()
+            googleImportTask = Task {
+                do {
+                    let images = try await googlePhotosPickerService.waitForSelection(
+                        session: session,
+                        accessToken: authorizedSession.accessToken
+                    )
+                    await MainActor.run {
+                        selectedImages = images
+                        pickerItems = []
+                        googlePickerSession = nil
+                        isImportingGooglePhotos = false
+                        inlineMessage = .success("\(images.count) photos imported from Google Photos")
+                    }
+                } catch is CancellationError {
+                    await MainActor.run {
+                        isImportingGooglePhotos = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        googlePickerSession = nil
+                        isImportingGooglePhotos = false
+                        inlineMessage = .error(error.localizedDescription)
+                    }
+                }
+            }
+        } catch {
+            isImportingGooglePhotos = false
+            inlineMessage = .error(error.localizedDescription)
+        }
+    }
+
+    @MainActor
+    private func cancelGoogleImportIfNeeded() {
+        guard isImportingGooglePhotos else { return }
+        googleImportTask?.cancel()
+        googleImportTask = nil
+        googlePickerSession = nil
+        isImportingGooglePhotos = false
     }
 }

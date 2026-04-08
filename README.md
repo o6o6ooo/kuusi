@@ -6,7 +6,7 @@ Kuusi is a private family photo-sharing iOS app built with SwiftUI and Firebase.
 
 This project is actively in development.
 
-- Implemented: authentication flow, profile/settings, groups management, QR join/share, upload overlay UI
+- Implemented: authentication flow, profile/settings, groups management, QR join/share, upload overlay UI, optional Google account linking for Google Photos import on iOS/iPadOS
 - In progress: core upload pipeline and production feed behavior
 
 ## Tech Stack
@@ -14,6 +14,7 @@ This project is actively in development.
 - iOS: SwiftUI (Xcode project)
 - Backend: Firebase
 - Auth: Sign in with Apple (plus Debug-only Email/Password sign-in)
+- Optional account linking: Google Sign-In for Google Photos import
 - Database: Cloud Firestore
 - Storage: Firebase Storage
 
@@ -50,8 +51,15 @@ Open:
 
 - Place `GoogleService-Info.plist` under the app target (`Kuusi` group in Xcode)
 - Ensure Firebase iOS app bundle identifier matches the Xcode target bundle identifier
+- Set `GOOGLE_REVERSED_CLIENT_ID` in the `Kuusi` target build settings to the `REVERSED_CLIENT_ID` value from `GoogleService-Info.plist`
 
-### 3. Run
+### 3. Google Photos setup
+
+- Enable the Google Photos Picker API in your Google Cloud project
+- Add the iOS OAuth configuration required by Google Sign-In
+- Keep Sign in with Apple as the app's primary login; Google is only used as a linked account for photo import
+
+### 4. Run
 
 - Select iPhone/iPad simulator or real device
 - Build and run from Xcode
@@ -91,4 +99,3 @@ Configure in:
 ## Author
 
 Sakura Wallace
-

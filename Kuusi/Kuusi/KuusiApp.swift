@@ -5,6 +5,7 @@
 //  Created by Sakura Wallace on 06/03/2026.
 //
 
+import GoogleSignIn
 import SwiftUI
 
 @main
@@ -20,6 +21,9 @@ struct KuusiApp: App {
                 .controlSize(.small)
                 .environmentObject(appState)
                 .environmentObject(subscriptionStore)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
                 .onChange(of: scenePhase) { _, newPhase in
                     appState.handleScenePhaseChange(newPhase)
                 }

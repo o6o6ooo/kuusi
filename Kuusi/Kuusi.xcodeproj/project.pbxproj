@@ -11,7 +11,8 @@
 		8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F42F5B69B200FB36CB /* FirebaseCore */; };
 		8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */; };
 		8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F82F5B69B200FB36CB /* FirebaseStorage */; };
-		8F4570F62F76D04C0075605A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8F4570F52F76D04C0075605A /* GoogleService-Info.plist */; };
+		8FBE54282F86CEC200A1BABB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8FBE53B62F86CADB00A1BABB /* GoogleService-Info.plist */; };
+		8FC94B352F9C312A00C5D8F1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,12 +36,25 @@
 		8F35C1C52F5B5B2500FB36CB /* Kuusi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kuusi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F35C1D22F5B5B2700FB36CB /* KuusiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KuusiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F35C1DC2F5B5B2700FB36CB /* KuusiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KuusiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F4570F52F76D04C0075605A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		8FBE53B62F86CADB00A1BABB /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8FBE54272F86CEBE00A1BABB /* Exceptions for "Kuusi" folder in "Kuusi" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8F35C1C42F5B5B2500FB36CB /* Kuusi */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8F35C1C72F5B5B2500FB36CB /* Kuusi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8FBE54272F86CEBE00A1BABB /* Exceptions for "Kuusi" folder in "Kuusi" target */,
+			);
 			path = Kuusi;
 			sourceTree = "<group>";
 		};
@@ -65,6 +79,7 @@
 				8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */,
 				8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */,
 				8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */,
+				8FC94B352F9C312A00C5D8F1 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,7 +107,7 @@
 				8F35C1D52F5B5B2700FB36CB /* KuusiTests */,
 				8F35C1DF2F5B5B2700FB36CB /* KuusiUITests */,
 				8F35C1C62F5B5B2500FB36CB /* Products */,
-				8F4570F52F76D04C0075605A /* GoogleService-Info.plist */,
+				8FBE53B62F86CADB00A1BABB /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -130,6 +145,7 @@
 				8F35C1F42F5B69B200FB36CB /* FirebaseCore */,
 				8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */,
 				8F35C1F82F5B69B200FB36CB /* FirebaseStorage */,
+				8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */,
 			);
 			productName = Kuusi;
 			productReference = 8F35C1C52F5B5B2500FB36CB /* Kuusi.app */;
@@ -215,6 +231,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				8FC94B332F9C312A00C5D8F1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8F35C1C62F5B5B2500FB36CB /* Products */;
@@ -233,7 +250,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8F4570F62F76D04C0075605A /* GoogleService-Info.plist in Resources */,
+				8FBE54282F86CEC200A1BABB /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -422,15 +439,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to scan QR codes for group invites.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.898290307420-jrjkt4jv0nbvholnigoiilf41luuadmr";
+				INFOPLIST_FILE = Kuusi/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -458,15 +469,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 34MA6HUK9G;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to scan QR codes for group invites.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID or Touch ID to unlock Kuusi.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow access to your photos so you can upload them to Kuusi.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.898290307420-jrjkt4jv0nbvholnigoiilf41luuadmr";
+				INFOPLIST_FILE = Kuusi/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -618,6 +623,14 @@
 				minimumVersion = 12.10.0;
 			};
 		};
+		8FC94B332F9C312A00C5D8F1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = exactVersion;
+				version = 9.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -640,6 +653,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8FC94B332F9C312A00C5D8F1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
