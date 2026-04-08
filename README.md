@@ -59,7 +59,14 @@ Open:
 - Add the iOS OAuth configuration required by Google Sign-In
 - Keep Sign in with Apple as the app's primary login; Google is only used as a linked account for photo import
 
-### 4. Run
+### 4. Google Photos rollout note
+
+- Google Photos import is currently configured for OAuth Testing mode
+- Test users may see an unverified app warning while testing
+- For local or internal testing, add the tester account as a test user in Google Cloud
+- Before broader release, review the OAuth consent screen, complete any required Google verification, and switch the OAuth app to Production
+
+### 5. Run
 
 - Select iPhone/iPad simulator or real device
 - Build and run from Xcode
