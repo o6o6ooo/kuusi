@@ -27,6 +27,7 @@ struct SubscriptionView: View {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             storageCard
@@ -153,8 +154,13 @@ struct SubscriptionView: View {
                     .frame(width: 84)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Premium - \(subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel ?? "")")
+                    Text("Premium")
                         .font(.body.weight(.semibold))
+
+                    if let premiumPriceLabel = subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel {
+                        Text(premiumPriceLabel)
+                            .font(.callout.weight(.medium))
+                    }
 
                     Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
                         .font(.callout.weight(.medium))
