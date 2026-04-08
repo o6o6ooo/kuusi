@@ -2,6 +2,7 @@ import AuthenticationServices
 import Combine
 import FirebaseAuth
 import Foundation
+import GoogleSignIn
 import SwiftUI
 
 enum DebugCredentialsError: LocalizedError {
@@ -109,6 +110,7 @@ final class AppState: ObservableObject {
 
     func signOut() async {
         do {
+            GIDSignIn.sharedInstance.signOut()
             try Auth.auth().signOut()
             currentUser = nil
             route = .signedOut
