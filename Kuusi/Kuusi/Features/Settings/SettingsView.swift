@@ -218,9 +218,9 @@ struct SettingsView: View {
             if case .purchaseCancelled = error {
                 return
             }
-            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.defaultAutoClearInterval)
         } catch {
-            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.defaultAutoClearInterval)
         }
     }
 
@@ -231,7 +231,7 @@ struct SettingsView: View {
             syncPlanDependentState()
             billingMessage = .success(currentPlan == .premium ? "Purchases restored" : "No active purchases found")
         } catch {
-            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.defaultAutoClearInterval)
         }
     }
 
@@ -242,7 +242,7 @@ struct SettingsView: View {
             syncPlanDependentState()
             scheduleSubscriptionRefresh()
         } catch {
-            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.successAutoClearInterval)
+            billingMessage = .error(error.localizedDescription, autoClearAfter: InlineMessage.defaultAutoClearInterval)
         }
     }
 
