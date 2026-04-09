@@ -597,7 +597,7 @@ private struct FeedEditSheet: View {
 
     private func showError(_ message: String) {
         clearErrorTask?.cancel()
-        inlineMessage = .error(message, autoClearAfter: InlineMessage.defaultAutoClearInterval)
+        inlineMessage = .error(message)
         clearErrorTask = InlineMessageAutoClear.schedule(
             for: inlineMessage,
             currentMessage: { inlineMessage },
