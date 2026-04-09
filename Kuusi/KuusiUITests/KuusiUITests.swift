@@ -73,6 +73,50 @@ final class KuusiUITests: XCTestCase {
         let feedTab = tabBar.buttons.element(boundBy: 0)
         XCTAssertTrue(feedTab.exists)
         feedTab.tap()
-        XCTAssertTrue(tabBar.buttons.element(boundBy: 0).exists)
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsFeedUploadEntryPoint() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+
+        let feedTab = tabBar.buttons.element(boundBy: 0)
+        XCTAssertTrue(feedTab.waitForExistence(timeout: 5))
+        feedTab.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["feed-upload-button"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["ui-feed-no-groups"].exists
+            || app.staticTexts["ui-feed-no-photos"].exists
+            || app.buttons["feed-upload-button"].exists
+        )
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsSettingsSections() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+
+        let settingsTab = tabBar.buttons.element(boundBy: 3)
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
+        settingsTab.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-settings-profile-section"].exists)
+        XCTAssertTrue(app.staticTexts["ui-settings-groups-section"].exists)
+        XCTAssertTrue(app.staticTexts["ui-settings-subscription-section"].exists)
+        XCTAssertTrue(app.buttons["settings-sign-out-button"].exists)
     }
 }

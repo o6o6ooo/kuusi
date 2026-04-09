@@ -116,6 +116,27 @@ struct FeedView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .screenTheme()
+            .overlay(alignment: .topLeading) {
+                Group {
+                    Text("ui-screen-feed")
+                        .accessibilityIdentifier("ui-screen-feed")
+
+                    if photoCollection.groups.isEmpty {
+                        Text("ui-feed-no-groups")
+                            .accessibilityIdentifier("ui-feed-no-groups")
+                    } else if !photoCollection.isLoading,
+                              photoCollection.errorMessage == nil,
+                              currentGroupPhotos.isEmpty {
+                        Text("ui-feed-no-photos")
+                            .accessibilityIdentifier("ui-feed-no-photos")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.clear)
+                .frame(width: 0, height: 0)
+                .clipped()
+                .allowsHitTesting(false)
+            }
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .topLeading) {
                 Button {
@@ -128,6 +149,7 @@ struct FeedView: View {
                         .background(.ultraThinMaterial, in: Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("feed-upload-button")
                 .padding(.top, 6)
                 .padding(.leading, 14)
             }
