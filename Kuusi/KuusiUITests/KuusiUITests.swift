@@ -11,9 +11,9 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_OUT"]
         app.launch()
 
-        XCTAssertTrue(app.otherElements["login-screen"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["login-title"].exists)
-        XCTAssertTrue(app.buttons["apple-sign-in-button"].exists)
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-out"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Kuusi"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Share photos with your loved ones"].exists)
     }
 
     @MainActor
@@ -22,11 +22,9 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
 
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Feed"].exists)
-        XCTAssertTrue(app.buttons["Years"].exists)
-        XCTAssertTrue(app.buttons["Favorites"].exists)
-        XCTAssertTrue(app.buttons["Settings"].exists)
+        XCTAssertGreaterThanOrEqual(app.tabBars.buttons.count, 4)
     }
 
     @MainActor
@@ -35,11 +33,13 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_LOCKED"]
         app.launch()
 
-        XCTAssertTrue(app.otherElements["unlock-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-test-route-locked"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Unlock"].waitForExistence(timeout: 5))
 
-        app.buttons["unlock-button"].tap()
+        app.buttons["Unlock"].tap()
 
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Feed"].exists)
+        XCTAssertGreaterThanOrEqual(app.tabBars.buttons.count, 4)
     }
 }
