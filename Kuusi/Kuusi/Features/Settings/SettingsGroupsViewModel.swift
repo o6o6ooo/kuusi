@@ -3,6 +3,28 @@ import CoreImage
 import FirebaseAuth
 import Foundation
 
+enum GroupInvitePayloadParser {
+    static func extractGroupID(from payload: String) -> String? {
+        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let url = URL(string: trimmed) {
+            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
+                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
+                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                return groupID.isEmpty ? nil : groupID.lowercased()
+            }
+        }
+
+        return trimmed.lowercased()
+    }
+}
+
 @MainActor
 final class SettingsGroupsViewModel: ObservableObject {
     @Published var createGroupName = ""
@@ -243,7 +265,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             setSaveStatus("Please sign in first", isError: true)
             return
         }
-        guard let groupID = extractGroupID(from: payload) else {
+        guard let groupID = GroupInvitePayloadParser.extractGroupID(from: payload) else {
             setSaveStatus("Invalid invite QR", isError: true)
             return
         }
@@ -261,26 +283,6 @@ final class SettingsGroupsViewModel: ObservableObject {
         } catch {
             setSaveStatus(error.localizedDescription, isError: true)
         }
-    }
-
-    private func extractGroupID(from payload: String) -> String? {
-        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        if let url = URL(string: trimmed) {
-            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
-                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                return groupID.isEmpty ? nil : groupID.lowercased()
-            }
-
-            let parts = url.pathComponents.filter { $0 != "/" }
-            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
-                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-                return groupID.isEmpty ? nil : groupID.lowercased()
-            }
-        }
-
-        return trimmed.lowercased()
     }
 
     private func decodeQRCodePayload(from data: Data) -> String? {

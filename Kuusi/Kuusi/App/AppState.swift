@@ -75,6 +75,10 @@ final class AppState: ObservableObject {
     private var shouldUnlockAfterInteractiveSignIn = false
     private let uiTestRouteOverride: UITestRouteOverride?
 
+    var isRunningUITests: Bool {
+        uiTestRouteOverride != nil
+    }
+
     init() {
         uiTestRouteOverride = UITestRouteOverride(launchArguments: ProcessInfo.processInfo.arguments)
 #if DEBUG
@@ -130,7 +134,7 @@ final class AppState: ObservableObject {
     }
 
     func unlockApp() async {
-        if uiTestRouteOverride == .locked {
+        if uiTestRouteOverride != nil {
             route = .signedIn
             errorMessage = nil
             return
