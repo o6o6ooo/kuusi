@@ -15,12 +15,13 @@ struct FeedView: View {
     @State private var selectedHashtag: String?
     @State private var isUploadOverlayPresented = false
     @State private var selectedPhoto: FeedPhoto?
-    @State private var feedMessage: String?
+    @State private var feedMessage: InlineMessage?
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
     @State private var editingPhotoIDs: Set<String> = []
     @State private var pendingDeletePhoto: FeedPhoto?
     @State private var editingPhoto: FeedPhoto?
+    @State private var clearFeedMessageTask: Task<Void, Never>?
 
     private let feedService = FeedService()
     private var accentColor: Color { AppTheme.accent(for: colorScheme) }
@@ -100,9 +101,7 @@ struct FeedView: View {
                                 )
                             } footer: {
                                 if let feedMessage {
-                                    Text(feedMessage)
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                                    InlineMessageView(message: feedMessage)
                                         .padding(.top, 4)
                                         .padding(.bottom, 8)
                                 }
@@ -158,6 +157,9 @@ struct FeedView: View {
                     await photoCollection.loadInitial(limit: 6)
                 }
             }
+            .onChange(of: feedMessage) { _, newValue in
+                scheduleFeedMessageAutoClear(for: newValue)
+            }
             .sheet(isPresented: $isUploadOverlayPresented) {
                 UploadOverlayView()
                     .presentationDetents([.fraction(0.68), .large])
@@ -195,6 +197,10 @@ struct FeedView: View {
                 }
             } message: {
                 Text("This will permanently delete the photo.")
+            }
+            .onDisappear {
+                clearFeedMessageTask?.cancel()
+                clearFeedMessageTask = nil
             }
         }
     }
@@ -294,7 +300,7 @@ struct FeedView: View {
     private func deletePhoto(_ photo: FeedPhoto) async {
         guard !deletingPhotoIDs.contains(photo.id) else { return }
         guard let uid = Auth.auth().currentUser?.uid else {
-            feedMessage = "Please sign in first."
+            feedMessage = .error("Please sign in first.")
             return
         }
 
@@ -308,9 +314,9 @@ struct FeedView: View {
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = nil
             }
-            feedMessage = "Photo deleted."
+            feedMessage = .success("Photo deleted.")
         } catch {
-            feedMessage = error.localizedDescription
+            feedMessage = .error(error.localizedDescription)
         }
     }
 
@@ -322,15 +328,24 @@ struct FeedView: View {
         let newValue = !photo.isFavourite
         do {
             guard let uid = Auth.auth().currentUser?.uid else {
-                feedMessage = "Please sign in first."
+                feedMessage = .error("Please sign in first.")
                 return
             }
             try await feedService.setFavourite(photoID: photo.id, userID: uid, isFavourite: newValue)
             photoCollection.replacePhoto(photo.withFavourite(newValue))
-            feedMessage = newValue ? "Added to favourites." : "Removed from favourites."
+            feedMessage = .success(newValue ? "Added to favourites." : "Removed from favourites.")
         } catch {
-            feedMessage = error.localizedDescription
+            feedMessage = .error(error.localizedDescription)
         }
+    }
+
+    private func scheduleFeedMessageAutoClear(for value: InlineMessage?) {
+        clearFeedMessageTask?.cancel()
+        clearFeedMessageTask = InlineMessageAutoClear.schedule(
+            for: value,
+            currentMessage: { feedMessage },
+            clear: { feedMessage = nil }
+        )
     }
 
     private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
