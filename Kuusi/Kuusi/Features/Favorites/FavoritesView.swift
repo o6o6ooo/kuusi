@@ -19,49 +19,56 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading {
-                    ProgressView("Loading favourites...")
-                } else if let errorMessage {
-                    ContentUnavailableView("Failed to load favourites", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-                } else if photos.isEmpty {
-                    ContentUnavailableView("No favourites yet", systemImage: "heart")
-                } else {
-                    GeometryReader { proxy in
-                        let spacing: CGFloat = 8
-                        let horizontalPadding: CGFloat = 12
-                        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
-                        let totalSpacing = spacing * CGFloat(columnCount - 1)
-                        let contentWidth = proxy.size.width - (horizontalPadding * 2)
-                        let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
-                        let columns = makeWaterfallColumns(
-                            photos: photos,
-                            columnCount: columnCount,
-                            columnWidth: columnWidth,
-                            spacing: spacing
-                        )
+                VStack(spacing: 0) {
+                    Text("ui-screen-favorites")
+                        .font(.caption2)
+                        .foregroundStyle(.clear)
+                        .accessibilityIdentifier("ui-screen-favorites")
 
-                        ScrollView {
-                            HStack(alignment: .top, spacing: spacing) {
-                                ForEach(0..<columnCount, id: \.self) { columnIndex in
-                                    LazyVStack(spacing: spacing) {
-                                        ForEach(columns[columnIndex]) { photo in
-                                            FavoritesPhotoTile(
-                                                photo: photo,
-                                                width: columnWidth,
-                                                displayAspectRatio: CGFloat(
-                                                    photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
-                                                ),
-                                                onTap: { selectedPhoto = photo },
-                                                onRequireAspectRatio: {
-                                                    requestAspectRatioIfNeeded(for: photo)
-                                                }
-                                            )
+                    if isLoading {
+                        ProgressView("Loading favourites...")
+                    } else if let errorMessage {
+                        ContentUnavailableView("Failed to load favourites", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                    } else if photos.isEmpty {
+                        ContentUnavailableView("No favourites yet", systemImage: "heart")
+                    } else {
+                        GeometryReader { proxy in
+                            let spacing: CGFloat = 8
+                            let horizontalPadding: CGFloat = 12
+                            let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
+                            let totalSpacing = spacing * CGFloat(columnCount - 1)
+                            let contentWidth = proxy.size.width - (horizontalPadding * 2)
+                            let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
+                            let columns = makeWaterfallColumns(
+                                photos: photos,
+                                columnCount: columnCount,
+                                columnWidth: columnWidth,
+                                spacing: spacing
+                            )
+
+                            ScrollView {
+                                HStack(alignment: .top, spacing: spacing) {
+                                    ForEach(0..<columnCount, id: \.self) { columnIndex in
+                                        LazyVStack(spacing: spacing) {
+                                            ForEach(columns[columnIndex]) { photo in
+                                                FavoritesPhotoTile(
+                                                    photo: photo,
+                                                    width: columnWidth,
+                                                    displayAspectRatio: CGFloat(
+                                                        photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0)
+                                                    ),
+                                                    onTap: { selectedPhoto = photo },
+                                                    onRequireAspectRatio: {
+                                                        requestAspectRatioIfNeeded(for: photo)
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
+                                .padding(.horizontal, horizontalPadding)
+                                .padding(.vertical, 8)
                             }
-                            .padding(.horizontal, horizontalPadding)
-                            .padding(.vertical, 8)
                         }
                         .refreshable {
                             await fetchFavourites()

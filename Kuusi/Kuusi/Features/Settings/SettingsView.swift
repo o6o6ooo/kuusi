@@ -38,6 +38,11 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    Text("ui-screen-settings")
+                        .font(.caption2)
+                        .foregroundStyle(.clear)
+                        .accessibilityIdentifier("ui-screen-settings")
+
                     ProfileView(
                         viewModel: profileViewModel,
                         onPickEmoji: {
@@ -72,6 +77,7 @@ struct SettingsView: View {
                             Text("Sign out")
                                 .appTextLinkStyle()
                         }
+                        .accessibilityIdentifier("settings-sign-out-button")
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")

@@ -26,6 +26,11 @@ struct YearsView: View {
         NavigationStack {
             GeometryReader { proxy in
                 VStack(spacing: 8) {
+                    Text("ui-screen-years")
+                        .font(.caption2)
+                        .foregroundStyle(.clear)
+                        .accessibilityIdentifier("ui-screen-years")
+
                     if photoCollection.groups.isEmpty {
                         ContentUnavailableView("No groups yet", systemImage: "person.3")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
