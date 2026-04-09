@@ -5,6 +5,12 @@ import Foundation
 import GoogleSignIn
 import SwiftUI
 
+protocol BiometricAuthServicing {
+    func authenticate(reason: String) async -> Bool
+}
+
+extension BiometricAuthService: BiometricAuthServicing {}
+
 enum DebugCredentialsError: LocalizedError {
     case missingEnvironmentVariables
 
@@ -68,7 +74,7 @@ final class AppState: ObservableObject {
 
     private let authService = AppleAuthService()
     private let userService = UserService()
-    private let biometricAuthService = BiometricAuthService()
+    private let biometricAuthService: BiometricAuthServicing
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
@@ -79,8 +85,13 @@ final class AppState: ObservableObject {
         uiTestRouteOverride != nil
     }
 
-    init() {
-        uiTestRouteOverride = UITestRouteOverride(launchArguments: ProcessInfo.processInfo.arguments)
+    init(
+        launchArguments: [String],
+        biometricAuthService: BiometricAuthServicing,
+        shouldObserveAuthState: Bool
+    ) {
+        self.biometricAuthService = biometricAuthService
+        self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
 #if DEBUG
         let loadedAccounts = AppState.loadDebugAccounts()
         debugAccounts = loadedAccounts
@@ -97,7 +108,17 @@ final class AppState: ObservableObject {
             }
             return
         }
-        observeAuthState()
+        if shouldObserveAuthState {
+            self.observeAuthState()
+        }
+    }
+
+    convenience init() {
+        self.init(
+            launchArguments: ProcessInfo.processInfo.arguments,
+            biometricAuthService: BiometricAuthService(),
+            shouldObserveAuthState: true
+        )
     }
 
     deinit {
