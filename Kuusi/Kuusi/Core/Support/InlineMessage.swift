@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct InlineMessage: Equatable {
-    static let successAutoClearInterval: TimeInterval = 2.5
+    static let defaultAutoClearInterval: TimeInterval = 2.5
 
     enum Tone: Equatable {
         case success
@@ -13,10 +13,10 @@ struct InlineMessage: Equatable {
     let autoClearAfter: TimeInterval?
 
     static func success(_ text: String) -> Self {
-        .init(text: text, tone: .success, autoClearAfter: successAutoClearInterval)
+        .init(text: text, tone: .success, autoClearAfter: defaultAutoClearInterval)
     }
 
-    static func error(_ text: String, autoClearAfter: TimeInterval? = nil) -> Self {
+    static func error(_ text: String, autoClearAfter: TimeInterval? = defaultAutoClearInterval) -> Self {
         .init(text: text, tone: .error, autoClearAfter: autoClearAfter)
     }
 }
