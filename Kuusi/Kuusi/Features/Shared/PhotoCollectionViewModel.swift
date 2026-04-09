@@ -32,17 +32,26 @@ final class PhotoCollectionViewModel: ObservableObject {
     private let aspectRatioMeasurer: (String) async -> CGFloat?
 
     init(
-        feedService: PhotoCollectionFeedServicing = FeedService(),
-        groupService: PhotoCollectionGroupServicing = GroupService(),
-        currentUserIDProvider: @escaping @MainActor () -> String? = { Auth.auth().currentUser?.uid },
-        aspectRatioMeasurer: @escaping (String) async -> CGFloat? = { urlString in
-            await PhotoCollectionViewModel.measureAspectRatioFromURL(urlString)
-        }
+        feedService: PhotoCollectionFeedServicing,
+        groupService: PhotoCollectionGroupServicing,
+        currentUserIDProvider: @escaping @MainActor () -> String?,
+        aspectRatioMeasurer: @escaping (String) async -> CGFloat?
     ) {
         self.feedService = feedService
         self.groupService = groupService
         self.currentUserIDProvider = currentUserIDProvider
         self.aspectRatioMeasurer = aspectRatioMeasurer
+    }
+
+    convenience init() {
+        self.init(
+            feedService: FeedService(),
+            groupService: GroupService(),
+            currentUserIDProvider: { Auth.auth().currentUser?.uid },
+            aspectRatioMeasurer: { urlString in
+                await PhotoCollectionViewModel.measureAspectRatioFromURL(urlString)
+            }
+        )
     }
 
     var currentGroupPhotos: [FeedPhoto] {
