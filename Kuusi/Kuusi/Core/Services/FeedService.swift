@@ -8,13 +8,13 @@ final class FeedService {
     private let favouritesField = "favourites"
 
     func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
-        let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
+        let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
         guard !visibleGroupIDs.isEmpty else { return [] }
         let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
         let fetchLimit = max(limit + 4, limit)
 
         let query = db.collection("photos")
-            .whereField("group_id", in: Array(visibleGroupIDs))
+            .whereField("group_id", in: visibleGroupIDs)
             .limit(to: fetchLimit)
 
         let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
@@ -35,15 +35,11 @@ final class FeedService {
             FeedPhoto(id: doc.documentID, data: doc.data())
         }
 
-        return photos
-            .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
-            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-            .prefix(limit)
-            .map { $0 }
+        return Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit)
     }
 
     func fetchFavouritePhotos(userID: String, groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
-        let visibleGroupIDs = Array(Set(groupIDs)).prefix(10)
+        let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
         guard !visibleGroupIDs.isEmpty else { return [] }
         let favouriteIDs = Array(try await fetchFavouriteIDs(userID: userID))
         guard !favouriteIDs.isEmpty else { return [] }
@@ -59,19 +55,10 @@ final class FeedService {
             docs.append(contentsOf: snapshot.documents)
         }
 
-        let visibleGroups = Set(visibleGroupIDs)
         let photos = docs
             .map { FeedPhoto(id: $0.documentID, data: $0.data()) }
-            .filter { photo in
-                guard let groupID = photo.groupID else { return false }
-                return visibleGroups.contains(groupID)
-            }
 
-        return photos
-            .map { $0.withFavourite(true) }
-            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-            .prefix(limit)
-            .map { $0 }
+        return Self.presentFavouritePhotos(photos, visibleGroupIDs: visibleGroupIDs, limit: limit)
     }
 
     func setFavourite(photoID: String, userID: String, isFavourite: Bool) async throws {
@@ -213,6 +200,42 @@ final class FeedService {
         }
         let ids = (snapshot.data()?[favouritesField] as? [String]) ?? []
         return Set(ids)
+    }
+
+    static func visibleGroupIDs(from groupIDs: [String]) -> [String] {
+        var seen: Set<String> = []
+        var result: [String] = []
+        result.reserveCapacity(Swift.min(groupIDs.count, 10))
+
+        for groupID in groupIDs {
+            if seen.contains(groupID) { continue }
+            seen.insert(groupID)
+            result.append(groupID)
+            if result.count == 10 { break }
+        }
+
+        return result
+    }
+
+    static func presentRecentPhotos(_ photos: [FeedPhoto], favouriteIDs: Set<String>, limit: Int) -> [FeedPhoto] {
+        photos
+            .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    static func presentFavouritePhotos(_ photos: [FeedPhoto], visibleGroupIDs: [String], limit: Int) -> [FeedPhoto] {
+        let visibleGroups = Set(visibleGroupIDs)
+        return photos
+            .filter { photo in
+                guard let groupID = photo.groupID else { return false }
+                return visibleGroups.contains(groupID)
+            }
+            .map { $0.withFavourite(true) }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            .prefix(limit)
+            .map { $0 }
     }
 }
 

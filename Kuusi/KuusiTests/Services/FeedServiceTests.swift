@@ -1,0 +1,125 @@
+import Foundation
+import Testing
+@testable import Kuusi
+
+struct FeedServiceTests {
+    @Test
+    func visibleGroupIDsDeduplicatesAndCapsAtTen() {
+        let groupIDs = [
+            "g1", "g2", "g3", "g4", "g5",
+            "g6", "g7", "g8", "g9", "g10",
+            "g11", "g1", "g2"
+        ]
+
+        let visibleGroupIDs = FeedService.visibleGroupIDs(from: groupIDs)
+
+        #expect(visibleGroupIDs.count == 10)
+        #expect(Set(visibleGroupIDs).count == visibleGroupIDs.count)
+        #expect(!visibleGroupIDs.contains("g11"))
+    }
+
+    @Test
+    func presentRecentPhotosMarksFavouritesSortsAndLimits() {
+        let photos = [
+            makePhoto(id: "old", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100)),
+            makePhoto(id: "new", groupID: "g1", createdAt: Date(timeIntervalSince1970: 300)),
+            makePhoto(id: "mid", groupID: "g1", createdAt: Date(timeIntervalSince1970: 200))
+        ]
+
+        let result = FeedService.presentRecentPhotos(photos, favouriteIDs: ["mid"], limit: 2)
+
+        #expect(result.map(\.id) == ["new", "mid"])
+        #expect(result.first?.isFavourite == false)
+        #expect(result.last?.isFavourite == true)
+    }
+
+    @Test
+    func presentFavouritePhotosFiltersVisibleGroupsSortsAndLimits() {
+        let photos = [
+            makePhoto(id: "a", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100)),
+            makePhoto(id: "b", groupID: "g2", createdAt: Date(timeIntervalSince1970: 300)),
+            makePhoto(id: "c", groupID: "g3", createdAt: Date(timeIntervalSince1970: 200)),
+            makePhoto(id: "d", groupID: nil, createdAt: Date(timeIntervalSince1970: 400))
+        ]
+
+        let result = FeedService.presentFavouritePhotos(photos, visibleGroupIDs: ["g1", "g3"], limit: 5)
+
+        if result.map(\.id) != ["c", "a"] {
+            Issue.record("Expected favourite photos to be sorted newest-first and filtered to visible groups.")
+        }
+        if result.contains(where: { !$0.isFavourite }) {
+            Issue.record("Expected favourite photos presentation to mark every photo as favourite.")
+        }
+    }
+
+    @Test
+    @MainActor
+    func updatePhotoMetadataRejectsEditingOtherUsersPhoto() async {
+        let service = FeedService()
+        let photo = makePhoto(
+            id: "photo-1",
+            groupID: "g1",
+            postedBy: "owner-1",
+            createdAt: Date(timeIntervalSince1970: 100)
+        )
+
+        do {
+            try await service.updatePhotoMetadata(photo, requesterUID: "owner-2", year: 2025, hashtags: ["family"])
+            Issue.record("Expected updatePhotoMetadata to reject edits from a different owner.")
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain != "FeedService" {
+                Issue.record("Unexpected error domain: \(nsError.domain)")
+            }
+            if nsError.code != 403 {
+                Issue.record("Unexpected error code: \(nsError.code)")
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func deletePhotoRejectsDeletingOtherUsersPhoto() async {
+        let service = FeedService()
+        let photo = makePhoto(
+            id: "photo-1",
+            groupID: "g1",
+            postedBy: "owner-1",
+            createdAt: Date(timeIntervalSince1970: 100)
+        )
+
+        do {
+            try await service.deletePhoto(photo, requesterUID: "owner-2")
+            Issue.record("Expected deletePhoto to reject deletes from a different owner.")
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain != "FeedService" {
+                Issue.record("Unexpected error domain: \(nsError.domain)")
+            }
+            if nsError.code != 403 {
+                Issue.record("Unexpected error code: \(nsError.code)")
+            }
+        }
+    }
+
+    private func makePhoto(
+        id: String,
+        groupID: String?,
+        postedBy: String? = "owner-1",
+        createdAt: Date
+    ) -> FeedPhoto {
+        FeedPhoto(
+            id: id,
+            photoURL: "https://example.com/\(id).jpg",
+            thumbnailURL: "https://example.com/\(id)-thumb.jpg",
+            groupID: groupID,
+            postedBy: postedBy,
+            year: 2024,
+            hashtags: ["spring"],
+            isFavourite: false,
+            sizeMB: 2.0,
+            aspectRatio: 1.0,
+            createdAt: createdAt
+        )
+    }
+}
