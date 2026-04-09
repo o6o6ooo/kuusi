@@ -16,6 +16,24 @@ enum DebugCredentialsError: LocalizedError {
     }
 }
 
+private enum UITestRouteOverride {
+    case signedOut
+    case locked
+    case signedIn
+
+    init?(launchArguments: [String]) {
+        if launchArguments.contains("UI_TEST_ROUTE_SIGNED_OUT") {
+            self = .signedOut
+        } else if launchArguments.contains("UI_TEST_ROUTE_LOCKED") {
+            self = .locked
+        } else if launchArguments.contains("UI_TEST_ROUTE_SIGNED_IN") {
+            self = .signedIn
+        } else {
+            return nil
+        }
+    }
+}
+
 #if DEBUG
 struct DebugAccount: Identifiable, Hashable {
     let id: String
@@ -55,13 +73,26 @@ final class AppState: ObservableObject {
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
     private var shouldUnlockAfterInteractiveSignIn = false
+    private let uiTestRouteOverride: UITestRouteOverride?
 
     init() {
+        uiTestRouteOverride = UITestRouteOverride(launchArguments: ProcessInfo.processInfo.arguments)
 #if DEBUG
         let loadedAccounts = AppState.loadDebugAccounts()
         debugAccounts = loadedAccounts
         selectedDebugAccountID = loadedAccounts.first?.id
 #endif
+        if let uiTestRouteOverride {
+            route = switch uiTestRouteOverride {
+            case .signedOut:
+                .signedOut
+            case .locked:
+                .locked
+            case .signedIn:
+                .signedIn
+            }
+            return
+        }
         observeAuthState()
     }
 
@@ -99,6 +130,12 @@ final class AppState: ObservableObject {
     }
 
     func unlockApp() async {
+        if uiTestRouteOverride == .locked {
+            route = .signedIn
+            errorMessage = nil
+            return
+        }
+
         let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
         if ok {
             route = .signedIn
