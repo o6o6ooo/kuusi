@@ -1,41 +1,45 @@
-//
-//  KuusiUITests.swift
-//  KuusiUITests
-//
-//  Created by Sakura Wallace on 06/03/2026.
-//
-
 import XCTest
 
 final class KuusiUITests: XCTestCase {
-
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testLaunchShowsLoginScreen() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_OUT"]
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        XCTAssertTrue(app.otherElements["login-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["login-title"].exists)
+        XCTAssertTrue(app.buttons["apple-sign-in-button"].exists)
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+    func testSignedInLaunchShowsMainTabs() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Feed"].exists)
+        XCTAssertTrue(app.buttons["Years"].exists)
+        XCTAssertTrue(app.buttons["Favorites"].exists)
+        XCTAssertTrue(app.buttons["Settings"].exists)
+    }
+
+    @MainActor
+    func testLockedLaunchCanUnlockIntoMainTabs() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_LOCKED"]
+        app.launch()
+
+        XCTAssertTrue(app.otherElements["unlock-screen"].waitForExistence(timeout: 5))
+
+        app.buttons["unlock-button"].tap()
+
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Feed"].exists)
     }
 }

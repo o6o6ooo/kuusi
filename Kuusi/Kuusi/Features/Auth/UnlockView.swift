@@ -9,7 +9,8 @@ struct UnlockView: View {
             Image(systemName: "faceid")
                 .font(.system(size: 56))
             Text("Unlock Kuusi")
-						.font(.title2.weight(.bold))
+                .font(.title2.weight(.bold))
+                .accessibilityIdentifier("unlock-title")
             Text("Use Face ID or Touch ID")
                 .foregroundStyle(.secondary)
 
@@ -20,6 +21,7 @@ struct UnlockView: View {
             }
             .buttonStyle(.appPrimaryCapsule)
             .controlSize(.regular)
+            .accessibilityIdentifier("unlock-button")
 
             if let errorMessage = appState.errorMessage {
                 Text(errorMessage)
@@ -31,5 +33,6 @@ struct UnlockView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
+        .accessibilityIdentifier("unlock-screen")
     }
 }

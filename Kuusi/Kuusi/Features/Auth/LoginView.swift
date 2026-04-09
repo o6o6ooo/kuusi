@@ -15,10 +15,12 @@ struct LoginView: View {
                 .accessibilityHidden(true)
 
             Text("Kuusi")
-						.font(.title.weight(.bold))
+                .font(.title.weight(.bold))
+                .accessibilityIdentifier("login-title")
             Text("Share photos with your loved ones")
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 8)
+                .accessibilityIdentifier("login-subtitle")
 
             VStack(spacing: 12) {
                 SignInWithAppleButton(.signIn, onRequest: { request in
@@ -45,6 +47,7 @@ struct LoginView: View {
                 })
                 .signInWithAppleButtonStyle(.whiteOutline)
                 .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
+                .accessibilityIdentifier("apple-sign-in-button")
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: 420)
@@ -71,6 +74,7 @@ struct LoginView: View {
                     }
                     .buttonStyle(.appPrimaryCapsule)
                     .controlSize(.small)
+                    .accessibilityIdentifier("debug-sign-in-button")
                 }
                 .padding(.horizontal, 24)
             } else {
@@ -81,6 +85,7 @@ struct LoginView: View {
                 }
                 .buttonStyle(.appPrimaryCapsule)
                 .controlSize(.small)
+                .accessibilityIdentifier("debug-sign-in-button")
             }
 #endif
 
@@ -97,6 +102,7 @@ struct LoginView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
+        .accessibilityIdentifier("login-screen")
 #if DEBUG
         .onAppear {
             appState.refreshDebugAccounts()
