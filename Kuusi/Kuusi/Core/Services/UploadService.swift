@@ -22,17 +22,15 @@ final class UploadService {
             totalUploadedMB += prepared.sizeMB
             uploadedCount += 1
 
-            let payload: [String: Any] = [
-                "photo_url": previewURL.absoluteString,
-                "thumbnail_url": thumbURL.absoluteString,
-                "group_id": groupID,
-                "posted_by": userID,
-                "year": year,
-                "hashtags": hashtags,
-                "aspect_ratio": prepared.aspectRatio,
-                "size_mb": Double(round(100 * prepared.sizeMB) / 100),
-                "created_at": FieldValue.serverTimestamp()
-            ]
+            let payload = Self.makePhotoPayload(
+                previewURL: previewURL,
+                thumbURL: thumbURL,
+                groupID: groupID,
+                userID: userID,
+                year: year,
+                hashtags: hashtags,
+                prepared: prepared
+            )
 
             try await addPhotoDocument(payload)
         }
@@ -60,7 +58,7 @@ final class UploadService {
                         id: id,
                         previewData: previewData,
                         thumbData: thumbData,
-                        aspectRatio: max(Double(image.size.width / max(image.size.height, 1)), 0.2),
+                        aspectRatio: Self.aspectRatio(for: image.size),
                         sizeMB: sizeMB
                     )
                 }
@@ -71,10 +69,7 @@ final class UploadService {
     }
 
     private func resizedJPEGData(from image: UIImage, maxDimension: CGFloat, compression: CGFloat) -> Data? {
-        let originalSize = image.size
-        let maxSide = max(originalSize.width, originalSize.height)
-        let ratio = min(1.0, maxDimension / maxSide)
-        let targetSize = CGSize(width: originalSize.width * ratio, height: originalSize.height * ratio)
+        let targetSize = Self.targetSize(for: image.size, maxDimension: maxDimension)
 
         let renderer = UIGraphicsImageRenderer(size: targetSize)
         let resized = renderer.image { _ in
@@ -145,9 +140,47 @@ final class UploadService {
             }
         }
     }
+
+    static func targetSize(for originalSize: CGSize, maxDimension: CGFloat) -> CGSize {
+        let maxSide = max(originalSize.width, originalSize.height)
+        guard maxSide > 0 else { return .zero }
+
+        let ratio = min(1.0, maxDimension / maxSide)
+        return CGSize(width: originalSize.width * ratio, height: originalSize.height * ratio)
+    }
+
+    static func aspectRatio(for size: CGSize) -> Double {
+        max(Double(size.width / max(size.height, 1)), 0.2)
+    }
+
+    static func roundedMegabytes(_ sizeMB: Double) -> Double {
+        Double(round(100 * sizeMB) / 100)
+    }
+
+    static func makePhotoPayload(
+        previewURL: URL,
+        thumbURL: URL,
+        groupID: String,
+        userID: String,
+        year: Int,
+        hashtags: [String],
+        prepared: PreparedImage
+    ) -> [String: Any] {
+        [
+            "photo_url": previewURL.absoluteString,
+            "thumbnail_url": thumbURL.absoluteString,
+            "group_id": groupID,
+            "posted_by": userID,
+            "year": year,
+            "hashtags": hashtags,
+            "aspect_ratio": prepared.aspectRatio,
+            "size_mb": roundedMegabytes(prepared.sizeMB),
+            "created_at": FieldValue.serverTimestamp()
+        ]
+    }
 }
 
-private struct PreparedImage {
+struct PreparedImage {
     let id: String
     let previewData: Data
     let thumbData: Data

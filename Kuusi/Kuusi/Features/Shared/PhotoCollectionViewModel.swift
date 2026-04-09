@@ -3,6 +3,18 @@ import FirebaseAuth
 import SwiftUI
 import UIKit
 
+protocol PhotoCollectionFeedServicing {
+    func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int) async throws -> [FeedPhoto]
+}
+
+protocol PhotoCollectionGroupServicing {
+    func cachedGroups(for uid: String) -> [GroupSummary]
+    func fetchGroups(for uid: String) async throws -> [GroupSummary]
+}
+
+extension FeedService: PhotoCollectionFeedServicing {}
+extension GroupService: PhotoCollectionGroupServicing {}
+
 @MainActor
 final class PhotoCollectionViewModel: ObservableObject {
     @Published var groups: [GroupSummary] = []
@@ -14,8 +26,33 @@ final class PhotoCollectionViewModel: ObservableObject {
 
     private var measuringAspectRatioIDs: Set<String> = []
 
-    private let feedService = FeedService()
-    private let groupService = GroupService()
+    private let feedService: PhotoCollectionFeedServicing
+    private let groupService: PhotoCollectionGroupServicing
+    private let currentUserIDProvider: @MainActor () -> String?
+    private let aspectRatioMeasurer: (String) async -> CGFloat?
+
+    init(
+        feedService: PhotoCollectionFeedServicing,
+        groupService: PhotoCollectionGroupServicing,
+        currentUserIDProvider: @escaping @MainActor () -> String?,
+        aspectRatioMeasurer: @escaping (String) async -> CGFloat?
+    ) {
+        self.feedService = feedService
+        self.groupService = groupService
+        self.currentUserIDProvider = currentUserIDProvider
+        self.aspectRatioMeasurer = aspectRatioMeasurer
+    }
+
+    convenience init() {
+        self.init(
+            feedService: FeedService(),
+            groupService: GroupService(),
+            currentUserIDProvider: { Auth.auth().currentUser?.uid },
+            aspectRatioMeasurer: { urlString in
+                await PhotoCollectionViewModel.measureAspectRatioFromURL(urlString)
+            }
+        )
+    }
 
     var currentGroupPhotos: [FeedPhoto] {
         guard let selectedGroupID else { return [] }
@@ -27,7 +64,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     func loadInitial(limit: Int) async {
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard let uid = currentUserIDProvider() else {
             resetState()
             return
         }
@@ -50,7 +87,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     func refresh(limit: Int) async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserIDProvider() else { return }
 
         do {
             let freshGroups = try await groupService.fetchGroups(for: uid)
@@ -106,7 +143,7 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         measuringAspectRatioIDs.insert(photo.id)
         Task {
-            let ratio = await measureAspectRatio(from: urlString)
+            let ratio = await aspectRatioMeasurer(urlString)
             await MainActor.run {
                 self.measuringAspectRatioIDs.remove(photo.id)
                 guard let ratio else { return }
@@ -120,7 +157,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            guard let uid = Auth.auth().currentUser?.uid else {
+            guard let uid = currentUserIDProvider() else {
                 errorMessage = nil
                 return
             }
@@ -146,7 +183,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
     }
 
-    nonisolated private func measureAspectRatio(from urlString: String) async -> CGFloat? {
+    nonisolated private static func measureAspectRatioFromURL(_ urlString: String) async -> CGFloat? {
         guard let url = URL(string: urlString) else { return nil }
 
         do {

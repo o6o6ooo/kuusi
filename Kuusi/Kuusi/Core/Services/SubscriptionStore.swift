@@ -41,6 +41,13 @@ final class SubscriptionStore: ObservableObject {
 
     private var updatesTask: Task<Void, Never>?
     private let premiumProductID = "com.swallace.kuusi.premium.annual"
+    nonisolated private static let premiumFallbackPriceLabel = "£24.99 / year"
+
+    struct EntitlementSnapshot: Equatable {
+        let isPremiumActive: Bool
+        let renewalDate: Date?
+        let willAutoRenew: Bool
+    }
 
     init() {
         updatesTask = observeTransactionUpdates()
@@ -126,7 +133,7 @@ final class SubscriptionStore: ObservableObject {
     }
 
     var premiumPriceLabel: String? {
-        premiumProduct.map { "\($0.displayPrice) / year" } ?? AppPlan.premium.priceLabel
+        Self.makePremiumPriceLabel(displayPrice: premiumProduct?.displayPrice)
     }
 
     private func refreshEntitlements() async {
@@ -190,5 +197,24 @@ final class SubscriptionStore: ObservableObject {
         case .unverified:
             throw SubscriptionStoreError.purchaseUnverified
         }
+    }
+
+    nonisolated static func makePremiumPriceLabel(displayPrice: String?) -> String? {
+        if let displayPrice {
+            return "\(displayPrice) / year"
+        }
+        return premiumFallbackPriceLabel
+    }
+
+    nonisolated static func makeEntitlementSnapshot(
+        premiumActive: Bool,
+        renewalDate: Date?,
+        autoRenew: Bool
+    ) -> EntitlementSnapshot {
+        EntitlementSnapshot(
+            isPremiumActive: premiumActive,
+            renewalDate: renewalDate,
+            willAutoRenew: premiumActive && autoRenew
+        )
     }
 }

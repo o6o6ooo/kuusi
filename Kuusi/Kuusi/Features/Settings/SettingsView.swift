@@ -72,6 +72,7 @@ struct SettingsView: View {
                             Text("Sign out")
                                 .appTextLinkStyle()
                         }
+                        .accessibilityIdentifier("settings-sign-out-button")
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")
@@ -95,6 +96,23 @@ struct SettingsView: View {
                 .padding(16)
             }
             .screenTheme()
+            .overlay(alignment: .topLeading) {
+                Group {
+                    Text("ui-screen-settings")
+                        .accessibilityIdentifier("ui-screen-settings")
+                    Text("ui-settings-profile-section")
+                        .accessibilityIdentifier("ui-settings-profile-section")
+                    Text("ui-settings-groups-section")
+                        .accessibilityIdentifier("ui-settings-groups-section")
+                    Text("ui-settings-subscription-section")
+                        .accessibilityIdentifier("ui-settings-subscription-section")
+                }
+                .font(.caption2)
+                .foregroundStyle(.clear)
+                .frame(width: 0, height: 0)
+                .clipped()
+                .allowsHitTesting(false)
+            }
             .toolbar(.hidden, for: .navigationBar)
             .refreshable {
                 await profileViewModel.loadProfile()

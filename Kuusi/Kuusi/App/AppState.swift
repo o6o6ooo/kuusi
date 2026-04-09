@@ -5,6 +5,12 @@ import Foundation
 import GoogleSignIn
 import SwiftUI
 
+protocol BiometricAuthServicing {
+    func authenticate(reason: String) async -> Bool
+}
+
+extension BiometricAuthService: BiometricAuthServicing {}
+
 enum DebugCredentialsError: LocalizedError {
     case missingEnvironmentVariables
 
@@ -12,6 +18,24 @@ enum DebugCredentialsError: LocalizedError {
         switch self {
         case .missingEnvironmentVariables:
             return "Set DEBUG_TEST_EMAIL/DEBUG_TEST_PASSWORD or DEBUG_TEST_USER_{N}_EMAIL/_PASSWORD in Xcode Scheme > Run > Environment Variables."
+        }
+    }
+}
+
+private enum UITestRouteOverride {
+    case signedOut
+    case locked
+    case signedIn
+
+    init?(launchArguments: [String]) {
+        if launchArguments.contains("UI_TEST_ROUTE_SIGNED_OUT") {
+            self = .signedOut
+        } else if launchArguments.contains("UI_TEST_ROUTE_LOCKED") {
+            self = .locked
+        } else if launchArguments.contains("UI_TEST_ROUTE_SIGNED_IN") {
+            self = .signedIn
+        } else {
+            return nil
         }
     }
 }
@@ -50,19 +74,51 @@ final class AppState: ObservableObject {
 
     private let authService = AppleAuthService()
     private let userService = UserService()
-    private let biometricAuthService = BiometricAuthService()
+    private let biometricAuthService: BiometricAuthServicing
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
     private var shouldUnlockAfterInteractiveSignIn = false
+    private let uiTestRouteOverride: UITestRouteOverride?
 
-    init() {
+    var isRunningUITests: Bool {
+        uiTestRouteOverride != nil
+    }
+
+    init(
+        launchArguments: [String],
+        biometricAuthService: BiometricAuthServicing,
+        shouldObserveAuthState: Bool
+    ) {
+        self.biometricAuthService = biometricAuthService
+        self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
 #if DEBUG
         let loadedAccounts = AppState.loadDebugAccounts()
         debugAccounts = loadedAccounts
         selectedDebugAccountID = loadedAccounts.first?.id
 #endif
-        observeAuthState()
+        if let uiTestRouteOverride {
+            route = switch uiTestRouteOverride {
+            case .signedOut:
+                .signedOut
+            case .locked:
+                .locked
+            case .signedIn:
+                .signedIn
+            }
+            return
+        }
+        if shouldObserveAuthState {
+            self.observeAuthState()
+        }
+    }
+
+    convenience init() {
+        self.init(
+            launchArguments: ProcessInfo.processInfo.arguments,
+            biometricAuthService: BiometricAuthService(),
+            shouldObserveAuthState: true
+        )
     }
 
     deinit {
@@ -99,6 +155,12 @@ final class AppState: ObservableObject {
     }
 
     func unlockApp() async {
+        if uiTestRouteOverride != nil {
+            route = .signedIn
+            errorMessage = nil
+            return
+        }
+
         let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
         if ok {
             route = .signedIn

@@ -1,0 +1,129 @@
+import SwiftUI
+import Testing
+@testable import Kuusi
+
+@MainActor
+struct AppStateTests {
+    @Test
+    func defaultsToSignedOutWhenNoUiTestRouteIsProvided() {
+        let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
+
+        #expect(appState.route == .signedOut)
+        #expect(appState.isRunningUITests == false)
+    }
+
+    @Test
+    func uiTestSignedOutRouteStartsSignedOut() {
+        let appState = AppState(
+            launchArguments: ["UI_TEST_ROUTE_SIGNED_OUT"],
+            biometricAuthService: BiometricAuthServiceSpy(result: true),
+            shouldObserveAuthState: false
+        )
+
+        #expect(appState.route == .signedOut)
+        #expect(appState.isRunningUITests == true)
+    }
+
+    @Test
+    func uiTestLockedRouteStartsLocked() {
+        let appState = AppState(
+            launchArguments: ["UI_TEST_ROUTE_LOCKED"],
+            biometricAuthService: BiometricAuthServiceSpy(result: true),
+            shouldObserveAuthState: false
+        )
+
+        #expect(appState.route == .locked)
+        #expect(appState.isRunningUITests == true)
+    }
+
+    @Test
+    func uiTestSignedInRouteStartsSignedIn() {
+        let appState = AppState(
+            launchArguments: ["UI_TEST_ROUTE_SIGNED_IN"],
+            biometricAuthService: BiometricAuthServiceSpy(result: true),
+            shouldObserveAuthState: false
+        )
+
+        #expect(appState.route == .signedIn)
+        #expect(appState.isRunningUITests == true)
+    }
+
+    @Test
+    func unlockAppMovesToSignedInWhenBiometricsSucceed() async {
+        let biometricService = BiometricAuthServiceSpy(result: true)
+        let appState = AppState(
+            launchArguments: [],
+            biometricAuthService: biometricService,
+            shouldObserveAuthState: false
+        )
+        appState.route = .locked
+
+        await appState.unlockApp()
+
+        #expect(appState.route == .signedIn)
+        #expect(appState.errorMessage == nil)
+        #expect(biometricService.authenticateCallCount == 1)
+        #expect(biometricService.lastReason == "Unlock Kuusi")
+    }
+
+    @Test
+    func unlockAppShowsErrorWhenBiometricsFail() async {
+        let biometricService = BiometricAuthServiceSpy(result: false)
+        let appState = AppState(
+            launchArguments: [],
+            biometricAuthService: biometricService,
+            shouldObserveAuthState: false
+        )
+        appState.route = .locked
+
+        await appState.unlockApp()
+
+        #expect(appState.route == .locked)
+        #expect(appState.errorMessage == "Biometric authentication failed.")
+        #expect(biometricService.authenticateCallCount == 1)
+    }
+
+    @Test
+    func unlockAppBypassesBiometricsDuringUiTests() async {
+        let biometricService = BiometricAuthServiceSpy(result: false)
+        let appState = AppState(
+            launchArguments: ["UI_TEST_ROUTE_LOCKED"],
+            biometricAuthService: biometricService,
+            shouldObserveAuthState: false
+        )
+
+        await appState.unlockApp()
+
+        #expect(appState.route == .signedIn)
+        #expect(appState.errorMessage == nil)
+        #expect(biometricService.authenticateCallCount == 0)
+    }
+
+    @Test
+    func handleScenePhaseChangeLeavesSignedOutStateUnchanged() {
+        let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
+        appState.route = .signedOut
+        appState.errorMessage = "Existing"
+
+        appState.handleScenePhaseChange(.background)
+
+        #expect(appState.route == .signedOut)
+        #expect(appState.errorMessage == "Existing")
+    }
+}
+
+private final class BiometricAuthServiceSpy: BiometricAuthServicing {
+    let result: Bool
+    var authenticateCallCount = 0
+    var lastReason: String?
+
+    init(result: Bool) {
+        self.result = result
+    }
+
+    func authenticate(reason: String) async -> Bool {
+        authenticateCallCount += 1
+        lastReason = reason
+        return result
+    }
+}

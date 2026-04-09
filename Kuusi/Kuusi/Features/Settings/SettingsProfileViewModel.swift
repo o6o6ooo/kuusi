@@ -3,6 +3,20 @@ import FirebaseAuth
 import Foundation
 import UIKit
 
+protocol SettingsProfileUserServicing {
+    func fetchUser(uid: String) async throws -> AppUser?
+    func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws
+}
+
+protocol SettingsProfileGoogleAccountServicing {
+    func currentLinkedAccount(for user: User?) -> GoogleLinkedAccount
+    func connectCurrentUser(presentingViewController: UIViewController) async throws -> GoogleLinkedAccount
+    func disconnectCurrentUser() async throws
+}
+
+extension UserService: SettingsProfileUserServicing {}
+extension GoogleAccountService: SettingsProfileGoogleAccountServicing {}
+
 @MainActor
 final class SettingsProfileViewModel: ObservableObject {
     @Published var name = ""
@@ -15,9 +29,38 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var inlineMessage: InlineMessage?
     @Published var isEditingName = false
 
-    private let userService = UserService()
-    private let googleAccountService = GoogleAccountService()
+    private let userService: SettingsProfileUserServicing
+    private let googleAccountService: SettingsProfileGoogleAccountServicing
+    private let currentUserIDProvider: @MainActor () -> String?
+    private let linkedAccountProvider: @MainActor () -> GoogleLinkedAccount
+    private let topViewControllerProvider: @MainActor () -> UIViewController?
     private var clearMessageTask: Task<Void, Never>?
+
+    init(
+        userService: SettingsProfileUserServicing,
+        googleAccountService: SettingsProfileGoogleAccountServicing,
+        currentUserIDProvider: @escaping @MainActor () -> String?,
+        linkedAccountProvider: @escaping @MainActor () -> GoogleLinkedAccount,
+        topViewControllerProvider: @escaping @MainActor () -> UIViewController?
+    ) {
+        self.userService = userService
+        self.googleAccountService = googleAccountService
+        self.currentUserIDProvider = currentUserIDProvider
+        self.linkedAccountProvider = linkedAccountProvider
+        self.topViewControllerProvider = topViewControllerProvider
+    }
+
+    convenience init() {
+        let userService = UserService()
+        let googleAccountService = GoogleAccountService()
+        self.init(
+            userService: userService,
+            googleAccountService: googleAccountService,
+            currentUserIDProvider: { Auth.auth().currentUser?.uid },
+            linkedAccountProvider: { googleAccountService.currentLinkedAccount(for: Auth.auth().currentUser) },
+            topViewControllerProvider: { UIApplication.topViewController() }
+        )
+    }
 
     deinit {
         clearMessageTask?.cancel()
@@ -25,7 +68,7 @@ final class SettingsProfileViewModel: ObservableObject {
 
     func loadProfile() async {
         refreshGoogleConnectionState()
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserIDProvider() else { return }
 
         do {
             guard let user = try await userService.fetchUser(uid: uid) else { return }
@@ -39,7 +82,7 @@ final class SettingsProfileViewModel: ObservableObject {
     }
 
     func connectGoogleAccount() async {
-        guard let presentingViewController = UIApplication.topViewController() else {
+        guard let presentingViewController = topViewControllerProvider() else {
             setInlineMessage(.error("Could not open Google Sign-In."))
             return
         }
@@ -74,7 +117,7 @@ final class SettingsProfileViewModel: ObservableObject {
     }
 
     func saveProfile() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserIDProvider() else { return }
 
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanIcon = icon.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -118,7 +161,7 @@ final class SettingsProfileViewModel: ObservableObject {
     }
 
     private func refreshGoogleConnectionState() {
-        let linkedAccount = googleAccountService.currentLinkedAccount(for: Auth.auth().currentUser)
+        let linkedAccount = linkedAccountProvider()
         googleLinkedEmail = linkedAccount.email
         isGoogleLinked = linkedAccount.isLinked
     }
