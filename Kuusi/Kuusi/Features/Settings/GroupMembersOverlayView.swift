@@ -43,7 +43,7 @@ struct GroupMembersOverlayView: View {
                 .padding(16)
             }
             .background(cardBackground)
-            .screenTheme()
+            .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
         }
     }

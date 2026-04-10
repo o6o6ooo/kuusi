@@ -36,7 +36,7 @@ struct GroupQRCodeOverlayView: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .screenTheme()
+            .appOverlayTheme()
         }
     }
 

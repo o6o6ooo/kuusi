@@ -54,6 +54,7 @@ struct EmojiPickerSheet: View {
                     }
                 }
             }
+            .appOverlayTheme()
         }
     }
 }

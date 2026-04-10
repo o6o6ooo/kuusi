@@ -37,6 +37,6 @@ struct PhotoPreviewOverlayView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(16)
-        .screenTheme()
+        .appOverlayTheme()
     }
 }

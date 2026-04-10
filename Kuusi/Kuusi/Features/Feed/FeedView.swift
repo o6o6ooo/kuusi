@@ -758,7 +758,7 @@ private struct FeedEditSheet: View {
                 Spacer()
             }
             .padding(16)
-            .screenTheme()
+            .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
             .onDisappear {
                 clearErrorTask?.cancel()

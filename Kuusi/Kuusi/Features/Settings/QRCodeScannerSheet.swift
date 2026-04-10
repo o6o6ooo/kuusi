@@ -41,6 +41,7 @@ struct QRCodeScannerSheet: View {
                     }
                 }
             }
+            .appOverlayTheme()
         }
     }
 }

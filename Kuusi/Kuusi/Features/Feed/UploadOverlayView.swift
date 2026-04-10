@@ -125,7 +125,7 @@ struct UploadOverlayView: View {
                 .padding(.vertical, 12)
                 .foregroundStyle(primaryText)
             }
-            .screenTheme()
+            .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }

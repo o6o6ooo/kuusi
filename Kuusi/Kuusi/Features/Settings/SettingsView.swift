@@ -95,7 +95,7 @@ struct SettingsView: View {
                 }
                 .padding(16)
             }
-            .screenTheme()
+            .appOverlayTheme()
             .overlay(alignment: .topLeading) {
                 Group {
                     Text("ui-screen-settings")

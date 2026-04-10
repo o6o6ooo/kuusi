@@ -58,6 +58,47 @@ private struct FeedBackgroundModifier: ViewModifier {
     }
 }
 
+private struct OverlayBackgroundModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                ZStack {
+                    AppTheme.feedBackgroundGradient(for: colorScheme)
+
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .opacity(colorScheme == .dark ? 0.58 : 0.72)
+
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.05 : 0.26),
+                            Color.clear,
+                            Color.blue.opacity(colorScheme == .dark ? 0.04 : 0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .ignoresSafeArea()
+            )
+    }
+}
+
+private struct OverlayThemeModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        let text = AppTheme.primaryText(for: colorScheme)
+
+        content
+            .foregroundStyle(text)
+            .appOverlayBackground()
+            .toolbarBackground(.hidden, for: .navigationBar)
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
@@ -65,6 +106,14 @@ extension View {
 
     func appFeedBackground() -> some View {
         modifier(FeedBackgroundModifier())
+    }
+
+    func appOverlayBackground() -> some View {
+        modifier(OverlayBackgroundModifier())
+    }
+
+    func appOverlayTheme() -> some View {
+        modifier(OverlayThemeModifier())
     }
 
     func appTextLinkStyle() -> some View {
