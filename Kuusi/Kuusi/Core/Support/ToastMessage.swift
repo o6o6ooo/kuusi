@@ -1,7 +1,7 @@
 import Combine
 import SwiftUI
 
-struct InlineMessage: Equatable {
+struct ToastMessage: Equatable {
     static let defaultAutoClearInterval: TimeInterval = 2.5
     static let successAutoClearInterval: TimeInterval = defaultAutoClearInterval
 
@@ -26,7 +26,7 @@ struct InlineMessage: Equatable {
 
 @MainActor
 final class AppToastCenter: ObservableObject {
-    @Published private(set) var currentMessage: InlineMessage?
+    @Published private(set) var currentMessage: ToastMessage?
 
     private var clearTask: Task<Void, Never>?
 
@@ -34,10 +34,10 @@ final class AppToastCenter: ObservableObject {
         clearTask?.cancel()
     }
 
-    func present(_ message: InlineMessage, clearSource: (@MainActor @Sendable () -> Void)? = nil) {
+    func present(_ message: ToastMessage, clearSource: (@MainActor @Sendable () -> Void)? = nil) {
         clearTask?.cancel()
         currentMessage = message
-        clearTask = InlineMessageAutoClear.schedule(
+        clearTask = ToastMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.currentMessage
@@ -53,7 +53,7 @@ final class AppToastCenter: ObservableObject {
 private struct AppToastPresenterModifier: ViewModifier {
     @EnvironmentObject private var toastCenter: AppToastCenter
 
-    let message: InlineMessage?
+    let message: ToastMessage?
     let clear: @MainActor @Sendable () -> Void
 
     func body(content: Content) -> some View {
@@ -67,29 +67,6 @@ private struct AppToastPresenterModifier: ViewModifier {
             .onChange(of: message) { _, newValue in
                 guard let newValue else { return }
                 toastCenter.present(newValue, clearSource: { @MainActor @Sendable in
-                    clear()
-                })
-            }
-    }
-}
-
-private struct AppToastErrorPresenterModifier: ViewModifier {
-    @EnvironmentObject private var toastCenter: AppToastCenter
-
-    let text: String?
-    let clear: @MainActor @Sendable () -> Void
-
-    func body(content: Content) -> some View {
-        content
-            .onAppear {
-                guard let text, !text.isEmpty else { return }
-                toastCenter.present(.error(text), clearSource: { @MainActor @Sendable in
-                    clear()
-                })
-            }
-            .onChange(of: text) { _, newValue in
-                guard let newValue, !newValue.isEmpty else { return }
-                toastCenter.present(.error(newValue), clearSource: { @MainActor @Sendable in
                     clear()
                 })
             }
@@ -138,11 +115,11 @@ private struct AppToastHost: View {
     }
 }
 
-enum InlineMessageAutoClear {
+enum ToastMessageAutoClear {
     @MainActor
     static func schedule(
-        for message: InlineMessage?,
-        currentMessage: @escaping @MainActor () -> InlineMessage?,
+        for message: ToastMessage?,
+        currentMessage: @escaping @MainActor () -> ToastMessage?,
         clear: @escaping @MainActor @Sendable () -> Void
     ) -> Task<Void, Never>? {
         guard let message, let delay = message.autoClearAfter else { return nil }
@@ -156,7 +133,7 @@ enum InlineMessageAutoClear {
     }
 }
 
-private extension InlineMessage.Tone {
+private extension ToastMessage.Tone {
     var symbolName: String {
         switch self {
         case .success:
@@ -184,16 +161,9 @@ extension View {
     }
 
     func appToastMessage(
-        _ message: InlineMessage?,
+        _ message: ToastMessage?,
         clear: @escaping @MainActor @Sendable () -> Void = {}
     ) -> some View {
         modifier(AppToastPresenterModifier(message: message, clear: clear))
-    }
-
-    func appToastErrorMessage(
-        _ text: String?,
-        clear: @escaping @MainActor @Sendable () -> Void = {}
-    ) -> some View {
-        modifier(AppToastErrorPresenterModifier(text: text, clear: clear))
     }
 }

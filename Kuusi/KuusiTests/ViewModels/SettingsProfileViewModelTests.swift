@@ -39,8 +39,8 @@ struct SettingsProfileViewModelTests {
 
         await viewModel.loadProfile()
 
-        #expect(viewModel.inlineMessage?.text == "Load failed")
-        if case .error = viewModel.inlineMessage?.tone {
+        #expect(viewModel.toastMessage?.text == "Load failed")
+        if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
             Issue.record("Expected error inline message")
@@ -57,8 +57,8 @@ struct SettingsProfileViewModelTests {
         await viewModel.saveProfile()
 
         #expect(userService.updateCalls.isEmpty)
-        #expect(viewModel.inlineMessage?.text == "Name cannot be empty.")
-        if case .error = viewModel.inlineMessage?.tone {
+        #expect(viewModel.toastMessage?.text == "Name cannot be empty.")
+        if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
             Issue.record("Expected error inline message")
@@ -80,8 +80,8 @@ struct SettingsProfileViewModelTests {
         #expect(userService.updateCalls.first?.name == "Sakura")
         #expect(userService.updateCalls.first?.icon == "🌸")
         #expect(userService.updateCalls.first?.bgColour == "#abcdef")
-        #expect(viewModel.inlineMessage?.text == "Profile updated")
-        if case .success = viewModel.inlineMessage?.tone {
+        #expect(viewModel.toastMessage?.text == "Profile updated")
+        if case .success = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
             Issue.record("Expected success inline message")
@@ -98,8 +98,8 @@ struct SettingsProfileViewModelTests {
 
         await viewModel.saveProfile()
 
-        #expect(viewModel.inlineMessage?.text == "Save failed")
-        if case .error = viewModel.inlineMessage?.tone {
+        #expect(viewModel.toastMessage?.text == "Save failed")
+        if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
             Issue.record("Expected error inline message")
@@ -107,13 +107,13 @@ struct SettingsProfileViewModelTests {
     }
 
     @Test
-    func clearInlineMessageResetsMessage() {
+    func clearToastMessageResetsMessage() {
         let viewModel = makeViewModel()
-        viewModel.inlineMessage = .success("Saved")
+        viewModel.toastMessage = .success("Saved")
 
-        viewModel.clearInlineMessage()
+        viewModel.clearToastMessage()
 
-        #expect(viewModel.inlineMessage == nil)
+        #expect(viewModel.toastMessage == nil)
     }
 
     @Test
@@ -127,7 +127,7 @@ struct SettingsProfileViewModelTests {
         await viewModel.connectGoogleAccount()
 
         #expect(googleService.connectCallCount == 0)
-        #expect(viewModel.inlineMessage?.text == "Could not open Google Sign-In.")
+        #expect(viewModel.toastMessage?.text == "Could not open Google Sign-In.")
     }
 
     @Test
@@ -142,7 +142,7 @@ struct SettingsProfileViewModelTests {
         #expect(googleService.disconnectCallCount == 1)
         #expect(viewModel.googleLinkedEmail.isEmpty)
         #expect(viewModel.isGoogleLinked == false)
-        #expect(viewModel.inlineMessage?.text == "Google account disconnected")
+        #expect(viewModel.toastMessage?.text == "Google account disconnected")
     }
 
     private func makeViewModel(

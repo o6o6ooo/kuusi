@@ -15,7 +15,7 @@ struct UploadOverlayView: View {
     @State private var hashtags: [String] = []
     @State private var isUploading = false
     @State private var isImportingGooglePhotos = false
-    @State private var inlineMessage: InlineMessage?
+    @State private var toastMessage: ToastMessage?
     @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var googleImportTask: Task<Void, Never>?
@@ -126,7 +126,7 @@ struct UploadOverlayView: View {
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }
             }
-            .onChange(of: inlineMessage) { _, newValue in
+            .onChange(of: toastMessage) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
             .onDisappear {
@@ -135,8 +135,8 @@ struct UploadOverlayView: View {
                 googleImportTask?.cancel()
                 googleImportTask = nil
             }
-            .appToastMessage(inlineMessage) {
-                inlineMessage = nil
+            .appToastMessage(toastMessage) {
+                toastMessage = nil
             }
             .appToastHost()
             .task {
@@ -324,17 +324,17 @@ struct UploadOverlayView: View {
     @MainActor
     private func upload() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            inlineMessage = .error("Please sign in first.")
+            toastMessage = .error("Please sign in first.")
             return
         }
 
         guard let groupID = selectedGroupID else {
-            inlineMessage = .error("Select a group.")
+            toastMessage = .error("Select a group.")
             return
         }
 
         guard let year = parsedYear else {
-            inlineMessage = .error("Enter a valid year.")
+            toastMessage = .error("Enter a valid year.")
             return
         }
 
@@ -353,30 +353,30 @@ struct UploadOverlayView: View {
             pickerItems = []
             hashtagInput = ""
             hashtags = []
-            inlineMessage = .success("Upload completed.")
+            toastMessage = .success("Upload completed.")
         } catch {
-            inlineMessage = .error(error.localizedDescription)
+            toastMessage = .error(error.localizedDescription)
         }
     }
 
-    private func scheduleMessageAutoClear(for value: InlineMessage?) {
+    private func scheduleMessageAutoClear(for value: ToastMessage?) {
         clearMessageTask?.cancel()
-        clearMessageTask = InlineMessageAutoClear.schedule(
+        clearMessageTask = ToastMessageAutoClear.schedule(
             for: value,
-            currentMessage: { inlineMessage },
-            clear: { inlineMessage = nil }
+            currentMessage: { toastMessage },
+            clear: { toastMessage = nil }
         )
     }
 
     @MainActor
     private func importFromGooglePhotos() async {
         guard let presentingViewController = UIApplication.topViewController() else {
-            inlineMessage = .error("Could not open Google Photos.")
+            toastMessage = .error("Could not open Google Photos.")
             return
         }
 
         isImportingGooglePhotos = true
-        inlineMessage = nil
+        toastMessage = nil
 
         do {
             let authorizedSession = try await googleAccountService.preparePickerAuthorization(
@@ -401,7 +401,7 @@ struct UploadOverlayView: View {
                         googlePickerSession = nil
                         googleImportTask = nil
                         isImportingGooglePhotos = false
-                        inlineMessage = .success("\(images.count) photos imported from Google Photos")
+                        toastMessage = .success("\(images.count) photos imported from Google Photos")
                     }
                 } catch is CancellationError {
                     await MainActor.run {
@@ -413,13 +413,13 @@ struct UploadOverlayView: View {
                         googlePickerSession = nil
                         googleImportTask = nil
                         isImportingGooglePhotos = false
-                        inlineMessage = .error(error.localizedDescription)
+                        toastMessage = .error(error.localizedDescription)
                     }
                 }
             }
         } catch {
             isImportingGooglePhotos = false
-            inlineMessage = .error(error.localizedDescription)
+            toastMessage = .error(error.localizedDescription)
         }
     }
 }

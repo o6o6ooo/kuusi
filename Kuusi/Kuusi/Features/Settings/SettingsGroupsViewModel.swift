@@ -31,8 +31,8 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var editableGroupName = ""
     @Published var groups: [GroupSummary] = []
-    @Published var createStatusMessage: InlineMessage?
-    @Published var saveStatusMessage: InlineMessage?
+    @Published var createStatusMessage: ToastMessage?
+    @Published var saveStatusMessage: ToastMessage?
     @Published var isCreating = false
     @Published var isLoadingGroups = false
     @Published var isSavingGroupName = false
@@ -299,10 +299,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         return features?.first?.messageString
     }
 
-    private func setCreateStatus(_ message: InlineMessage) {
+    private func setCreateStatus(_ message: ToastMessage) {
         clearCreateMessageTask?.cancel()
         createStatusMessage = message
-        clearCreateMessageTask = InlineMessageAutoClear.schedule(
+        clearCreateMessageTask = ToastMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.createStatusMessage
@@ -313,10 +313,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         )
     }
 
-    private func setSaveStatus(_ message: InlineMessage) {
+    private func setSaveStatus(_ message: ToastMessage) {
         clearSaveMessageTask?.cancel()
         saveStatusMessage = message
-        clearSaveMessageTask = InlineMessageAutoClear.schedule(
+        clearSaveMessageTask = ToastMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.saveStatusMessage

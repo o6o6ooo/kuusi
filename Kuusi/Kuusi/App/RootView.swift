@@ -23,8 +23,8 @@ struct RootView: View {
                     }
             }
         }
-        .appToastErrorMessage(appState.errorMessage) {
-            appState.errorMessage = nil
+        .appToastMessage(appState.toastMessage) {
+            appState.clearToastMessage()
         }
         .appToastHost()
     }

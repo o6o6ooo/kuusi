@@ -15,7 +15,7 @@ struct SettingsView: View {
     @State private var clearBillingMessageTask: Task<Void, Never>?
     @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var selectedQRCodePhoto: PhotosPickerItem?
-    @State private var billingMessage: InlineMessage?
+    @State private var billingMessage: ToastMessage?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -234,8 +234,8 @@ struct SettingsView: View {
                 subscriptionRefreshTask = nil
                 groupsViewModel.onDisappear()
             }
-            .appToastMessage(profileViewModel.inlineMessage) {
-                profileViewModel.clearInlineMessage()
+            .appToastMessage(profileViewModel.toastMessage) {
+                profileViewModel.clearToastMessage()
             }
             .appToastMessage(groupsViewModel.createStatusMessage)
             .appToastMessage(groupsViewModel.saveStatusMessage)
@@ -289,9 +289,9 @@ struct SettingsView: View {
         }
     }
 
-    private func scheduleBillingMessageAutoClear(for value: InlineMessage?) {
+    private func scheduleBillingMessageAutoClear(for value: ToastMessage?) {
         clearBillingMessageTask?.cancel()
-        clearBillingMessageTask = InlineMessageAutoClear.schedule(
+        clearBillingMessageTask = ToastMessageAutoClear.schedule(
             for: value,
             currentMessage: { billingMessage },
             clear: { billingMessage = nil }

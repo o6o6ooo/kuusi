@@ -26,7 +26,7 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var googleLinkedEmail = ""
     @Published var isGoogleLinked = false
     @Published var isGoogleAccountActionInFlight = false
-    @Published var inlineMessage: InlineMessage?
+    @Published var toastMessage: ToastMessage?
 
     private let userService: SettingsProfileUserServicing
     private let googleAccountService: SettingsProfileGoogleAccountServicing
@@ -76,13 +76,13 @@ final class SettingsProfileViewModel: ObservableObject {
             bgColour = user.bgColour
             usageMB = user.usageMB
         } catch {
-            setInlineMessage(.error(error.localizedDescription))
+            setToastMessage(.error(error.localizedDescription))
         }
     }
 
     func connectGoogleAccount() async {
         guard let presentingViewController = topViewControllerProvider() else {
-            setInlineMessage(.error("Could not open Google Sign-In."))
+            setToastMessage(.error("Could not open Google Sign-In."))
             return
         }
 
@@ -95,9 +95,9 @@ final class SettingsProfileViewModel: ObservableObject {
             )
             googleLinkedEmail = linkedAccount.email
             isGoogleLinked = linkedAccount.isLinked
-            setInlineMessage(.success("Google account connected"))
+            setToastMessage(.success("Google account connected"))
         } catch {
-            setInlineMessage(.error(error.localizedDescription))
+            setToastMessage(.error(error.localizedDescription))
         }
     }
 
@@ -109,9 +109,9 @@ final class SettingsProfileViewModel: ObservableObject {
             try await googleAccountService.disconnectCurrentUser()
             googleLinkedEmail = ""
             isGoogleLinked = false
-            setInlineMessage(.success("Google account disconnected"))
+            setToastMessage(.success("Google account disconnected"))
         } catch {
-            setInlineMessage(.error(error.localizedDescription))
+            setToastMessage(.error(error.localizedDescription))
         }
     }
 
@@ -126,7 +126,7 @@ final class SettingsProfileViewModel: ObservableObject {
         let cleanIcon = icon.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanName.isEmpty else {
-            setInlineMessage(.error("Name cannot be empty."))
+            setToastMessage(.error("Name cannot be empty."))
             return
         }
 
@@ -140,30 +140,30 @@ final class SettingsProfileViewModel: ObservableObject {
             self.name = cleanName
             self.icon = cleanIcon.isEmpty ? "🌸" : cleanIcon
             self.bgColour = bgColour
-            setInlineMessage(.success("Profile updated"))
+            setToastMessage(.success("Profile updated"))
         } catch {
-            setInlineMessage(.error(error.localizedDescription))
+            setToastMessage(.error(error.localizedDescription))
         }
     }
 
-    private func setInlineMessage(_ message: InlineMessage) {
-        inlineMessage = message
+    private func setToastMessage(_ message: ToastMessage) {
+        toastMessage = message
         clearMessageTask?.cancel()
-        clearMessageTask = InlineMessageAutoClear.schedule(
+        clearMessageTask = ToastMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
-                self?.inlineMessage
+                self?.toastMessage
             },
             clear: { [weak self] in
-                self?.inlineMessage = nil
+                self?.toastMessage = nil
             }
         )
     }
 
-    func clearInlineMessage() {
+    func clearToastMessage() {
         clearMessageTask?.cancel()
         clearMessageTask = nil
-        inlineMessage = nil
+        toastMessage = nil
     }
 
     private func refreshGoogleConnectionState() {

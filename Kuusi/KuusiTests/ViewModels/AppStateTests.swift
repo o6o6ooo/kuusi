@@ -61,7 +61,7 @@ struct AppStateTests {
         await appState.unlockApp()
 
         #expect(appState.route == .signedIn)
-        #expect(appState.errorMessage == nil)
+        #expect(appState.toastMessage == nil)
         #expect(biometricService.authenticateCallCount == 1)
         #expect(biometricService.lastReason == "Unlock Kuusi")
     }
@@ -79,7 +79,7 @@ struct AppStateTests {
         await appState.unlockApp()
 
         #expect(appState.route == .locked)
-        #expect(appState.errorMessage == "Biometric authentication failed.")
+        #expect(appState.toastMessage?.text == "Biometric authentication failed.")
         #expect(biometricService.authenticateCallCount == 1)
     }
 
@@ -95,7 +95,7 @@ struct AppStateTests {
         await appState.unlockApp()
 
         #expect(appState.route == .signedIn)
-        #expect(appState.errorMessage == nil)
+        #expect(appState.toastMessage == nil)
         #expect(biometricService.authenticateCallCount == 0)
     }
 
@@ -103,12 +103,12 @@ struct AppStateTests {
     func handleScenePhaseChangeLeavesSignedOutStateUnchanged() {
         let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
         appState.route = .signedOut
-        appState.errorMessage = "Existing"
+        appState.toastMessage = .error("Existing")
 
         appState.handleScenePhaseChange(.background)
 
         #expect(appState.route == .signedOut)
-        #expect(appState.errorMessage == "Existing")
+        #expect(appState.toastMessage?.text == "Existing")
     }
 }
 

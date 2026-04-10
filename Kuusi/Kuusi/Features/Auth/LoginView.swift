@@ -35,14 +35,14 @@ struct LoginView: View {
                             let credential = authResults.credential as? ASAuthorizationAppleIDCredential,
                             let nonce = currentNonce
                         else {
-                            appState.errorMessage = "Apple Sign-In failed."
+                            appState.toastMessage = .error("Apple Sign-In failed.")
                             return
                         }
                         Task {
                             await appState.signInWithApple(credential: credential, rawNonce: nonce)
                         }
                     case let .failure(error):
-                        appState.errorMessage = error.localizedDescription
+                        appState.toastMessage = .error(error.localizedDescription)
                     }
                 })
                 .signInWithAppleButtonStyle(.whiteOutline)

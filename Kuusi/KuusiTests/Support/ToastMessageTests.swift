@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import Kuusi
 
-struct InlineMessageTests {
+struct ToastMessageTests {
     @Test
     func successFactoryUsesSuccessDefaults() {
-        let message = InlineMessage.success("Saved")
+        let message = ToastMessage.success("Saved")
 
         #expect(message.text == "Saved")
         if case .success = message.tone {
@@ -13,12 +13,12 @@ struct InlineMessageTests {
         } else {
             Issue.record("Expected success tone")
         }
-        #expect(message.autoClearAfter == InlineMessage.successAutoClearInterval)
+        #expect(message.autoClearAfter == ToastMessage.successAutoClearInterval)
     }
 
     @Test
     func errorFactoryPreservesExplicitDelay() {
-        let message = InlineMessage.error("Failed", autoClearAfter: 4)
+        let message = ToastMessage.error("Failed", autoClearAfter: 4)
 
         #expect(message.text == "Failed")
         if case .error = message.tone {
@@ -32,8 +32,8 @@ struct InlineMessageTests {
     @Test
     @MainActor
     func autoClearSkipsMessagesWithoutDelay() async {
-        var currentMessage: InlineMessage? = InlineMessage.error("Failed")
-        let task = InlineMessageAutoClear.schedule(
+        var currentMessage: ToastMessage? = ToastMessage.error("Failed")
+        let task = ToastMessageAutoClear.schedule(
             for: currentMessage,
             currentMessage: { currentMessage },
             clear: { currentMessage = nil }
@@ -46,9 +46,9 @@ struct InlineMessageTests {
     @Test
     @MainActor
     func autoClearClearsMatchingMessageAfterDelay() async throws {
-        let message = InlineMessage.error("Failed", autoClearAfter: 0.01)
-        var currentMessage: InlineMessage? = message
-        let task = InlineMessageAutoClear.schedule(
+        let message = ToastMessage.error("Failed", autoClearAfter: 0.01)
+        var currentMessage: ToastMessage? = message
+        let task = ToastMessageAutoClear.schedule(
             for: message,
             currentMessage: { currentMessage },
             clear: { currentMessage = nil }

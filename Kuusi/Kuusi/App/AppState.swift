@@ -65,7 +65,7 @@ final class AppState: ObservableObject {
     }
 
     @Published var route: Route = .signedOut
-    @Published var errorMessage: String?
+    @Published var toastMessage: ToastMessage?
     @Published private(set) var currentUser: User?
 #if DEBUG
     @Published private(set) var debugAccounts: [DebugAccount] = []
@@ -132,7 +132,7 @@ final class AppState: ObservableObject {
             let tokenData = credential.identityToken,
             let tokenString = String(data: tokenData, encoding: .utf8)
         else {
-            errorMessage = "Apple ID token was not available."
+            toastMessage = .error("Apple ID token was not available.")
             return
         }
 
@@ -145,28 +145,28 @@ final class AppState: ObservableObject {
             )
             let user = try await authService.signIn(payload: payload)
 
-            errorMessage = nil
+            toastMessage = nil
             currentUser = user
             route = .signedIn
         } catch {
             shouldUnlockAfterInteractiveSignIn = false
-            errorMessage = error.localizedDescription
+            toastMessage = .error(error.localizedDescription)
         }
     }
 
     func unlockApp() async {
         if uiTestRouteOverride != nil {
             route = .signedIn
-            errorMessage = nil
+            toastMessage = nil
             return
         }
 
         let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
         if ok {
             route = .signedIn
-            errorMessage = nil
+            toastMessage = nil
         } else {
-            errorMessage = "Biometric authentication failed."
+            toastMessage = .error("Biometric authentication failed.")
         }
     }
 
@@ -176,10 +176,10 @@ final class AppState: ObservableObject {
             try Auth.auth().signOut()
             currentUser = nil
             route = .signedOut
-            errorMessage = nil
+            toastMessage = nil
             prefetchedGroupsUID = nil
         } catch {
-            errorMessage = error.localizedDescription
+            toastMessage = .error(error.localizedDescription)
         }
     }
 
@@ -200,18 +200,18 @@ final class AppState: ObservableObject {
             let user = try await signInOrCreateDebugUser(account: account)
 
             currentUser = user
-            errorMessage = nil
+            toastMessage = nil
             route = .signedIn
         } catch {
             shouldUnlockAfterInteractiveSignIn = false
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
-                errorMessage = "Enable Email/Password provider in Firebase Authentication for debug login."
+                toastMessage = .error("Enable Email/Password provider in Firebase Authentication for debug login.")
             } else if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                       nsError.code == AuthErrorCode.invalidCredential.rawValue {
-                errorMessage = "Debug user credentials are invalid. Check email/password in AppState and Firebase Console."
+                toastMessage = .error("Debug user credentials are invalid. Check email/password in AppState and Firebase Console.")
             } else {
-                errorMessage = "Debug sign-in failed: \(error.localizedDescription)"
+                toastMessage = .error("Debug sign-in failed: \(error.localizedDescription)")
             }
         }
     }
@@ -221,7 +221,11 @@ final class AppState: ObservableObject {
         guard newPhase == .background else { return }
         guard currentUser != nil, route == .signedIn else { return }
         route = .locked
-        errorMessage = nil
+        toastMessage = nil
+    }
+
+    func clearToastMessage() {
+        toastMessage = nil
     }
 
     private func observeAuthState() {
@@ -240,7 +244,7 @@ final class AppState: ObservableObject {
                     try? Auth.auth().signOut()
                     self.currentUser = nil
                     self.route = .signedOut
-                    self.errorMessage = nil
+                    self.toastMessage = nil
                     return
                 }
 
