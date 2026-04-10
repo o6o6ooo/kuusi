@@ -29,6 +29,7 @@ final class AppToastCenter: ObservableObject {
     @Published private(set) var currentMessage: ToastMessage?
 
     private var clearTask: Task<Void, Never>?
+    private var hostOrder: [UUID] = []
 
     deinit {
         clearTask?.cancel()
@@ -47,6 +48,21 @@ final class AppToastCenter: ObservableObject {
                 clearSource?()
             }
         )
+    }
+
+    func registerHost(_ id: UUID) {
+        hostOrder.removeAll { $0 == id }
+        hostOrder.append(id)
+        objectWillChange.send()
+    }
+
+    func unregisterHost(_ id: UUID) {
+        hostOrder.removeAll { $0 == id }
+        objectWillChange.send()
+    }
+
+    func isActiveHost(_ id: UUID) -> Bool {
+        hostOrder.last == id
     }
 }
 
@@ -76,10 +92,11 @@ private struct AppToastPresenterModifier: ViewModifier {
 private struct AppToastHost: View {
     @EnvironmentObject private var toastCenter: AppToastCenter
     @Environment(\.colorScheme) private var colorScheme
+    @State private var hostID = UUID()
 
     var body: some View {
         GeometryReader { proxy in
-            if let message = toastCenter.currentMessage {
+            if toastCenter.isActiveHost(hostID), let message = toastCenter.currentMessage {
                 HStack(spacing: 10) {
                     Image(systemName: message.tone.symbolName)
                         .font(.system(size: 17, weight: .semibold))
@@ -103,13 +120,19 @@ private struct AppToastHost: View {
                         }
                 }
                 .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.08), radius: 18, x: 0, y: 10)
-                .frame(maxWidth: .infinity)
-                .padding(.top, max(proxy.safeAreaInsets.top, 10) + 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, max(proxy.safeAreaInsets.bottom, 10) + 8)
                 .padding(.horizontal, 12)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.88), value: toastCenter.currentMessage)
+        .onAppear {
+            toastCenter.registerHost(hostID)
+        }
+        .onDisappear {
+            toastCenter.unregisterHost(hostID)
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -155,7 +178,7 @@ private extension ToastMessage.Tone {
 
 extension View {
     func appToastHost() -> some View {
-        overlay(alignment: .top) {
+        overlay(alignment: .bottom) {
             AppToastHost()
         }
     }
