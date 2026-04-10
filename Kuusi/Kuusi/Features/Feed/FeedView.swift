@@ -476,7 +476,7 @@ struct FeedView: View {
                 )
                 .overlay {
                     Capsule()
-                        .strokeBorder(Color.white.opacity(isSelected ? 0 : 0.18), lineWidth: 1)
+                        .strokeBorder(Color.clear, lineWidth: 0)
                 }
         }
         .buttonStyle(.plain)
