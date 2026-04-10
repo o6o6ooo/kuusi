@@ -103,7 +103,7 @@ struct AppStateTests {
     func handleScenePhaseChangeLeavesSignedOutStateUnchanged() {
         let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
         appState.route = .signedOut
-        appState.toastMessage = .error("Existing")
+        appState.toastMessage = AppMessage(.details("Existing"), .error)
 
         appState.handleScenePhaseChange(.background)
 

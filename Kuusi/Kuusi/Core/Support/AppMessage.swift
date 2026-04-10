@@ -1,32 +1,145 @@
 import Combine
 import SwiftUI
 
-struct ToastMessage: Equatable {
+struct AppMessage: Equatable {
     static let defaultAutoClearInterval: TimeInterval = 2.5
-    static let successAutoClearInterval: TimeInterval = defaultAutoClearInterval
 
     enum Tone: Equatable {
         case success
         case error
     }
 
-    let id = UUID()
-    let text: String
-    let tone: Tone
-    let autoClearAfter: TimeInterval?
-
-    static func success(_ text: String) -> Self {
-        .init(text: text, tone: .success, autoClearAfter: defaultAutoClearInterval)
+    enum ID: Equatable {
+        case appleSignInFailed
+        case appleTokenUnavailable
+        case biometricAuthenticationFailed
+        case couldNotOpenGooglePhotos
+        case couldNotOpenGoogleSignIn
+        case debugEmailPasswordProviderDisabled
+        case debugInvalidCredentials
+        case debugSignInFailed(String)
+        case enterValidYear
+        case failedToLoadImage
+        case fillInGroupName
+        case googleAccountConnected
+        case googleAccountDisconnected
+        case groupCreated
+        case groupDeleted
+        case groupUpdated
+        case invalidInviteQR
+        case joinedGroup
+        case leftGroup
+        case nameCannotBeEmpty
+        case noActivePurchasesFound
+        case photoAlreadyBeingUpdated
+        case photoDeleted
+        case photosImportedFromGooglePhotos(Int)
+        case pleaseSignInFirst
+        case premiumUnlocked
+        case profileUpdated
+        case purchasesRestored
+        case qrCodeNotFoundInImage
+        case removedFromFavourites
+        case addedToFavourites
+        case selectGroup
+        case uploadCompleted
+        case groupLimitReached(title: String, maxGroups: Int)
+        case details(String)
     }
 
-    static func error(_ text: String, autoClearAfter: TimeInterval? = defaultAutoClearInterval) -> Self {
-        .init(text: text, tone: .error, autoClearAfter: autoClearAfter)
+    let id: ID
+    let tone: Tone
+    let text: String
+    let autoClearAfter: TimeInterval?
+
+    init(_ id: ID, _ tone: Tone, autoClearAfter: TimeInterval? = defaultAutoClearInterval) {
+        self.id = id
+        self.tone = tone
+        self.text = id.text
+        self.autoClearAfter = autoClearAfter
+    }
+}
+
+private extension AppMessage.ID {
+    var text: String {
+        switch self {
+        case .appleSignInFailed:
+            return "Apple Sign-In failed."
+        case .appleTokenUnavailable:
+            return "Apple ID token was not available."
+        case .biometricAuthenticationFailed:
+            return "Biometric authentication failed."
+        case .couldNotOpenGooglePhotos:
+            return "Could not open Google Photos."
+        case .couldNotOpenGoogleSignIn:
+            return "Could not open Google Sign-In."
+        case .debugEmailPasswordProviderDisabled:
+            return "Enable Email/Password provider in Firebase Authentication for debug login."
+        case .debugInvalidCredentials:
+            return "Debug user credentials are invalid. Check email/password in AppState and Firebase Console."
+        case let .debugSignInFailed(description):
+            return "Debug sign-in failed: \(description)"
+        case .enterValidYear:
+            return "Enter a valid year."
+        case .failedToLoadImage:
+            return "Failed to load image"
+        case .fillInGroupName:
+            return "Fill in group name"
+        case .googleAccountConnected:
+            return "Google account connected"
+        case .googleAccountDisconnected:
+            return "Google account disconnected"
+        case .groupCreated:
+            return "Group created. Pull down to refresh."
+        case .groupDeleted:
+            return "Group deleted. Pull down to refresh."
+        case .groupUpdated:
+            return "Group updated"
+        case .invalidInviteQR:
+            return "Invalid invite QR"
+        case .joinedGroup:
+            return "Joined group. Pull down to refresh."
+        case .leftGroup:
+            return "Left group. Pull down to refresh."
+        case .nameCannotBeEmpty:
+            return "Name cannot be empty."
+        case .noActivePurchasesFound:
+            return "No active purchases found"
+        case .photoAlreadyBeingUpdated:
+            return "Photo is already being updated."
+        case .photoDeleted:
+            return "Photo deleted."
+        case let .photosImportedFromGooglePhotos(count):
+            return "\(count) photos imported from Google Photos"
+        case .pleaseSignInFirst:
+            return "Please sign in first."
+        case .premiumUnlocked:
+            return "Premium unlocked"
+        case .profileUpdated:
+            return "Profile updated"
+        case .purchasesRestored:
+            return "Purchases restored"
+        case .qrCodeNotFoundInImage:
+            return "QR code was not found in the image"
+        case .removedFromFavourites:
+            return "Removed from favourites."
+        case .addedToFavourites:
+            return "Added to favourites."
+        case .selectGroup:
+            return "Select a group."
+        case .uploadCompleted:
+            return "Upload completed."
+        case let .groupLimitReached(title, maxGroups):
+            return "\(title) supports up to \(maxGroups) groups."
+        case let .details(message):
+            return message
+        }
     }
 }
 
 @MainActor
 final class AppToastCenter: ObservableObject {
-    @Published private(set) var currentMessage: ToastMessage?
+    @Published private(set) var currentMessage: AppMessage?
 
     private var clearTask: Task<Void, Never>?
     private var hostOrder: [UUID] = []
@@ -35,10 +148,10 @@ final class AppToastCenter: ObservableObject {
         clearTask?.cancel()
     }
 
-    func present(_ message: ToastMessage, clearSource: (@MainActor @Sendable () -> Void)? = nil) {
+    func present(_ message: AppMessage, clearSource: (@MainActor @Sendable () -> Void)? = nil) {
         clearTask?.cancel()
         currentMessage = message
-        clearTask = ToastMessageAutoClear.schedule(
+        clearTask = AppMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.currentMessage
@@ -69,7 +182,7 @@ final class AppToastCenter: ObservableObject {
 private struct AppToastPresenterModifier: ViewModifier {
     @EnvironmentObject private var toastCenter: AppToastCenter
 
-    let message: ToastMessage?
+    let message: AppMessage?
     let clear: @MainActor @Sendable () -> Void
 
     func body(content: Content) -> some View {
@@ -138,11 +251,11 @@ private struct AppToastHost: View {
     }
 }
 
-enum ToastMessageAutoClear {
+enum AppMessageAutoClear {
     @MainActor
     static func schedule(
-        for message: ToastMessage?,
-        currentMessage: @escaping @MainActor () -> ToastMessage?,
+        for message: AppMessage?,
+        currentMessage: @escaping @MainActor () -> AppMessage?,
         clear: @escaping @MainActor @Sendable () -> Void
     ) -> Task<Void, Never>? {
         guard let message, let delay = message.autoClearAfter else { return nil }
@@ -156,7 +269,7 @@ enum ToastMessageAutoClear {
     }
 }
 
-private extension ToastMessage.Tone {
+private extension AppMessage.Tone {
     var symbolName: String {
         switch self {
         case .success:
@@ -184,7 +297,7 @@ extension View {
     }
 
     func appToastMessage(
-        _ message: ToastMessage?,
+        _ message: AppMessage?,
         clear: @escaping @MainActor @Sendable () -> Void = {}
     ) -> some View {
         modifier(AppToastPresenterModifier(message: message, clear: clear))

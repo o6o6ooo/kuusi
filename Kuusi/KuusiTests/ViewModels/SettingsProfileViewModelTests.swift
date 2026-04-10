@@ -109,7 +109,7 @@ struct SettingsProfileViewModelTests {
     @Test
     func clearToastMessageResetsMessage() {
         let viewModel = makeViewModel()
-        viewModel.toastMessage = .success("Saved")
+        viewModel.toastMessage = AppMessage(.profileUpdated, .success)
 
         viewModel.clearToastMessage()
 

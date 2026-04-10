@@ -15,7 +15,7 @@ struct UploadOverlayView: View {
     @State private var hashtags: [String] = []
     @State private var isUploading = false
     @State private var isImportingGooglePhotos = false
-    @State private var toastMessage: ToastMessage?
+    @State private var toastMessage: AppMessage?
     @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var googleImportTask: Task<Void, Never>?
@@ -324,17 +324,17 @@ struct UploadOverlayView: View {
     @MainActor
     private func upload() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            toastMessage = .error("Please sign in first.")
+            toastMessage = AppMessage(.pleaseSignInFirst, .error)
             return
         }
 
         guard let groupID = selectedGroupID else {
-            toastMessage = .error("Select a group.")
+            toastMessage = AppMessage(.selectGroup, .error)
             return
         }
 
         guard let year = parsedYear else {
-            toastMessage = .error("Enter a valid year.")
+            toastMessage = AppMessage(.enterValidYear, .error)
             return
         }
 
@@ -353,15 +353,15 @@ struct UploadOverlayView: View {
             pickerItems = []
             hashtagInput = ""
             hashtags = []
-            toastMessage = .success("Upload completed.")
+            toastMessage = AppMessage(.uploadCompleted, .success)
         } catch {
-            toastMessage = .error(error.localizedDescription)
+            toastMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 
-    private func scheduleMessageAutoClear(for value: ToastMessage?) {
+    private func scheduleMessageAutoClear(for value: AppMessage?) {
         clearMessageTask?.cancel()
-        clearMessageTask = ToastMessageAutoClear.schedule(
+        clearMessageTask = AppMessageAutoClear.schedule(
             for: value,
             currentMessage: { toastMessage },
             clear: { toastMessage = nil }
@@ -371,7 +371,7 @@ struct UploadOverlayView: View {
     @MainActor
     private func importFromGooglePhotos() async {
         guard let presentingViewController = UIApplication.topViewController() else {
-            toastMessage = .error("Could not open Google Photos.")
+            toastMessage = AppMessage(.couldNotOpenGooglePhotos, .error)
             return
         }
 
@@ -401,7 +401,7 @@ struct UploadOverlayView: View {
                         googlePickerSession = nil
                         googleImportTask = nil
                         isImportingGooglePhotos = false
-                        toastMessage = .success("\(images.count) photos imported from Google Photos")
+                        toastMessage = AppMessage(.photosImportedFromGooglePhotos(images.count), .success)
                     }
                 } catch is CancellationError {
                     await MainActor.run {
@@ -413,13 +413,13 @@ struct UploadOverlayView: View {
                         googlePickerSession = nil
                         googleImportTask = nil
                         isImportingGooglePhotos = false
-                        toastMessage = .error(error.localizedDescription)
+                        toastMessage = AppMessage(.details(error.localizedDescription), .error)
                     }
                 }
             }
         } catch {
             isImportingGooglePhotos = false
-            toastMessage = .error(error.localizedDescription)
+            toastMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 }

@@ -26,7 +26,7 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var googleLinkedEmail = ""
     @Published var isGoogleLinked = false
     @Published var isGoogleAccountActionInFlight = false
-    @Published var toastMessage: ToastMessage?
+    @Published var toastMessage: AppMessage?
 
     private let userService: SettingsProfileUserServicing
     private let googleAccountService: SettingsProfileGoogleAccountServicing
@@ -76,13 +76,13 @@ final class SettingsProfileViewModel: ObservableObject {
             bgColour = user.bgColour
             usageMB = user.usageMB
         } catch {
-            setToastMessage(.error(error.localizedDescription))
+            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
     func connectGoogleAccount() async {
         guard let presentingViewController = topViewControllerProvider() else {
-            setToastMessage(.error("Could not open Google Sign-In."))
+            setToastMessage(AppMessage(.couldNotOpenGoogleSignIn, .error))
             return
         }
 
@@ -95,9 +95,9 @@ final class SettingsProfileViewModel: ObservableObject {
             )
             googleLinkedEmail = linkedAccount.email
             isGoogleLinked = linkedAccount.isLinked
-            setToastMessage(.success("Google account connected"))
+            setToastMessage(AppMessage(.googleAccountConnected, .success))
         } catch {
-            setToastMessage(.error(error.localizedDescription))
+            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -109,9 +109,9 @@ final class SettingsProfileViewModel: ObservableObject {
             try await googleAccountService.disconnectCurrentUser()
             googleLinkedEmail = ""
             isGoogleLinked = false
-            setToastMessage(.success("Google account disconnected"))
+            setToastMessage(AppMessage(.googleAccountDisconnected, .success))
         } catch {
-            setToastMessage(.error(error.localizedDescription))
+            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -126,7 +126,7 @@ final class SettingsProfileViewModel: ObservableObject {
         let cleanIcon = icon.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanName.isEmpty else {
-            setToastMessage(.error("Name cannot be empty."))
+            setToastMessage(AppMessage(.nameCannotBeEmpty, .error))
             return
         }
 
@@ -140,16 +140,16 @@ final class SettingsProfileViewModel: ObservableObject {
             self.name = cleanName
             self.icon = cleanIcon.isEmpty ? "🌸" : cleanIcon
             self.bgColour = bgColour
-            setToastMessage(.success("Profile updated"))
+            setToastMessage(AppMessage(.profileUpdated, .success))
         } catch {
-            setToastMessage(.error(error.localizedDescription))
+            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
-    private func setToastMessage(_ message: ToastMessage) {
+    private func setToastMessage(_ message: AppMessage) {
         toastMessage = message
         clearMessageTask?.cancel()
-        clearMessageTask = ToastMessageAutoClear.schedule(
+        clearMessageTask = AppMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.toastMessage

@@ -31,8 +31,8 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var editableGroupName = ""
     @Published var groups: [GroupSummary] = []
-    @Published var createStatusMessage: ToastMessage?
-    @Published var saveStatusMessage: ToastMessage?
+    @Published var createStatusMessage: AppMessage?
+    @Published var saveStatusMessage: AppMessage?
     @Published var isCreating = false
     @Published var isLoadingGroups = false
     @Published var isSavingGroupName = false
@@ -103,23 +103,23 @@ final class SettingsGroupsViewModel: ObservableObject {
             selectedGroupMembers = try await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: nil)
             isMemberListPresented = true
         } catch {
-            setSaveStatus(.error(error.localizedDescription))
+            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
     func createGroup() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            setCreateStatus(.error("Please sign in first"))
+            setCreateStatus(AppMessage(.pleaseSignInFirst, .error))
             return
         }
         guard groups.count < currentPlan.maxGroups else {
-            setCreateStatus(.error("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups."))
+            setCreateStatus(AppMessage(.groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups), .error))
             return
         }
 
         let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else {
-            setCreateStatus(.error("Fill in group name"))
+            setCreateStatus(AppMessage(.fillInGroupName, .error))
             return
         }
 
@@ -135,9 +135,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             previewLoadedGroupIDs.remove(created.id)
             cacheGroupsForCurrentUser()
             await loadGroupPreviewIfNeeded(for: created.id, force: true)
-            setCreateStatus(.success("Group created. Pull down to refresh."))
+            setCreateStatus(AppMessage(.groupCreated, .success))
         } catch {
-            setCreateStatus(.error(error.localizedDescription))
+            setCreateStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -163,7 +163,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             }
             await loadAllGroupPreviews(force: true)
         } catch {
-            setCreateStatus(.error(error.localizedDescription))
+            setCreateStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -196,9 +196,9 @@ final class SettingsGroupsViewModel: ObservableObject {
                 )
             }
             cacheGroupsForCurrentUser()
-            setSaveStatus(.success("Group updated"))
+            setSaveStatus(AppMessage(.groupUpdated, .success))
         } catch {
-            setSaveStatus(.error(error.localizedDescription))
+            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -218,9 +218,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             if let nextGroupID = self.selectedGroupID {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
-            setSaveStatus(.success("Group deleted. Pull down to refresh."))
+            setSaveStatus(AppMessage(.groupDeleted, .success))
         } catch {
-            setSaveStatus(.error(error.localizedDescription))
+            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -245,19 +245,19 @@ final class SettingsGroupsViewModel: ObservableObject {
             if let nextGroupID = self.selectedGroupID {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
-            setSaveStatus(.success("Left group. Pull down to refresh."))
+            setSaveStatus(AppMessage(.leftGroup, .success))
         } catch {
-            setSaveStatus(.error(error.localizedDescription))
+            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
     func handleSelectedQRCodePhotoData(_ data: Data?) async {
         guard let data else {
-            setSaveStatus(.error("Failed to load image"))
+            setSaveStatus(AppMessage(.failedToLoadImage, .error))
             return
         }
         guard let payload = decodeQRCodePayload(from: data) else {
-            setSaveStatus(.error("QR code was not found in the image"))
+            setSaveStatus(AppMessage(.qrCodeNotFoundInImage, .error))
             return
         }
         await joinGroupFromQRCodePayload(payload)
@@ -265,15 +265,15 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func joinGroupFromQRCodePayload(_ payload: String) async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            setSaveStatus(.error("Please sign in first"))
+            setSaveStatus(AppMessage(.pleaseSignInFirst, .error))
             return
         }
         guard let groupID = GroupInvitePayloadParser.extractGroupID(from: payload) else {
-            setSaveStatus(.error("Invalid invite QR"))
+            setSaveStatus(AppMessage(.invalidInviteQR, .error))
             return
         }
         guard groups.contains(where: { $0.id == groupID }) || groups.count < currentPlan.maxGroups else {
-            setSaveStatus(.error("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups."))
+            setSaveStatus(AppMessage(.groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups), .error))
             return
         }
 
@@ -282,9 +282,9 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.joinGroup(groupID: groupID, uid: uid)
-            setSaveStatus(.success("Joined group. Pull down to refresh."))
+            setSaveStatus(AppMessage(.joinedGroup, .success))
         } catch {
-            setSaveStatus(.error(error.localizedDescription))
+            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }
     }
 
@@ -299,10 +299,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         return features?.first?.messageString
     }
 
-    private func setCreateStatus(_ message: ToastMessage) {
+    private func setCreateStatus(_ message: AppMessage) {
         clearCreateMessageTask?.cancel()
         createStatusMessage = message
-        clearCreateMessageTask = ToastMessageAutoClear.schedule(
+        clearCreateMessageTask = AppMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.createStatusMessage
@@ -313,10 +313,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         )
     }
 
-    private func setSaveStatus(_ message: ToastMessage) {
+    private func setSaveStatus(_ message: AppMessage) {
         clearSaveMessageTask?.cancel()
         saveStatusMessage = message
-        clearSaveMessageTask = ToastMessageAutoClear.schedule(
+        clearSaveMessageTask = AppMessageAutoClear.schedule(
             for: message,
             currentMessage: { [weak self] in
                 self?.saveStatusMessage

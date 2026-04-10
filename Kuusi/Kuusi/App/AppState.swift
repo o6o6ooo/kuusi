@@ -65,7 +65,7 @@ final class AppState: ObservableObject {
     }
 
     @Published var route: Route = .signedOut
-    @Published var toastMessage: ToastMessage?
+    @Published var toastMessage: AppMessage?
     @Published private(set) var currentUser: User?
 #if DEBUG
     @Published private(set) var debugAccounts: [DebugAccount] = []
@@ -132,7 +132,7 @@ final class AppState: ObservableObject {
             let tokenData = credential.identityToken,
             let tokenString = String(data: tokenData, encoding: .utf8)
         else {
-            toastMessage = .error("Apple ID token was not available.")
+            toastMessage = AppMessage(.appleTokenUnavailable, .error)
             return
         }
 
@@ -150,7 +150,7 @@ final class AppState: ObservableObject {
             route = .signedIn
         } catch {
             shouldUnlockAfterInteractiveSignIn = false
-            toastMessage = .error(error.localizedDescription)
+            toastMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 
@@ -166,7 +166,7 @@ final class AppState: ObservableObject {
             route = .signedIn
             toastMessage = nil
         } else {
-            toastMessage = .error("Biometric authentication failed.")
+            toastMessage = AppMessage(.biometricAuthenticationFailed, .error)
         }
     }
 
@@ -179,7 +179,7 @@ final class AppState: ObservableObject {
             toastMessage = nil
             prefetchedGroupsUID = nil
         } catch {
-            toastMessage = .error(error.localizedDescription)
+            toastMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 
@@ -206,12 +206,12 @@ final class AppState: ObservableObject {
             shouldUnlockAfterInteractiveSignIn = false
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
-                toastMessage = .error("Enable Email/Password provider in Firebase Authentication for debug login.")
+                toastMessage = AppMessage(.debugEmailPasswordProviderDisabled, .error)
             } else if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
                       nsError.code == AuthErrorCode.invalidCredential.rawValue {
-                toastMessage = .error("Debug user credentials are invalid. Check email/password in AppState and Firebase Console.")
+                toastMessage = AppMessage(.debugInvalidCredentials, .error)
             } else {
-                toastMessage = .error("Debug sign-in failed: \(error.localizedDescription)")
+                toastMessage = AppMessage(.debugSignInFailed(error.localizedDescription), .error)
             }
         }
     }

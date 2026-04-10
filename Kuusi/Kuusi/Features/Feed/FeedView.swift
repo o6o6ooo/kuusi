@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 private struct FeedEditError: LocalizedError {
-    let toastMessage: ToastMessage
+    let toastMessage: AppMessage
 
     var message: String { toastMessage.text }
     var errorDescription: String? { toastMessage.text }
@@ -21,7 +21,7 @@ struct FeedView: View {
     @State private var isHashtagBarExpanded = false
     @State private var isFavouritesFilterEnabled = false
     @State private var selectedPhoto: FeedPhoto?
-    @State private var feedMessage: ToastMessage?
+    @State private var feedMessage: AppMessage?
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
     @State private var editingPhotoIDs: Set<String> = []
@@ -532,7 +532,7 @@ struct FeedView: View {
     private func deletePhoto(_ photo: FeedPhoto) async {
         guard !deletingPhotoIDs.contains(photo.id) else { return }
         guard let uid = Auth.auth().currentUser?.uid else {
-            feedMessage = .error("Please sign in first.")
+            feedMessage = AppMessage(.pleaseSignInFirst, .error)
             return
         }
 
@@ -546,9 +546,9 @@ struct FeedView: View {
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = nil
             }
-            feedMessage = .success("Photo deleted.")
+            feedMessage = AppMessage(.photoDeleted, .success)
         } catch {
-            feedMessage = .error(error.localizedDescription)
+            feedMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 
@@ -560,20 +560,20 @@ struct FeedView: View {
         let newValue = !photo.isFavourite
         do {
             guard let uid = Auth.auth().currentUser?.uid else {
-                feedMessage = .error("Please sign in first.")
+                feedMessage = AppMessage(.pleaseSignInFirst, .error)
                 return
             }
             try await feedService.setFavourite(photoID: photo.id, userID: uid, isFavourite: newValue)
             photoCollection.replacePhoto(photo.withFavourite(newValue))
-            feedMessage = .success(newValue ? "Added to favourites." : "Removed from favourites.")
+            feedMessage = newValue ? AppMessage(.addedToFavourites, .success) : AppMessage(.removedFromFavourites, .success)
         } catch {
-            feedMessage = .error(error.localizedDescription)
+            feedMessage = AppMessage(.details(error.localizedDescription), .error)
         }
     }
 
-    private func scheduleFeedMessageAutoClear(for value: ToastMessage?) {
+    private func scheduleFeedMessageAutoClear(for value: AppMessage?) {
         clearFeedMessageTask?.cancel()
-        clearFeedMessageTask = ToastMessageAutoClear.schedule(
+        clearFeedMessageTask = AppMessageAutoClear.schedule(
             for: value,
             currentMessage: { feedMessage },
             clear: { feedMessage = nil }
@@ -581,9 +581,9 @@ struct FeedView: View {
     }
 
     private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
-        guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(toastMessage: .error("Photo is already being updated."))) }
+        guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(toastMessage: AppMessage(.photoAlreadyBeingUpdated, .error))) }
         guard let uid = Auth.auth().currentUser?.uid else {
-            return .failure(FeedEditError(toastMessage: .error("Please sign in first.")))
+            return .failure(FeedEditError(toastMessage: AppMessage(.pleaseSignInFirst, .error)))
         }
 
         editingPhotoIDs.insert(photo.id)
@@ -599,7 +599,7 @@ struct FeedView: View {
             editingPhoto = nil
             return .success(())
         } catch {
-            return .failure(FeedEditError(toastMessage: .error(error.localizedDescription)))
+            return .failure(FeedEditError(toastMessage: AppMessage(.details(error.localizedDescription), .error)))
         }
     }
 }
@@ -693,9 +693,9 @@ private struct FeedEditSheet: View {
     @State private var yearText: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
-    @State private var toastMessage: ToastMessage?
+    @State private var toastMessage: AppMessage?
     @State private var isSaving = false
-    @State private var clearErrorTask: Task<Void, Never>?
+    @State private var clearToastTask: Task<Void, Never>?
 
     init(photo: FeedPhoto, onSave: @escaping @MainActor (_ year: Int, _ hashtags: [String]) async -> Result<Void, FeedEditError>) {
         self.photo = photo
@@ -761,8 +761,8 @@ private struct FeedEditSheet: View {
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
             .onDisappear {
-                clearErrorTask?.cancel()
-                clearErrorTask = nil
+                clearToastTask?.cancel()
+                clearToastTask = nil
             }
             .appToastMessage(toastMessage) {
                 toastMessage = nil
@@ -823,7 +823,7 @@ private struct FeedEditSheet: View {
     private func save() async {
         let trimmedYear = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let year = Int(trimmedYear), (1900...3000).contains(year) else {
-            showToastMessage(.error("Enter a valid year."))
+            showToastMessage(AppMessage(.enterValidYear, .error))
             return
         }
 
@@ -838,10 +838,10 @@ private struct FeedEditSheet: View {
         }
     }
 
-    private func showToastMessage(_ message: ToastMessage) {
-        clearErrorTask?.cancel()
+    private func showToastMessage(_ message: AppMessage) {
+        clearToastTask?.cancel()
         toastMessage = message
-        clearErrorTask = ToastMessageAutoClear.schedule(
+        clearToastTask = AppMessageAutoClear.schedule(
             for: message,
             currentMessage: { toastMessage },
             clear: { toastMessage = nil }
