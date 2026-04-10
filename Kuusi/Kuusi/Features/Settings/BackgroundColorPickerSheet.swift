@@ -7,8 +7,9 @@ struct BackgroundColorPickerSheet: View {
     let onSelect: (String) -> Void
 
     private let avatarColours = [
-        "#A5C3DE", "#E6C7D0", "#C7C0E4", "#EAA5B8", "#B7D7C9",
-        "#F1C994", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E"
+        "#A5C3DE", "#E6C7D0", "#C7C0E4", "#EAA5B8", "#A4D1D7",
+        "#CFE4F5", "#BECBE7", "#EBD892", "#B7D9E7", "#EFE79E",
+				"#4F89B7", "#2F5972", "#5DA6A7", "#027145", "#5B7F95"
     ]
 
     var body: some View {

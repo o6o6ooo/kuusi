@@ -26,7 +26,7 @@ struct ProfileView: View {
                         .fill(Color(hex: viewModel.bgColour))
                         .frame(width: 112, height: 112)
 
-                    Text(viewModel.icon.isEmpty ? "🌸" : viewModel.icon)
+                    Text(viewModel.icon)
                         .font(.system(size: 58))
                 }
                 .contentShape(Circle())

@@ -197,7 +197,7 @@ struct FeedView: View {
             glassUnavailableView(
                 title: "No photos yet",
                 systemImage: "photo",
-                description: "Use the plus button to upload the first photo."
+                description: "Plus button to upload photos."
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 20)
@@ -443,7 +443,7 @@ struct FeedView: View {
             Circle()
                 .fill(Color(hex: profileViewModel.bgColour))
 
-            Text(profileViewModel.icon.isEmpty ? "🌸" : profileViewModel.icon)
+            Text(profileViewModel.icon)
                 .font(.system(size: 26))
         }
         .frame(width: 54, height: 54)
