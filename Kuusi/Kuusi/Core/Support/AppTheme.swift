@@ -5,6 +5,16 @@ struct AppTheme {
         colorScheme == .dark ? Color(hex: "#607CAC") : Color(hex: "#5C9BD1")
     }
 
+    static func feedBackgroundGradient(for colorScheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color(hex: "#111821"), Color(hex: "#1A2431"), Color(hex: "#0E151D")]
+                : [Color(hex: "#DCEBFA"), Color(hex: "#F7FAFF"), Color(hex: "#EAF2FB")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
     static func pageBackground(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? Color(hex: "#1E2633") : Color(hex: "#FFFFFF")
     }
@@ -39,9 +49,22 @@ private struct ScreenThemeModifier: ViewModifier {
     }
 }
 
+private struct FeedBackgroundModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(AppTheme.feedBackgroundGradient(for: colorScheme).ignoresSafeArea())
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
+    }
+
+    func appFeedBackground() -> some View {
+        modifier(FeedBackgroundModifier())
     }
 
     func appTextLinkStyle() -> some View {

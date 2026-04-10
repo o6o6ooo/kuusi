@@ -64,16 +64,6 @@ struct FeedView: View {
         }
     }
 
-    private var fallbackGradient: LinearGradient {
-        LinearGradient(
-            colors: colorScheme == .dark
-                ? [Color(hex: "#111821"), Color(hex: "#1A2431"), Color(hex: "#0E151D")]
-                : [Color(hex: "#DCEBFA"), Color(hex: "#F7FAFF"), Color(hex: "#EAF2FB")],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
@@ -111,6 +101,7 @@ struct FeedView: View {
                 .allowsHitTesting(false)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .appFeedBackground()
             .task {
                 if photoCollection.groups.isEmpty {
                     await photoCollection.loadInitial(limit: 6)
@@ -265,7 +256,7 @@ struct FeedView: View {
     }
 
     private var backgroundCanvas: some View {
-        fallbackGradient
+        Color.clear
             .ignoresSafeArea()
     }
 

@@ -102,6 +102,7 @@ struct LoginView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
+        .appFeedBackground()
         .accessibilityIdentifier("login-screen")
 #if DEBUG
         .onAppear {
