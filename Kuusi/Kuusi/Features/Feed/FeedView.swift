@@ -534,7 +534,7 @@ struct FeedView: View {
             return "Favourites in #\(selectedHashtag)"
         }
         if isFavouritesFilterEnabled {
-            return "Favourites only"
+            return "Favourites"
         }
         if let selectedHashtag {
             return "#\(selectedHashtag)"
@@ -586,14 +586,6 @@ struct FeedView: View {
         )
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.34), lineWidth: 1)
-                )
-        )
     }
 
     @MainActor
