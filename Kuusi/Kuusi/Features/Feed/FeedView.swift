@@ -13,8 +13,13 @@ private struct FeedEditError: LocalizedError {
 struct FeedView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var photoCollection = PhotoCollectionViewModel()
+    @StateObject private var profileViewModel = SettingsProfileViewModel()
+
     @State private var selectedHashtag: String?
     @State private var isUploadOverlayPresented = false
+    @State private var isSettingsPresented = false
+    @State private var isHashtagBarExpanded = false
+    @State private var isFavouritesFilterEnabled = false
     @State private var selectedPhoto: FeedPhoto?
     @State private var feedMessage: InlineMessage?
     @State private var deletingPhotoIDs: Set<String> = []
@@ -25,10 +30,15 @@ struct FeedView: View {
     @State private var clearFeedMessageTask: Task<Void, Never>?
 
     private let feedService = FeedService()
-    private var accentColor: Color { AppTheme.accent(for: colorScheme) }
+
     private var currentGroupPhotos: [FeedPhoto] {
         photoCollection.currentGroupPhotos
     }
+
+    private var currentGroupName: String {
+        photoCollection.groups.first(where: { $0.id == photoCollection.selectedGroupID })?.name ?? "Feed 1"
+    }
+
     private var availableHashtags: [String] {
         var seen = Set<String>()
         var ordered: [String] = []
@@ -43,79 +53,47 @@ struct FeedView: View {
         }
         return ordered
     }
+
     private var displayedPhotos: [FeedPhoto] {
-        guard let selectedHashtag else { return currentGroupPhotos }
-        return currentGroupPhotos.filter { photo in
-            photo.hashtags.contains { $0.caseInsensitiveCompare(selectedHashtag) == .orderedSame }
+        currentGroupPhotos.filter { photo in
+            let matchesHashtag = selectedHashtag == nil || photo.hashtags.contains {
+                $0.caseInsensitiveCompare(selectedHashtag ?? "") == .orderedSame
+            }
+            let matchesFavourite = !isFavouritesFilterEnabled || photo.isFavourite
+            return matchesHashtag && matchesFavourite
         }
+    }
+
+    private var backdropPhotos: [FeedPhoto] {
+        let source = displayedPhotos.isEmpty ? currentGroupPhotos : displayedPhotos
+        return Array(source.prefix(6))
+    }
+
+    private var fallbackGradient: LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color(hex: "#111821"), Color(hex: "#1A2431"), Color(hex: "#0E151D")]
+                : [Color(hex: "#DCEBFA"), Color(hex: "#F7FAFF"), Color(hex: "#EAF2FB")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
-                VStack(spacing: 8) {
-                    if photoCollection.groups.isEmpty {
-                        ContentUnavailableView("No groups yet", systemImage: "person.3")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        feedGroupTabs
-                        if !availableHashtags.isEmpty {
-                            feedHashtagTabs
-                        }
+                ZStack(alignment: .top) {
+                    backgroundCanvas
+                    content(for: proxy)
 
-                        if photoCollection.isLoading {
-                            ProgressView("Loading feed...")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                        } else if let errorMessage = photoCollection.errorMessage {
-                            ContentUnavailableView("Failed to load feed", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if currentGroupPhotos.isEmpty {
-                            ContentUnavailableView("No photos yet", systemImage: "photo")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if displayedPhotos.isEmpty {
-                            ContentUnavailableView("No photos for this hashtag", systemImage: "number")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            PhotoGridView(
-                                photos: displayedPhotos,
-                                availableWidth: proxy.size.width,
-                                measuredAspectRatios: photoCollection.measuredAspectRatios,
-                                onTap: { selectedPhoto = $0 },
-                                onRequireAspectRatio: photoCollection.requestAspectRatioIfNeeded
-                            ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
-                                PhotoTile(
-                                    photo: photo,
-                                    width: columnWidth,
-                                    displayAspectRatio: displayAspectRatio,
-                                    onTap: onTap,
-                                    onEdit: { editingPhoto = photo },
-                                    onDelete: {
-                                        pendingDeletePhoto = photo
-                                    },
-                                    onToggleFavourite: {
-                                        Task { await toggleFavourite(photo) }
-                                    },
-                                    onRequireAspectRatio: onRequireAspectRatio,
-                                    isDeleting: deletingPhotoIDs.contains(photo.id),
-                                    isFavouriting: favouritingPhotoIDs.contains(photo.id),
-                                    isEditing: editingPhotoIDs.contains(photo.id)
-                                )
-                            } footer: {
-                                if let feedMessage {
-                                    InlineMessageView(message: feedMessage)
-                                        .padding(.top, 4)
-                                        .padding(.bottom, 8)
-                                }
-                            }
-                            .refreshable {
-                                await refreshCurrentGroup()
-                            }
-                        }
+                    topChrome
+
+                    VStack {
+                        Spacer()
+                        bottomChrome
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .screenTheme()
             .overlay(alignment: .topLeading) {
                 Group {
                     Text("ui-screen-feed")
@@ -138,24 +116,12 @@ struct FeedView: View {
                 .allowsHitTesting(false)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .overlay(alignment: .topLeading) {
-                Button {
-                    isUploadOverlayPresented = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AppTheme.primaryText(for: colorScheme))
-                        .padding(10)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("feed-upload-button")
-                .padding(.top, 6)
-                .padding(.leading, 14)
-            }
             .task {
                 if photoCollection.groups.isEmpty {
                     await photoCollection.loadInitial(limit: 6)
+                }
+                if profileViewModel.name.isEmpty {
+                    await profileViewModel.loadProfile()
                 }
             }
             .onChange(of: feedMessage) { _, newValue in
@@ -164,6 +130,13 @@ struct FeedView: View {
             .sheet(isPresented: $isUploadOverlayPresented) {
                 UploadOverlayView()
                     .presentationDetents([.fraction(0.68), .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $isSettingsPresented, onDismiss: {
+                Task { await profileViewModel.loadProfile() }
+            }) {
+                SettingsView()
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
             .sheet(item: $selectedPhoto) { photo in
@@ -206,90 +179,429 @@ struct FeedView: View {
         }
     }
 
-    private var feedGroupTabs: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 10) {
-                ForEach(photoCollection.groups) { group in
-                    let isSelected = photoCollection.selectedGroupID == group.id
-                    Button(group.name) {
-                        selectedHashtag = nil
-                        photoCollection.selectGroup(group.id, limit: 6)
-                    }
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(isSelected ? Color.white : accentColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .padding(.horizontal, 14)
-                    .frame(height: 34)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? accentColor : Color.clear)
-                    )
-                    .overlay {
-                        Capsule()
-                            .strokeBorder(accentColor, lineWidth: 1)
-                    }
-                    .buttonStyle(.plain)
+    @ViewBuilder
+    private func content(for proxy: GeometryProxy) -> some View {
+        if photoCollection.groups.isEmpty {
+            glassUnavailableView(
+                title: "No groups yet",
+                systemImage: "person.3",
+                description: "Create or join a group in Settings to start sharing."
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 116)
+            .padding(.bottom, 120)
+        } else if photoCollection.isLoading {
+            ProgressView("Loading feed...")
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .padding(.top, 116)
+                .padding(.bottom, 120)
+        } else if let errorMessage = photoCollection.errorMessage {
+            glassUnavailableView(
+                title: "Failed to load feed",
+                systemImage: "exclamationmark.triangle",
+                description: errorMessage
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 116)
+            .padding(.bottom, 120)
+        } else if currentGroupPhotos.isEmpty {
+            glassUnavailableView(
+                title: "No photos yet",
+                systemImage: "photo",
+                description: "Use the plus button to upload the first photo."
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 116)
+            .padding(.bottom, 120)
+        } else if displayedPhotos.isEmpty {
+            glassUnavailableView(
+                title: emptyStateTitle,
+                systemImage: emptyStateSymbol,
+                description: emptyStateDescription
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 116)
+            .padding(.bottom, 120)
+        } else {
+            PhotoGridView(
+                photos: displayedPhotos,
+                availableWidth: proxy.size.width,
+                measuredAspectRatios: photoCollection.measuredAspectRatios,
+                onTap: { selectedPhoto = $0 },
+                onRequireAspectRatio: photoCollection.requestAspectRatioIfNeeded
+            ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
+                PhotoTile(
+                    photo: photo,
+                    width: columnWidth,
+                    displayAspectRatio: displayAspectRatio,
+                    onTap: onTap,
+                    onEdit: { editingPhoto = photo },
+                    onDelete: {
+                        pendingDeletePhoto = photo
+                    },
+                    onToggleFavourite: {
+                        Task { await toggleFavourite(photo) }
+                    },
+                    onRequireAspectRatio: onRequireAspectRatio,
+                    isDeleting: deletingPhotoIDs.contains(photo.id),
+                    isFavouriting: favouritingPhotoIDs.contains(photo.id),
+                    isEditing: editingPhotoIDs.contains(photo.id)
+                )
+            } footer: {
+                if let feedMessage {
+                    InlineMessageView(message: feedMessage)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.leading, 66)
-            .padding(.trailing, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .refreshable {
+                await refreshCurrentGroup()
+                await profileViewModel.loadProfile()
+            }
         }
-        .frame(height: 52)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var feedHashtagTabs: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 8) {
-                Button("All") {
-                    selectedHashtag = nil
+    private var backgroundCanvas: some View {
+        GeometryReader { proxy in
+            ZStack {
+                if backdropPhotos.isEmpty {
+                    fallbackGradient
+                        .ignoresSafeArea()
+                } else {
+                    let leftPhotos = Array(backdropPhotos.enumerated().compactMap { index, photo in
+                        index.isMultiple(of: 2) ? photo : nil
+                    })
+                    let rightPhotos = Array(backdropPhotos.enumerated().compactMap { index, photo in
+                        index.isMultiple(of: 2) ? nil : photo
+                    })
+
+                    HStack(spacing: 10) {
+                        backdropColumn(leftPhotos, height: proxy.size.height)
+                        backdropColumn(rightPhotos, height: proxy.size.height)
+                    }
+                    .padding(.horizontal, 10)
+                    .blur(radius: 30)
+                    .scaleEffect(1.08)
+                    .overlay {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .opacity(colorScheme == .dark ? 0.34 : 0.5)
+                    }
+                    .overlay {
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.26),
+                                Color.clear,
+                                Color.black.opacity(colorScheme == .dark ? 0.22 : 0.08)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(selectedHashtag == nil ? Color.white : accentColor)
+            }
+        }
+        .background(fallbackGradient)
+        .ignoresSafeArea()
+    }
+
+    private func backdropColumn(_ photos: [FeedPhoto], height: CGFloat) -> some View {
+        VStack(spacing: 10) {
+            ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                BackdropPhotoTile(photo: photo)
+                    .frame(height: backdropHeight(for: index, totalHeight: height))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func backdropHeight(for index: Int, totalHeight: CGFloat) -> CGFloat {
+        let pattern: [CGFloat] = [0.26, 0.2, 0.3, 0.18]
+        let ratio = pattern[index % pattern.count]
+        return max(140, totalHeight * ratio)
+    }
+
+    private var topChrome: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(currentGroupName)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(feedSubtitle)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 10) {
+                roundChromeButton(
+                    systemName: "plus",
+                    isSelected: false,
+                    accessibilityIdentifier: "feed-upload-button"
+                ) {
+                    isUploadOverlayPresented = true
+                }
+
+                roundChromeButton(
+                    systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
+                    isSelected: isFavouritesFilterEnabled,
+                    accessibilityIdentifier: "feed-favourites-filter-button"
+                ) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                        isFavouritesFilterEnabled.toggle()
+                    }
+                }
+
+                Button {
+                    isSettingsPresented = true
+                } label: {
+                    avatarBadge
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("feed-settings-button")
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 58)
+    }
+
+    private var bottomChrome: some View {
+        HStack(alignment: .bottom, spacing: 12) {
+            Menu {
+                if photoCollection.groups.isEmpty {
+                    Text("No groups")
+                } else {
+                    ForEach(photoCollection.groups) { group in
+                        Button(group.name) {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                                selectedHashtag = nil
+                                photoCollection.selectGroup(group.id, limit: 6)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 54, height: 54)
+                    .background(glassCircleBackground)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("feed-group-button")
+
+            Spacer(minLength: 0)
+
+            if !availableHashtags.isEmpty {
+                hashtagBar
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 30)
+        .background(.clear)
+    }
+
+    private var hashtagBar: some View {
+        HStack(spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    isHashtagBarExpanded.toggle()
+                }
+            } label: {
+                Image(systemName: "number")
+                    .font(.system(size: 18, weight: .bold))
+                    .frame(width: 54, height: 54)
+                    .background(glassCircleBackground)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("feed-hashtag-toggle-button")
+
+            if isHashtagBarExpanded {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        hashtagChip(
+                            title: "All",
+                            isSelected: selectedHashtag == nil,
+                            action: { selectedHashtag = nil }
+                        )
+
+                        ForEach(availableHashtags, id: \.self) { hashtag in
+                            hashtagChip(
+                                title: "#\(hashtag)",
+                                isSelected: selectedHashtag == hashtag,
+                                action: { selectedHashtag = hashtag }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .frame(height: 54)
+                .frame(maxWidth: 280)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 27, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 27, style: .continuous)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.4), lineWidth: 1)
+                        )
+                )
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+            }
+        }
+    }
+
+    private func hashtagChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? .primary : .secondary)
                 .lineLimit(1)
-                .padding(.horizontal, 12)
-                .frame(height: 30)
+                .padding(.horizontal, 14)
+                .frame(height: 38)
                 .background(
                     Capsule()
-                        .fill(selectedHashtag == nil ? accentColor : Color.clear)
+                        .fill(isSelected ? Color.white.opacity(colorScheme == .dark ? 0.14 : 0.92) : Color.clear)
                 )
                 .overlay {
                     Capsule()
-                        .strokeBorder(accentColor, lineWidth: 1)
+                        .strokeBorder(Color.white.opacity(isSelected ? 0 : 0.18), lineWidth: 1)
                 }
-                .buttonStyle(.plain)
-
-                ForEach(availableHashtags, id: \.self) { hashtag in
-                    let isSelected = selectedHashtag == hashtag
-                    Button("#\(hashtag)") {
-                        selectedHashtag = hashtag
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isSelected ? Color.white : accentColor)
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .frame(height: 30)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? accentColor : Color.clear)
-                    )
-                    .overlay {
-                        Capsule()
-                            .strokeBorder(accentColor, lineWidth: 1)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.leading, 12)
-            .padding(.trailing, 12)
         }
-        .frame(height: 38)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
+    }
+
+    private func roundChromeButton(
+        systemName: String,
+        isSelected: Bool,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isSelected ? Color.white : .primary)
+                .frame(width: 54, height: 54)
+                .background(
+                    Circle()
+                        .fill(isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.ultraThinMaterial))
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.white.opacity(isSelected ? 0.18 : 0.42), lineWidth: 1)
+                        )
+                )
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var avatarBadge: some View {
+        ZStack {
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Circle()
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.42), lineWidth: 1)
+                )
+
+            Circle()
+                .fill(Color(hex: profileViewModel.bgColour))
+                .padding(3)
+
+            Text(profileViewModel.icon.isEmpty ? "🌸" : profileViewModel.icon)
+                .font(.system(size: 26))
+        }
+        .frame(width: 54, height: 54)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+    }
+
+    private var glassCircleBackground: some View {
+        Circle()
+            .fill(.ultraThinMaterial)
+            .overlay(
+                Circle()
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.42), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+    }
+
+    private var feedSubtitle: String {
+        if isFavouritesFilterEnabled, let selectedHashtag {
+            return "Favourites in #\(selectedHashtag)"
+        }
+        if isFavouritesFilterEnabled {
+            return "Favourites only"
+        }
+        if let selectedHashtag {
+            return "#\(selectedHashtag)"
+        }
+        return "\(currentGroupPhotos.count) photos"
+    }
+
+    private var emptyStateTitle: String {
+        if isFavouritesFilterEnabled && selectedHashtag != nil {
+            return "No favourite photos for this hashtag"
+        }
+        if isFavouritesFilterEnabled {
+            return "No favourite photos yet"
+        }
+        if selectedHashtag != nil {
+            return "No photos for this hashtag"
+        }
+        return "No photos yet"
+    }
+
+    private var emptyStateSymbol: String {
+        if isFavouritesFilterEnabled {
+            return "heart.slash"
+        }
+        if selectedHashtag != nil {
+            return "number"
+        }
+        return "photo"
+    }
+
+    private var emptyStateDescription: String {
+        if isFavouritesFilterEnabled && selectedHashtag != nil {
+            return "Try another hashtag or turn off the favourites filter."
+        }
+        if isFavouritesFilterEnabled {
+            return "Mark photos with the heart button to keep them close."
+        }
+        if selectedHashtag != nil {
+            return "Try another hashtag or clear the filter."
+        }
+        return "Use the plus button to upload the first photo."
+    }
+
+    private func glassUnavailableView(title: String, systemImage: String, description: String) -> some View {
+        ContentUnavailableView(
+            title,
+            systemImage: systemImage,
+            description: Text(description)
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.34), lineWidth: 1)
+                )
+        )
     }
 
     @MainActor
@@ -373,8 +685,28 @@ struct FeedView: View {
     }
 }
 
+private struct BackdropPhotoTile: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let photo: FeedPhoto
+
+    var body: some View {
+        AsyncImage(url: URL(string: photo.thumbnailURL ?? photo.photoURL ?? "")) { image in
+            image
+                .resizable()
+                .scaledToFill()
+        } placeholder: {
+            Rectangle()
+                .fill(Color.gray.opacity(colorScheme == .dark ? 0.18 : 0.12))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
 private struct PhotoTile: View {
     @Environment(\.colorScheme) private var colorScheme
+
     let photo: FeedPhoto
     let width: CGFloat
     let displayAspectRatio: CGFloat
@@ -389,6 +721,7 @@ private struct PhotoTile: View {
 
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
+
         AsyncImage(url: URL(string: photo.thumbnailURL ?? photo.photoURL ?? "")) { image in
             image
                 .resizable()
@@ -399,19 +732,43 @@ private struct PhotoTile: View {
                 .overlay(ProgressView())
         }
         .frame(width: width, height: width / ratio)
-        .contentShape(RoundedRectangle(cornerRadius: 12))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .onTapGesture {
-            onTap()
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Button(action: onToggleFavourite) {
+                Group {
+                    if isFavouriting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: photo.isFavourite ? "heart.fill" : "heart")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(photo.isFavourite ? Color.red : .primary)
+                    }
+                }
+                .frame(width: 34, height: 34)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.4), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.08), radius: 10, x: 0, y: 4)
+            }
+            .buttonStyle(.plain)
+            .padding(10)
+            .disabled(isDeleting || isEditing || isFavouriting)
         }
         .overlay {
             if isDeleting || isEditing {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(.ultraThinMaterial)
                     ProgressView()
                 }
             }
+        }
+        .onTapGesture {
+            onTap()
         }
         .contextMenu {
             Button {
@@ -435,7 +792,7 @@ private struct PhotoTile: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .disabled(isDeleting || isFavouriting || isEditing)
+        .disabled(isDeleting || isEditing)
         .task {
             onRequireAspectRatio()
         }
