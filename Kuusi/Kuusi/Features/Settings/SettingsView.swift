@@ -54,6 +54,7 @@ struct SettingsView: View {
                             isBackgroundPickerPresented = true
                         }
                     )
+                    googlePhotosSection
                     GroupsSectionView(viewModel: groupsViewModel)
 
                     VStack(alignment: .leading, spacing: 12) {
@@ -241,6 +242,49 @@ struct SettingsView: View {
                 subscriptionRefreshTask?.cancel()
                 subscriptionRefreshTask = nil
                 groupsViewModel.onDisappear()
+            }
+        }
+    }
+
+    private var googlePhotosSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Google Photos")
+                .font(.title3.weight(.bold))
+
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(profileViewModel.isGoogleLinked ? "Connected as \(profileViewModel.googleLinkedEmail)" : "Not connected")
+                        .font(.subheadline.weight(.semibold))
+
+                    if !profileViewModel.isGoogleLinked {
+                        Text("Connect to your Google account to import photos from Google Photos.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if profileViewModel.isGoogleAccountActionInFlight {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if profileViewModel.isGoogleLinked {
+                    Button("Disconnect") {
+                        Task {
+                            await profileViewModel.disconnectGoogleAccount()
+                        }
+                    }
+                    .buttonStyle(.appPrimaryCapsule)
+                    .controlSize(.small)
+                } else {
+                    Button("Connect") {
+                        Task {
+                            await profileViewModel.connectGoogleAccount()
+                        }
+                    }
+                    .buttonStyle(.appPrimaryCapsule)
+                    .controlSize(.small)
+                }
             }
         }
     }
