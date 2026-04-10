@@ -719,28 +719,13 @@ private struct PhotoTile: View {
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(alignment: .topTrailing) {
-            Button(action: onToggleFavourite) {
-                Group {
-                    if isFavouriting {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: photo.isFavourite ? "heart.fill" : "heart")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(photo.isFavourite ? Color.red : .primary)
-                    }
-                }
-                .frame(width: 34, height: 34)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay {
-                    Circle()
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.4), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.08), radius: 10, x: 0, y: 4)
+            if photo.isFavourite {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.18), radius: 6, x: 0, y: 2)
+                    .padding(12)
             }
-            .buttonStyle(.plain)
-            .padding(10)
-            .disabled(isDeleting || isEditing || isFavouriting)
         }
         .overlay {
             if isDeleting || isEditing {
