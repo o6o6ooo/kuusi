@@ -36,7 +36,7 @@ struct FeedView: View {
     }
 
     private var currentGroupName: String {
-        photoCollection.groups.first(where: { $0.id == photoCollection.selectedGroupID })?.name ?? "Feed 1"
+        photoCollection.groups.first(where: { $0.id == photoCollection.selectedGroupID })?.name ?? "Feed"
     }
 
     private var availableHashtags: [String] {
@@ -275,21 +275,23 @@ struct FeedView: View {
             Spacer(minLength: 12)
 
             HStack(spacing: 10) {
-                roundChromeButton(
-                    systemName: "plus",
-                    isSelected: false,
-                    accessibilityIdentifier: "feed-upload-button"
-                ) {
-                    isUploadOverlayPresented = true
-                }
+                if !photoCollection.groups.isEmpty {
+                    roundChromeButton(
+                        systemName: "plus",
+                        isSelected: false,
+                        accessibilityIdentifier: "feed-upload-button"
+                    ) {
+                        isUploadOverlayPresented = true
+                    }
 
-                roundChromeButton(
-                    systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
-                    isSelected: isFavouritesFilterEnabled,
-                    accessibilityIdentifier: "feed-favourites-filter-button"
-                ) {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                        isFavouritesFilterEnabled.toggle()
+                    roundChromeButton(
+                        systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
+                        isSelected: isFavouritesFilterEnabled,
+                        accessibilityIdentifier: "feed-favourites-filter-button"
+                    ) {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                            isFavouritesFilterEnabled.toggle()
+                        }
                     }
                 }
 
@@ -308,10 +310,8 @@ struct FeedView: View {
 
     private var bottomChrome: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            Menu {
-                if photoCollection.groups.isEmpty {
-                    Text("No groups")
-                } else {
+            if !photoCollection.groups.isEmpty {
+                Menu {
                     ForEach(photoCollection.groups) { group in
                         Button(group.name) {
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
@@ -320,15 +320,15 @@ struct FeedView: View {
                             }
                         }
                     }
+                } label: {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 54, height: 54)
+                        .background(glassCircleBackground)
                 }
-            } label: {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 54, height: 54)
-                    .background(glassCircleBackground)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("feed-group-button")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("feed-group-button")
 
             Spacer(minLength: 0)
 

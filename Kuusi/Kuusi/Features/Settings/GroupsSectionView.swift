@@ -42,9 +42,8 @@ struct GroupsSectionView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if viewModel.groups.isEmpty {
-                Text("No groups yet.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text("No groups")
+                    .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
