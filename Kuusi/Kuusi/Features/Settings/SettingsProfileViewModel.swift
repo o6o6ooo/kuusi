@@ -27,7 +27,6 @@ final class SettingsProfileViewModel: ObservableObject {
     @Published var isGoogleLinked = false
     @Published var isGoogleAccountActionInFlight = false
     @Published var inlineMessage: InlineMessage?
-    @Published var isEditingName = false
 
     private let userService: SettingsProfileUserServicing
     private let googleAccountService: SettingsProfileGoogleAccountServicing
@@ -117,6 +116,10 @@ final class SettingsProfileViewModel: ObservableObject {
     }
 
     func saveProfile() async {
+        await saveProfile(name: name, icon: icon, bgColour: bgColour)
+    }
+
+    func saveProfile(name: String, icon: String, bgColour: String) async {
         guard let uid = currentUserIDProvider() else { return }
 
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -134,6 +137,9 @@ final class SettingsProfileViewModel: ObservableObject {
                 icon: cleanIcon.isEmpty ? "🌸" : cleanIcon,
                 bgColour: bgColour
             )
+            self.name = cleanName
+            self.icon = cleanIcon.isEmpty ? "🌸" : cleanIcon
+            self.bgColour = bgColour
             setInlineMessage(.success("Profile updated"))
         } catch {
             setInlineMessage(.error(error.localizedDescription))

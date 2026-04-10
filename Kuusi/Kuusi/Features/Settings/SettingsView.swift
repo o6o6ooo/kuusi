@@ -9,7 +9,10 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasLoaded = false
+    @State private var isNameEditorPresented = false
     @State private var isEmojiPickerPresented = false
+    @State private var isBackgroundPickerPresented = false
+    @State private var pendingName = ""
     @State private var clearBillingMessageTask: Task<Void, Never>?
     @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var selectedQRCodePhoto: PhotosPickerItem?
@@ -40,8 +43,15 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     ProfileView(
                         viewModel: profileViewModel,
-                        onPickEmoji: {
+                        onEditName: {
+                            pendingName = profileViewModel.name
+                            isNameEditorPresented = true
+                        },
+                        onEditIcon: {
                             isEmojiPickerPresented = true
+                        },
+                        onEditBackground: {
+                            isBackgroundPickerPresented = true
                         }
                     )
                     GroupsSectionView(viewModel: groupsViewModel)
@@ -139,7 +149,31 @@ struct SettingsView: View {
                 matching: .images
             )
             .sheet(isPresented: $isEmojiPickerPresented) {
-                EmojiPickerSheet(selectedEmoji: $profileViewModel.icon)
+                EmojiPickerSheet(
+                    selectedEmoji: Binding(
+                        get: { profileViewModel.icon },
+                        set: { newValue in
+                            Task {
+                                await profileViewModel.saveProfile(
+                                    name: profileViewModel.name,
+                                    icon: newValue,
+                                    bgColour: profileViewModel.bgColour
+                                )
+                            }
+                        }
+                    )
+                )
+            }
+            .sheet(isPresented: $isBackgroundPickerPresented) {
+                BackgroundColorPickerSheet(selectedColour: profileViewModel.bgColour) { colour in
+                    Task {
+                        await profileViewModel.saveProfile(
+                            name: profileViewModel.name,
+                            icon: profileViewModel.icon,
+                            bgColour: colour
+                        )
+                    }
+                }
             }
             .sheet(isPresented: $groupsViewModel.isQRScannerPresented) {
                 QRCodeScannerSheet { payload in
@@ -173,6 +207,22 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text(groupsViewModel.destructiveActionMessage)
+            }
+            .alert("Edit Name", isPresented: $isNameEditorPresented) {
+                TextField("Name", text: $pendingName)
+                Button("Cancel", role: .cancel) {}
+                Button("OK") {
+                    let updatedName = pendingName
+                    Task {
+                        await profileViewModel.saveProfile(
+                            name: updatedName,
+                            icon: profileViewModel.icon,
+                            bgColour: profileViewModel.bgColour
+                        )
+                    }
+                }
+            } message: {
+                Text("Enter your display name.")
             }
             .onChange(of: selectedQRCodePhoto) { _, newValue in
                 guard let newValue else { return }
