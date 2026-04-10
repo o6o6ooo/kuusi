@@ -13,6 +13,7 @@ struct KuusiApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
+    @StateObject private var toastCenter = AppToastCenter()
     @StateObject private var subscriptionStore = SubscriptionStore()
 
     var body: some Scene {
@@ -20,6 +21,7 @@ struct KuusiApp: App {
             RootView()
                 .controlSize(.small)
                 .environmentObject(appState)
+                .environmentObject(toastCenter)
                 .environmentObject(subscriptionStore)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)

@@ -88,15 +88,6 @@ struct LoginView: View {
                 .accessibilityIdentifier("debug-sign-in-button")
             }
 #endif
-
-            if let errorMessage = appState.errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.errorText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-            }
-
             Spacer(minLength: 24)
         }
         .padding()

@@ -59,7 +59,6 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         SubscriptionView(
                             currentPlan: currentPlan,
-                            billingMessage: billingMessage,
                             usageRatio: usageRatio,
                             usageText: usageText,
                             renewalText: premiumRenewalText,
@@ -235,6 +234,15 @@ struct SettingsView: View {
                 subscriptionRefreshTask = nil
                 groupsViewModel.onDisappear()
             }
+            .appToastMessage(profileViewModel.inlineMessage) {
+                profileViewModel.clearInlineMessage()
+            }
+            .appToastMessage(groupsViewModel.createStatusMessage)
+            .appToastMessage(groupsViewModel.saveStatusMessage)
+            .appToastMessage(billingMessage) {
+                billingMessage = nil
+            }
+            .appToastHost()
         }
     }
 

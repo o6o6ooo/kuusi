@@ -161,6 +161,9 @@ struct FeedView: View {
                 clearFeedMessageTask?.cancel()
                 clearFeedMessageTask = nil
             }
+            .appToastMessage(feedMessage) {
+                feedMessage = nil
+            }
         }
     }
 
@@ -226,13 +229,7 @@ struct FeedView: View {
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
             } footer: {
-                if let feedMessage {
-                    InlineMessageView(message: feedMessage)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-                        .padding(.bottom, 12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                EmptyView()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .refreshable {
@@ -758,10 +755,6 @@ private struct FeedEditSheet: View {
                     }
                 }
 
-                if let inlineMessage {
-                    InlineMessageView(message: inlineMessage)
-                }
-
                 Spacer()
             }
             .padding(16)
@@ -771,6 +764,10 @@ private struct FeedEditSheet: View {
                 clearErrorTask?.cancel()
                 clearErrorTask = nil
             }
+            .appToastMessage(inlineMessage) {
+                inlineMessage = nil
+            }
+            .appToastHost()
         }
     }
 

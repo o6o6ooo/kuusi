@@ -4,23 +4,29 @@ struct RootView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        switch appState.route {
-        case .signedOut:
-            LoginView()
-                .overlay(alignment: .topLeading) {
-                    uiTestMarker("ui-test-route-signed-out")
-                }
-        case .locked:
-            UnlockView()
-                .overlay(alignment: .topLeading) {
-                    uiTestMarker("ui-test-route-locked")
-                }
-        case .signedIn:
-            FeedView()
-                .overlay(alignment: .topLeading) {
-                    uiTestMarker("ui-test-route-signed-in")
-                }
+        Group {
+            switch appState.route {
+            case .signedOut:
+                LoginView()
+                    .overlay(alignment: .topLeading) {
+                        uiTestMarker("ui-test-route-signed-out")
+                    }
+            case .locked:
+                UnlockView()
+                    .overlay(alignment: .topLeading) {
+                        uiTestMarker("ui-test-route-locked")
+                    }
+            case .signedIn:
+                FeedView()
+                    .overlay(alignment: .topLeading) {
+                        uiTestMarker("ui-test-route-signed-in")
+                    }
+            }
         }
+        .appToastErrorMessage(appState.errorMessage) {
+            appState.errorMessage = nil
+        }
+        .appToastHost()
     }
 
     @ViewBuilder

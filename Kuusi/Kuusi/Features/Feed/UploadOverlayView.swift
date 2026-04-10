@@ -116,10 +116,6 @@ struct UploadOverlayView: View {
                         .controlSize(.regular)
                         .disabled(!canUpload)
                     }
-
-                    if let inlineMessage {
-                        InlineMessageView(message: inlineMessage)
-                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -139,6 +135,10 @@ struct UploadOverlayView: View {
                 googleImportTask?.cancel()
                 googleImportTask = nil
             }
+            .appToastMessage(inlineMessage) {
+                inlineMessage = nil
+            }
+            .appToastHost()
             .task {
                 loadCachedGroupsOnly()
             }

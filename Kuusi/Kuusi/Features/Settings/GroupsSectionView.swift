@@ -55,15 +55,6 @@ struct GroupsSectionView: View {
                     .padding(.vertical, 4)
                 }
             }
-
-            if let createStatusMessage = viewModel.createStatusMessage {
-                InlineMessageView(message: createStatusMessage)
-            }
-
-            if let saveStatusMessage = viewModel.saveStatusMessage {
-                InlineMessageView(message: saveStatusMessage)
-            }
-
             groupActionLinks
         }
         .alert("Create Group", isPresented: $isCreateAlertPresented) {

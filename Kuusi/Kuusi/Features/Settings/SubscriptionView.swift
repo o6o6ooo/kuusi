@@ -14,7 +14,6 @@ struct SubscriptionView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let currentPlan: AppPlan
-    let billingMessage: InlineMessage?
     let usageRatio: Double
     let usageText: String
     let renewalText: String?
@@ -126,11 +125,6 @@ struct SubscriptionView: View {
             } else {
                 premiumSubscriptionCardContent
             }
-
-            if let billingMessage {
-                InlineMessageView(message: billingMessage)
-            }
-
             if currentPlan == .free {
                 HStack(spacing: 6) {
                     Text("Already got premium?")

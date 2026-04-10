@@ -22,12 +22,6 @@ struct UnlockView: View {
             .buttonStyle(.appPrimaryCapsule)
             .controlSize(.regular)
             .accessibilityIdentifier("unlock-button")
-
-            if let errorMessage = appState.errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.errorText)
-            }
             Spacer()
         }
         .padding()

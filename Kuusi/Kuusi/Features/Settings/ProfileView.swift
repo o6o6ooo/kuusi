@@ -37,11 +37,6 @@ struct ProfileView: View {
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
-
-            if let inlineMessage = viewModel.inlineMessage {
-                InlineMessageView(message: inlineMessage)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
