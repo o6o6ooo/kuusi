@@ -135,7 +135,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             editableGroupName = created.name
             previewLoadedGroupIDs.remove(created.id)
             cacheGroupsForCurrentUser()
-            await loadSelectedGroupPreviewIfNeeded(force: true)
+            await loadGroupPreviewIfNeeded(for: created.id, force: true)
             setCreateStatus(.success("Group created. Pull down to refresh."))
         } catch {
             setCreateStatus(.error(error.localizedDescription))
@@ -159,10 +159,10 @@ final class SettingsGroupsViewModel: ObservableObject {
             if let selectedGroupID,
                let selectedGroup = fetched.first(where: { $0.id == selectedGroupID }) {
                 editableGroupName = selectedGroup.name
-                await loadSelectedGroupPreviewIfNeeded(force: true)
             } else {
                 editableGroupName = ""
             }
+            await loadAllGroupPreviews(force: true)
         } catch {
             setCreateStatus(.error(error.localizedDescription))
         }
@@ -174,7 +174,7 @@ final class SettingsGroupsViewModel: ObservableObject {
         if let selected = groups.first(where: { $0.id == id }) {
             editableGroupName = selected.name
         }
-        await loadSelectedGroupPreviewIfNeeded(force: false)
+        await loadGroupPreviewIfNeeded(for: id, force: false)
     }
 
     func saveGroupName() async {
@@ -216,7 +216,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             self.selectedGroupID = groups.first?.id
             editableGroupName = groups.first?.name ?? ""
             cacheGroupsForCurrentUser()
-            await loadSelectedGroupPreviewIfNeeded(force: false)
+            if let nextGroupID = self.selectedGroupID {
+                await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
+            }
             setSaveStatus(.success("Group deleted. Pull down to refresh."))
         } catch {
             setSaveStatus(.error(error.localizedDescription))
@@ -241,7 +243,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             self.selectedGroupID = groups.first?.id
             editableGroupName = groups.first?.name ?? ""
             cacheGroupsForCurrentUser()
-            await loadSelectedGroupPreviewIfNeeded(force: false)
+            if let nextGroupID = self.selectedGroupID {
+                await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
+            }
             setSaveStatus(.success("Left group. Pull down to refresh."))
         } catch {
             setSaveStatus(.error(error.localizedDescription))
@@ -324,12 +328,17 @@ final class SettingsGroupsViewModel: ObservableObject {
         )
     }
 
-    private func loadSelectedGroupPreviewIfNeeded(force: Bool) async {
-        guard let selectedGroupID else { return }
-        if !force && previewLoadedGroupIDs.contains(selectedGroupID) { return }
-        guard let index = groups.firstIndex(where: { $0.id == selectedGroupID }) else { return }
+    private func loadAllGroupPreviews(force: Bool) async {
+        for group in groups {
+            await loadGroupPreviewIfNeeded(for: group.id, force: force)
+        }
+    }
 
-        let previews = (try? await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: 3)) ?? []
+    private func loadGroupPreviewIfNeeded(for groupID: String, force: Bool) async {
+        if !force && previewLoadedGroupIDs.contains(groupID) { return }
+        guard let index = groups.firstIndex(where: { $0.id == groupID }) else { return }
+
+        let previews = (try? await groupService.loadMemberPreviews(groupID: groupID, limit: 3)) ?? []
         let existing = groups[index]
         groups[index] = GroupSummary(
             id: existing.id,
@@ -338,7 +347,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             members: previews,
             totalMemberCount: existing.totalMemberCount
         )
-        previewLoadedGroupIDs.insert(selectedGroupID)
+        previewLoadedGroupIDs.insert(groupID)
         cacheGroupsForCurrentUser()
     }
 

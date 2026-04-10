@@ -1,54 +1,59 @@
+import FirebaseAuth
 import SwiftUI
 
 struct GroupsSectionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var viewModel: SettingsGroupsViewModel
 
+    @State private var isCreateAlertPresented = false
+    @State private var isRenameAlertPresented = false
+    @State private var pendingCreateGroupName = ""
+    @State private var pendingRenameGroupName = ""
+
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
-    private var fieldBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
-    }
-    private var memberBorderColor: Color { AppTheme.cardBorder(for: colorScheme) }
-
-    private var canCreate: Bool {
-        !viewModel.isCreating && !viewModel.createGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var selectedGroup: GroupSummary? {
-        guard let selectedGroupID = viewModel.selectedGroupID else { return nil }
-        return viewModel.groups.first(where: { $0.id == selectedGroupID })
-    }
-
-    private var canSaveSelectedGroupName: Bool {
-        guard let selectedGroup else { return false }
-        let trimmed = viewModel.editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !viewModel.isSavingGroupName && !trimmed.isEmpty && trimmed != selectedGroup.name
-    }
-
-    private var canDeleteSelectedGroup: Bool {
-        viewModel.selectedGroupID != nil && !viewModel.isDeletingGroup
-    }
-
-    private var canAddMemberByQRCode: Bool {
-        !viewModel.isJoiningGroup
-    }
+    private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Create a group")
-                .font(.title3.weight(.bold))
+            HStack(spacing: 12) {
+                Text("Groups")
+                    .font(.title3.weight(.bold))
 
-            createGroupCard
+                Button {
+                    pendingCreateGroupName = ""
+                    isCreateAlertPresented = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .regular))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("groups-create-button")
+
+                Spacer()
+            }
+
+            if viewModel.isLoadingGroups {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if viewModel.groups.isEmpty {
+                Text("No groups yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(viewModel.groups) { group in
+                            groupCard(group)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
 
             if let createStatusMessage = viewModel.createStatusMessage {
                 InlineMessageView(message: createStatusMessage)
             }
-
-            Text("Your groups")
-                .font(.title3.weight(.bold))
-                .padding(.top, 8)
-
-            yourGroupsCard
 
             if let saveStatusMessage = viewModel.saveStatusMessage {
                 InlineMessageView(message: saveStatusMessage)
@@ -56,184 +61,131 @@ struct GroupsSectionView: View {
 
             groupActionLinks
         }
-    }
-
-    private var createGroupCard: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                TextField(
-                    "",
-                    text: $viewModel.createGroupName,
-                    prompt: Text("group name")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                )
-                .textFieldStyle(.plain)
-                .font(.callout)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                Button {
-                    Task {
-                        await viewModel.createGroup()
-                    }
-                } label: {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.accentColor)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!canCreate)
+        .alert("Create Group", isPresented: $isCreateAlertPresented) {
+            TextField("Group name", text: $pendingCreateGroupName)
+            Button("Cancel", role: .cancel) {}
+            Button("Create") {
+                viewModel.createGroupName = pendingCreateGroupName
+                Task { await viewModel.createGroup() }
             }
+        } message: {
+            Text("Enter a name for the new group.")
         }
-        .padding(14)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .alert("Edit Group", isPresented: $isRenameAlertPresented) {
+            TextField("Group name", text: $pendingRenameGroupName)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                viewModel.editableGroupName = pendingRenameGroupName
+                Task { await viewModel.saveGroupName() }
+            }
+        } message: {
+            Text("Enter a new group name.")
+        }
     }
 
-    private var yourGroupsCard: some View {
-        VStack(spacing: 12) {
-            if viewModel.isLoadingGroups {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if viewModel.groups.isEmpty {
-                Text("No groups yet. Pull down to refresh.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 10) {
-                        ForEach(viewModel.groups) { group in
-                            let isSelected = viewModel.selectedGroupID == group.id
-                            Button(group.name) {
-                                Task {
-                                    await viewModel.selectGroup(group.id)
-                                }
-                            }
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(isSelected ? Color.white : Color.accentColor)
-                            .padding(.horizontal, 14)
-                            .frame(height: 34)
-                            .background(
-                                Capsule()
-                                    .fill(isSelected ? Color.accentColor : Color.clear)
-                            )
+    private func groupCard(_ group: GroupSummary) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                memberStack(for: group)
+
+                Spacer(minLength: 12)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(alignment: .center, spacing: 12) {
+                Text(group.name)
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .offset(y: -4)
+
+                Spacer(minLength: 0)
+
+                groupMenu(for: group)
+            }
+            .offset(y: -6)
+        }
+        .padding(16)
+        .frame(width: 168, height: 120, alignment: .topLeading)
+        .background(cardBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(cardBorder, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func memberStack(for group: GroupSummary) -> some View {
+        Button {
+            viewModel.selectedGroupID = group.id
+            viewModel.editableGroupName = group.name
+            Task {
+                await viewModel.presentMemberList()
+            }
+        } label: {
+            HStack(spacing: -10) {
+                if group.members.isEmpty {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle()
+                            .fill(Color.secondary.opacity(0.18))
+                            .frame(width: 46, height: 46)
+                    }
+                } else {
+                    ForEach(Array(group.members.prefix(3))) { member in
+                        Text(member.icon)
+                            .font(.system(size: 22))
+                            .frame(width: 46, height: 46)
+                            .background(Color(hex: member.bgColour))
+                            .clipShape(Circle())
                             .overlay {
-                                Capsule()
-                                    .strokeBorder(Color.accentColor, lineWidth: 1)
+                                Circle()
+                                    .stroke(Color.white.opacity(0.9), lineWidth: 2)
                             }
-                            .buttonStyle(.plain)
-                        }
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                TextField(
-                    "",
-                    text: $viewModel.editableGroupName,
-                    prompt: Text("group name")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                )
-                .textFieldStyle(.plain)
-                .font(.callout)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                HStack(spacing: 10) {
-                    Button {
-                        viewModel.isGroupQRCodeOverlayPresented = true
-                    } label: {
-                        Image(systemName: "qrcode")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 34, height: 34)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.selectedGroupInvitePayload == nil)
-
-                    if let selectedGroup {
-                        Button {
-                            Task {
-                                await viewModel.presentMemberList()
-                            }
-                        } label: {
-                            HStack(spacing: -8) {
-                                ForEach(selectedGroup.members) { member in
-                                    Text(member.icon)
-                                        .font(.system(size: 18))
-                                        .frame(width: 36, height: 36)
-                                        .background(Color(hex: member.bgColour))
-                                        .clipShape(Circle())
-                                        .overlay {
-                                            Circle()
-                                                .stroke(memberBorderColor, lineWidth: 2)
-                                        }
-                                }
-                                let remainingCount = max(0, selectedGroup.totalMemberCount - selectedGroup.members.count)
-                                if remainingCount > 0 {
-                                    Text("+\(remainingCount)")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.85))
-                                        .frame(width: 36, height: 36)
-                                        .background(fieldBackground)
-                                        .clipShape(Circle())
-                                        .overlay {
-                                            Circle()
-                                                .stroke(memberBorderColor, lineWidth: 2)
-                                        }
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Spacer()
-
-                    Button {
-                        viewModel.isDeleteConfirmPresented = true
-                    } label: {
-                        Image(systemName: viewModel.currentUserIsSelectedGroupOwner ? "trash.fill" : "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 34, height: 34)
-														.background(AppTheme.errorText.opacity(0.7))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canDeleteSelectedGroup)
-
-                    Button {
-                        Task {
-                            await viewModel.saveGroupName()
-                        }
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 34, height: 34)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canSaveSelectedGroupName)
                 }
             }
         }
-        .padding(14)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .buttonStyle(.plain)
+    }
+
+    private func groupMenu(for group: GroupSummary) -> some View {
+        Menu {
+            Button("Edit group", systemImage: "pencil") {
+                viewModel.selectedGroupID = group.id
+                viewModel.editableGroupName = group.name
+                pendingRenameGroupName = group.name
+                isRenameAlertPresented = true
+            }
+
+            Button(viewModel.selectedGroupID == group.id ? viewModel.destructiveActionButtonTitle : destructiveLabel(for: group), systemImage: destructiveSymbol(for: group), role: .destructive) {
+                viewModel.selectedGroupID = group.id
+                viewModel.editableGroupName = group.name
+                viewModel.isDeleteConfirmPresented = true
+            }
+
+            Button("QR code", systemImage: "qrcode") {
+                viewModel.selectedGroupID = group.id
+                viewModel.editableGroupName = group.name
+                viewModel.isGroupQRCodeOverlayPresented = true
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func destructiveLabel(for group: GroupSummary) -> String {
+        guard let uid = Auth.auth().currentUser?.uid else { return "Leave group" }
+        return group.ownerUID == uid ? "Delete group" : "Leave group"
+    }
+
+    private func destructiveSymbol(for group: GroupSummary) -> String {
+        guard let uid = Auth.auth().currentUser?.uid else { return "rectangle.portrait.and.arrow.right" }
+        return group.ownerUID == uid ? "trash" : "rectangle.portrait.and.arrow.right"
     }
 
     private var groupActionLinks: some View {
@@ -255,7 +207,7 @@ struct GroupsSectionView: View {
                     .appTextLinkStyle()
             }
             .buttonStyle(.plain)
-            .disabled(!canAddMemberByQRCode)
+            .disabled(viewModel.isJoiningGroup)
 
             ShareLink(item: viewModel.appShareURL) {
                 Text("Tell your friends about this app?")
