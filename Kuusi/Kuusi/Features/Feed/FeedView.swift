@@ -3,9 +3,10 @@ import SwiftUI
 import UIKit
 
 private struct FeedEditError: LocalizedError {
-    let message: String
+    let inlineMessage: InlineMessage
 
-    var errorDescription: String? { message }
+    var message: String { inlineMessage.text }
+    var errorDescription: String? { inlineMessage.text }
 }
 
 @MainActor
@@ -349,9 +350,9 @@ struct FeedView: View {
     }
 
     private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
-        guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(message: "Photo is already being updated.")) }
+        guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(inlineMessage: .error("Photo is already being updated."))) }
         guard let uid = Auth.auth().currentUser?.uid else {
-            return .failure(FeedEditError(message: "Please sign in first."))
+            return .failure(FeedEditError(inlineMessage: .error("Please sign in first.")))
         }
 
         editingPhotoIDs.insert(photo.id)
@@ -367,7 +368,7 @@ struct FeedView: View {
             editingPhoto = nil
             return .success(())
         } catch {
-            return .failure(FeedEditError(message: error.localizedDescription))
+            return .failure(FeedEditError(inlineMessage: .error(error.localizedDescription)))
         }
     }
 }
@@ -580,7 +581,7 @@ private struct FeedEditSheet: View {
     private func save() async {
         let trimmedYear = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let year = Int(trimmedYear), (1900...3000).contains(year) else {
-            showError("Enter a valid year.")
+            showInlineMessage(.error("Enter a valid year."))
             return
         }
 
@@ -591,15 +592,15 @@ private struct FeedEditSheet: View {
         case .success:
             dismiss()
         case .failure(let error):
-            showError(error.message)
+            showInlineMessage(error.inlineMessage)
         }
     }
 
-    private func showError(_ message: String) {
+    private func showInlineMessage(_ message: InlineMessage) {
         clearErrorTask?.cancel()
-        inlineMessage = .error(message)
+        inlineMessage = message
         clearErrorTask = InlineMessageAutoClear.schedule(
-            for: inlineMessage,
+            for: message,
             currentMessage: { inlineMessage },
             clear: { inlineMessage = nil }
         )

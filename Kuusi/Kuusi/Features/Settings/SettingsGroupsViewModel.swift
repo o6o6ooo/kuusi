@@ -104,23 +104,23 @@ final class SettingsGroupsViewModel: ObservableObject {
             selectedGroupMembers = try await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: nil)
             isMemberListPresented = true
         } catch {
-            setSaveStatus(error.localizedDescription, isError: true)
+            setSaveStatus(.error(error.localizedDescription))
         }
     }
 
     func createGroup() async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            setCreateStatus("Please sign in first", isError: true)
+            setCreateStatus(.error("Please sign in first"))
             return
         }
         guard groups.count < currentPlan.maxGroups else {
-            setCreateStatus("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups.", isError: true)
+            setCreateStatus(.error("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups."))
             return
         }
 
         let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else {
-            setCreateStatus("Fill in group name", isError: true)
+            setCreateStatus(.error("Fill in group name"))
             return
         }
 
@@ -136,9 +136,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             previewLoadedGroupIDs.remove(created.id)
             cacheGroupsForCurrentUser()
             await loadSelectedGroupPreviewIfNeeded(force: true)
-            setCreateStatus("Group created. Pull down to refresh.", isError: false)
+            setCreateStatus(.success("Group created. Pull down to refresh."))
         } catch {
-            setCreateStatus(error.localizedDescription, isError: true)
+            setCreateStatus(.error(error.localizedDescription))
         }
     }
 
@@ -164,7 +164,7 @@ final class SettingsGroupsViewModel: ObservableObject {
                 editableGroupName = ""
             }
         } catch {
-            setCreateStatus(error.localizedDescription, isError: true)
+            setCreateStatus(.error(error.localizedDescription))
         }
     }
 
@@ -197,9 +197,9 @@ final class SettingsGroupsViewModel: ObservableObject {
                 )
             }
             cacheGroupsForCurrentUser()
-            setSaveStatus("Group updated", isError: false)
+            setSaveStatus(.success("Group updated"))
         } catch {
-            setSaveStatus(error.localizedDescription, isError: true)
+            setSaveStatus(.error(error.localizedDescription))
         }
     }
 
@@ -217,9 +217,9 @@ final class SettingsGroupsViewModel: ObservableObject {
             editableGroupName = groups.first?.name ?? ""
             cacheGroupsForCurrentUser()
             await loadSelectedGroupPreviewIfNeeded(force: false)
-            setSaveStatus("Group deleted. Pull down to refresh.", isError: false)
+            setSaveStatus(.success("Group deleted. Pull down to refresh."))
         } catch {
-            setSaveStatus(error.localizedDescription, isError: true)
+            setSaveStatus(.error(error.localizedDescription))
         }
     }
 
@@ -242,19 +242,19 @@ final class SettingsGroupsViewModel: ObservableObject {
             editableGroupName = groups.first?.name ?? ""
             cacheGroupsForCurrentUser()
             await loadSelectedGroupPreviewIfNeeded(force: false)
-            setSaveStatus("Left group. Pull down to refresh.", isError: false)
+            setSaveStatus(.success("Left group. Pull down to refresh."))
         } catch {
-            setSaveStatus(error.localizedDescription, isError: true)
+            setSaveStatus(.error(error.localizedDescription))
         }
     }
 
     func handleSelectedQRCodePhotoData(_ data: Data?) async {
         guard let data else {
-            setSaveStatus("Failed to load image", isError: true)
+            setSaveStatus(.error("Failed to load image"))
             return
         }
         guard let payload = decodeQRCodePayload(from: data) else {
-            setSaveStatus("QR code was not found in the image", isError: true)
+            setSaveStatus(.error("QR code was not found in the image"))
             return
         }
         await joinGroupFromQRCodePayload(payload)
@@ -262,15 +262,15 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func joinGroupFromQRCodePayload(_ payload: String) async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            setSaveStatus("Please sign in first", isError: true)
+            setSaveStatus(.error("Please sign in first"))
             return
         }
         guard let groupID = GroupInvitePayloadParser.extractGroupID(from: payload) else {
-            setSaveStatus("Invalid invite QR", isError: true)
+            setSaveStatus(.error("Invalid invite QR"))
             return
         }
         guard groups.contains(where: { $0.id == groupID }) || groups.count < currentPlan.maxGroups else {
-            setSaveStatus("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups.", isError: true)
+            setSaveStatus(.error("\(currentPlan.title) supports up to \(currentPlan.maxGroups) groups."))
             return
         }
 
@@ -279,9 +279,9 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.joinGroup(groupID: groupID, uid: uid)
-            setSaveStatus("Joined group. Pull down to refresh.", isError: false)
+            setSaveStatus(.success("Joined group. Pull down to refresh."))
         } catch {
-            setSaveStatus(error.localizedDescription, isError: true)
+            setSaveStatus(.error(error.localizedDescription))
         }
     }
 
@@ -296,12 +296,11 @@ final class SettingsGroupsViewModel: ObservableObject {
         return features?.first?.messageString
     }
 
-    private func setCreateStatus(_ message: String, isError: Bool) {
-        let inlineMessage: InlineMessage = isError ? .error(message) : .success(message)
+    private func setCreateStatus(_ message: InlineMessage) {
         clearCreateMessageTask?.cancel()
-        createStatusMessage = inlineMessage
+        createStatusMessage = message
         clearCreateMessageTask = InlineMessageAutoClear.schedule(
-            for: inlineMessage,
+            for: message,
             currentMessage: { [weak self] in
                 self?.createStatusMessage
             },
@@ -311,13 +310,11 @@ final class SettingsGroupsViewModel: ObservableObject {
         )
     }
 
-    private func setSaveStatus(_ message: String, isError: Bool) {
-        let inlineMessage: InlineMessage = isError ? .error(message) : .success(message)
-        saveStatusMessage = inlineMessage
-
+    private func setSaveStatus(_ message: InlineMessage) {
         clearSaveMessageTask?.cancel()
+        saveStatusMessage = message
         clearSaveMessageTask = InlineMessageAutoClear.schedule(
-            for: inlineMessage,
+            for: message,
             currentMessage: { [weak self] in
                 self?.saveStatusMessage
             },
