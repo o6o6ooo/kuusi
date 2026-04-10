@@ -16,7 +16,7 @@ struct RootView: View {
                     uiTestMarker("ui-test-route-locked")
                 }
         case .signedIn:
-            MainTabView()
+            FeedView()
                 .overlay(alignment: .topLeading) {
                     uiTestMarker("ui-test-route-signed-in")
                 }
