@@ -64,11 +64,6 @@ struct FeedView: View {
         }
     }
 
-    private var backdropPhotos: [FeedPhoto] {
-        let source = displayedPhotos.isEmpty ? currentGroupPhotos : displayedPhotos
-        return Array(source.prefix(6))
-    }
-
     private var fallbackGradient: LinearGradient {
         LinearGradient(
             colors: colorScheme == .dark
@@ -270,63 +265,8 @@ struct FeedView: View {
     }
 
     private var backgroundCanvas: some View {
-        GeometryReader { proxy in
-            ZStack {
-                if backdropPhotos.isEmpty {
-                    fallbackGradient
-                        .ignoresSafeArea()
-                } else {
-                    let leftPhotos = Array(backdropPhotos.enumerated().compactMap { index, photo in
-                        index.isMultiple(of: 2) ? photo : nil
-                    })
-                    let rightPhotos = Array(backdropPhotos.enumerated().compactMap { index, photo in
-                        index.isMultiple(of: 2) ? nil : photo
-                    })
-
-                    HStack(spacing: 10) {
-                        backdropColumn(leftPhotos, height: proxy.size.height)
-                        backdropColumn(rightPhotos, height: proxy.size.height)
-                    }
-                    .padding(.horizontal, 10)
-                    .blur(radius: 30)
-                    .scaleEffect(1.08)
-                    .overlay {
-                        Rectangle()
-                            .fill(.ultraThinMaterial)
-                            .opacity(colorScheme == .dark ? 0.34 : 0.5)
-                    }
-                    .overlay {
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.26),
-                                Color.clear,
-                                Color.black.opacity(colorScheme == .dark ? 0.22 : 0.08)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-                }
-            }
-        }
-        .background(fallbackGradient)
-        .ignoresSafeArea()
-    }
-
-    private func backdropColumn(_ photos: [FeedPhoto], height: CGFloat) -> some View {
-        VStack(spacing: 10) {
-            ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                BackdropPhotoTile(photo: photo)
-                    .frame(height: backdropHeight(for: index, totalHeight: height))
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private func backdropHeight(for index: Int, totalHeight: CGFloat) -> CGFloat {
-        let pattern: [CGFloat] = [0.26, 0.2, 0.3, 0.18]
-        let ratio = pattern[index % pattern.count]
-        return max(140, totalHeight * ratio)
+        fallbackGradient
+            .ignoresSafeArea()
     }
 
     private func topChrome(topInset: CGFloat) -> some View {
@@ -666,25 +606,6 @@ struct FeedView: View {
         } catch {
             return .failure(FeedEditError(inlineMessage: .error(error.localizedDescription)))
         }
-    }
-}
-
-private struct BackdropPhotoTile: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    let photo: FeedPhoto
-
-    var body: some View {
-        AsyncImage(url: URL(string: photo.thumbnailURL ?? photo.photoURL ?? "")) { image in
-            image
-                .resizable()
-                .scaledToFill()
-        } placeholder: {
-            Rectangle()
-                .fill(Color.gray.opacity(colorScheme == .dark ? 0.18 : 0.12))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 
