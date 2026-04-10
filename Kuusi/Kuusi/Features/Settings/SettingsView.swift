@@ -1,4 +1,3 @@
-import FirebaseAuth
 import Foundation
 import PhotosUI
 import SwiftUI
@@ -173,13 +172,6 @@ struct SettingsView: View {
                             icon: profileViewModel.icon,
                             bgColour: colour
                         )
-                    }
-                }
-            }
-            .sheet(isPresented: $groupsViewModel.isQRScannerPresented) {
-                QRCodeScannerSheet { payload in
-                    Task {
-                        await groupsViewModel.joinGroupFromQRCodePayload(payload)
                     }
                 }
             }

@@ -38,7 +38,6 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isSavingGroupName = false
     @Published var isDeletingGroup = false
     @Published var isDeleteConfirmPresented = false
-    @Published var isQRScannerPresented = false
     @Published var isPhotoPickerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
     @Published var isMemberListPresented = false

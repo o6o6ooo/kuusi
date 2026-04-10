@@ -68,7 +68,6 @@ struct FeedView: View {
         NavigationStack {
             GeometryReader { proxy in
                 ZStack(alignment: .top) {
-                    backgroundCanvas
                     content(for: proxy)
 
                     topChrome(topInset: proxy.safeAreaInsets.top)
@@ -266,11 +265,6 @@ struct FeedView: View {
             await refreshCurrentGroup()
             await profileViewModel.loadProfile()
         }
-    }
-
-    private var backgroundCanvas: some View {
-        Color.clear
-            .ignoresSafeArea()
     }
 
     private func topChrome(topInset: CGFloat) -> some View {
