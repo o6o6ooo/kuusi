@@ -19,9 +19,15 @@ struct GroupsSectionView: View {
                 Text("Groups")
                     .font(.title3.weight(.bold))
 
-                Button {
-                    pendingCreateGroupName = ""
-                    isCreateAlertPresented = true
+                Menu {
+                    Button("Create a group", systemImage: "plus") {
+                        pendingCreateGroupName = ""
+                        isCreateAlertPresented = true
+                    }
+
+                    Button("Join a group", systemImage: "photo.badge.magnifyingglass") {
+                        viewModel.isPhotoPickerPresented = true
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .regular))
@@ -190,25 +196,6 @@ struct GroupsSectionView: View {
 
     private var groupActionLinks: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Menu {
-                Button {
-                    viewModel.isQRScannerPresented = true
-                } label: {
-                    Label("Scan QR code", systemImage: "camera")
-                }
-
-                Button {
-                    viewModel.isPhotoPickerPresented = true
-                } label: {
-                    Label("Choose from Photos", systemImage: "photo.badge.magnifyingglass")
-                }
-            } label: {
-                Text("Join a group")
-                    .appTextLinkStyle()
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.isJoiningGroup)
-
             ShareLink(item: viewModel.appShareURL) {
                 Text("Tell your friends about this app?")
                     .appSecondaryTextLinkStyle()
