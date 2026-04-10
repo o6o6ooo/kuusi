@@ -86,7 +86,7 @@ struct FeedView: View {
                     backgroundCanvas
                     content(for: proxy)
 
-                    topChrome
+                    topChrome(topInset: proxy.safeAreaInsets.top)
 
                     VStack {
                         Spacer()
@@ -329,7 +329,7 @@ struct FeedView: View {
         return max(140, totalHeight * ratio)
     }
 
-    private var topChrome: some View {
+    private func topChrome(topInset: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(currentGroupName)
@@ -372,7 +372,7 @@ struct FeedView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.top, 58)
+        .padding(.top, max(0, topInset - 24))
     }
 
     private var bottomChrome: some View {
@@ -408,7 +408,7 @@ struct FeedView: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
-        .padding(.bottom, 30)
+        .padding(.bottom, 6)
         .background(.clear)
     }
 
