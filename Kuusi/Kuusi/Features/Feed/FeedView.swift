@@ -168,15 +168,12 @@ struct FeedView: View {
     @ViewBuilder
     private func content(for proxy: GeometryProxy) -> some View {
         if photoCollection.groups.isEmpty {
-            glassUnavailableView(
+            emptyFeedState(
+                in: proxy,
                 title: "No groups yet",
                 systemImage: "person.3",
                 description: "Create or join a group in Settings to start sharing."
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.top, 116)
-            .padding(.bottom, 120)
         } else if photoCollection.isLoading {
             ProgressView("Loading feed...")
                 .font(.headline.weight(.semibold))
@@ -184,35 +181,26 @@ struct FeedView: View {
                 .padding(.top, 116)
                 .padding(.bottom, 120)
         } else if let errorMessage = photoCollection.errorMessage {
-            glassUnavailableView(
+            emptyFeedState(
+                in: proxy,
                 title: "Failed to load feed",
                 systemImage: "exclamationmark.triangle",
                 description: errorMessage
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.top, 116)
-            .padding(.bottom, 120)
         } else if currentGroupPhotos.isEmpty {
-            glassUnavailableView(
+            emptyFeedState(
+                in: proxy,
                 title: "No photos yet",
                 systemImage: "photo",
                 description: "Plus button to upload photos."
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.top, 116)
-            .padding(.bottom, 120)
         } else if displayedPhotos.isEmpty {
-            glassUnavailableView(
+            emptyFeedState(
+                in: proxy,
                 title: emptyStateTitle,
                 systemImage: emptyStateSymbol,
                 description: emptyStateDescription
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.top, 116)
-            .padding(.bottom, 120)
         } else {
             PhotoGridView(
                 photos: displayedPhotos,
@@ -252,6 +240,31 @@ struct FeedView: View {
                 await refreshCurrentGroup()
                 await profileViewModel.loadProfile()
             }
+        }
+    }
+
+    private func emptyFeedState(
+        in proxy: GeometryProxy,
+        title: String,
+        systemImage: String,
+        description: String
+    ) -> some View {
+        ScrollView {
+            glassUnavailableView(
+                title: title,
+                systemImage: systemImage,
+                description: description
+            )
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: max(0, proxy.size.height - 236), alignment: .center)
+            .padding(.horizontal, 20)
+            .padding(.top, 116)
+            .padding(.bottom, 120)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .refreshable {
+            await refreshCurrentGroup()
+            await profileViewModel.loadProfile()
         }
     }
 
