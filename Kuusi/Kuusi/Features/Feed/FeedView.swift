@@ -510,15 +510,7 @@ struct FeedView: View {
     private var avatarBadge: some View {
         ZStack {
             Circle()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Circle()
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.42), lineWidth: 1)
-                )
-
-            Circle()
                 .fill(Color(hex: profileViewModel.bgColour))
-                .padding(3)
 
             Text(profileViewModel.icon.isEmpty ? "🌸" : profileViewModel.icon)
                 .font(.system(size: 26))
