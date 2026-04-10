@@ -114,10 +114,6 @@ struct SettingsView: View {
                 .allowsHitTesting(false)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .refreshable {
-                await profileViewModel.loadProfile()
-                await groupsViewModel.loadGroups()
-            }
             .task {
                 if !hasLoaded {
                     await subscriptionStore.prepare()
