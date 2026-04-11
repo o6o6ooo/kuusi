@@ -15,6 +15,8 @@ struct AppMessage: Equatable {
         case biometricAuthenticationFailed
         case couldNotOpenGooglePhotos
         case couldNotOpenGoogleSignIn
+        case cannotDeleteOthersPhotos
+        case cannotEditOthersPhotos
         case debugEmailPasswordProviderDisabled
         case debugInvalidCredentials
         case debugSignInFailed(String)
@@ -26,6 +28,7 @@ struct AppMessage: Equatable {
         case failedToConnectGoogleAccount
         case failedToCreateGroup
         case failedToDeleteGroup
+        case failedToDeletePhoto
         case failedToDisconnectGoogleAccount
         case failedToJoinGroup
         case failedToLeaveGroup
@@ -33,6 +36,8 @@ struct AppMessage: Equatable {
         case failedToRestorePurchases
         case failedToSaveProfile
         case failedToUpdateGroup
+        case failedToUpdatePhoto
+        case failedToUpdateFavourite
         case fillInGroupName
         case googleAccountConnected
         case googleAccountDisconnected
@@ -93,6 +98,10 @@ private extension AppMessage.ID {
             return "Could not open Google Photos"
         case .couldNotOpenGoogleSignIn:
             return "Could not open Google Sign-In"
+        case .cannotDeleteOthersPhotos:
+            return "You can only delete your own photos"
+        case .cannotEditOthersPhotos:
+            return "You can only edit your own photos"
         case .debugEmailPasswordProviderDisabled:
             return "Enable Email/Password provider in Firebase Authentication for debug login"
         case .debugInvalidCredentials:
@@ -115,6 +124,8 @@ private extension AppMessage.ID {
             return "Failed to create group"
         case .failedToDeleteGroup:
             return "Failed to delete group"
+        case .failedToDeletePhoto:
+            return "Failed to delete photo"
         case .failedToDisconnectGoogleAccount:
             return "Failed to disconnect Google account"
         case .failedToJoinGroup:
@@ -129,6 +140,10 @@ private extension AppMessage.ID {
             return "Failed to save profile"
         case .failedToUpdateGroup:
             return "Failed to update group"
+        case .failedToUpdatePhoto:
+            return "Failed to update photo"
+        case .failedToUpdateFavourite:
+            return "Failed to update favourite"
         case .fillInGroupName:
             return "Fill in group name"
         case .googleAccountConnected:

@@ -1,6 +1,11 @@
 import FirebaseFirestore
 import Foundation
 
+enum FeedServiceError: Error {
+    case cannotEditOthersPhotos
+    case cannotDeleteOthersPhotos
+}
+
 final class FeedService {
     private let db = Firestore.firestore()
     private let favouritesField = "favourites"
@@ -80,9 +85,7 @@ final class FeedService {
 
     func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID: String, year: Int, hashtags: [String]) async throws {
         if let postedBy = photo.postedBy, postedBy != requesterUID {
-            throw NSError(domain: "FeedService", code: 403, userInfo: [
-                NSLocalizedDescriptionKey: "You can only edit your own photos."
-            ])
+            throw FeedServiceError.cannotEditOthersPhotos
         }
 
         let ref = db.collection("photos").document(photo.id)
@@ -104,9 +107,7 @@ final class FeedService {
 
     func deletePhoto(_ photo: FeedPhoto, requesterUID: String) async throws {
         if let postedBy = photo.postedBy, postedBy != requesterUID {
-            throw NSError(domain: "FeedService", code: 403, userInfo: [
-                NSLocalizedDescriptionKey: "You can only delete your own photos."
-            ])
+            throw FeedServiceError.cannotDeleteOthersPhotos
         }
 
         try await photoDeletionService.deletePhotos(

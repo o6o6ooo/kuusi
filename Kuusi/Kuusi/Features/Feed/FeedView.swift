@@ -2,11 +2,19 @@ import FirebaseAuth
 import SwiftUI
 import UIKit
 
-private struct FeedEditError: LocalizedError {
-    let toastMessage: AppMessage
+private extension FeedServiceError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .cannotEditOthersPhotos:
+            return .cannotEditOthersPhotos
+        case .cannotDeleteOthersPhotos:
+            return .cannotDeleteOthersPhotos
+        }
+    }
+}
 
-    var message: String { toastMessage.text }
-    var errorDescription: String? { toastMessage.text }
+private struct FeedEditError: Error {
+    let toastMessage: AppMessage
 }
 
 @MainActor
@@ -527,8 +535,10 @@ struct FeedView: View {
                 selectedPhoto = nil
             }
             feedMessage = AppMessage(.photoDeleted, .success)
+        } catch let error as FeedServiceError {
+            feedMessage = AppMessage(error.appMessageID, .error)
         } catch {
-            feedMessage = AppMessage(.details(error.localizedDescription), .error)
+            feedMessage = AppMessage(.failedToDeletePhoto, .error)
         }
     }
 
@@ -547,7 +557,7 @@ struct FeedView: View {
             photoCollection.replacePhoto(photo.withFavourite(newValue))
             feedMessage = newValue ? AppMessage(.addedToFavourites, .success) : AppMessage(.removedFromFavourites, .success)
         } catch {
-            feedMessage = AppMessage(.details(error.localizedDescription), .error)
+            feedMessage = AppMessage(.failedToUpdateFavourite, .error)
         }
     }
 
@@ -578,8 +588,10 @@ struct FeedView: View {
             }
             editingPhoto = nil
             return .success(())
+        } catch let error as FeedServiceError {
+            return .failure(FeedEditError(toastMessage: AppMessage(error.appMessageID, .error)))
         } catch {
-            return .failure(FeedEditError(toastMessage: AppMessage(.details(error.localizedDescription), .error)))
+            return .failure(FeedEditError(toastMessage: AppMessage(.failedToUpdatePhoto, .error)))
         }
     }
 }
