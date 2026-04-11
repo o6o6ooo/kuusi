@@ -20,9 +20,23 @@ struct AppMessage: Equatable {
         case debugSignInFailed(String)
         case enterValidYear
         case failedToLoadImage
+        case failedToLoadGroupMembers
+        case failedToLoadGroups
+        case failedToLoadProfile
+        case failedToConnectGoogleAccount
+        case failedToCreateGroup
+        case failedToDeleteGroup
+        case failedToDisconnectGoogleAccount
+        case failedToJoinGroup
+        case failedToLeaveGroup
+        case failedToOpenManageSubscriptions
+        case failedToRestorePurchases
+        case failedToSaveProfile
+        case failedToUpdateGroup
         case fillInGroupName
         case googleAccountConnected
         case googleAccountDisconnected
+        case groupNotFound
         case groupCreated
         case groupDeleted
         case ownerCannotLeave
@@ -36,6 +50,9 @@ struct AppMessage: Equatable {
         case photoDeleted
         case photosImportedFromGooglePhotos(Int)
         case pleaseSignInFirst
+        case purchaseCouldNotBeVerified
+        case purchaseFailed
+        case purchasePendingApproval
         case premiumUnlocked
         case profileUpdated
         case purchasesRestored
@@ -44,6 +61,7 @@ struct AppMessage: Equatable {
         case removedFromFavourites
         case addedToFavourites
         case selectGroup
+        case subscriptionUnavailable
         case uploadCompleted
         case groupLimitReached(title: String, maxGroups: Int)
         case details(String)
@@ -85,12 +103,40 @@ private extension AppMessage.ID {
             return "Enter a valid year"
         case .failedToLoadImage:
             return "Failed to load image"
+        case .failedToLoadGroupMembers:
+            return "Failed to load group members"
+        case .failedToLoadGroups:
+            return "Failed to load groups"
+        case .failedToLoadProfile:
+            return "Failed to load profile"
+        case .failedToConnectGoogleAccount:
+            return "Failed to connect Google account"
+        case .failedToCreateGroup:
+            return "Failed to create group"
+        case .failedToDeleteGroup:
+            return "Failed to delete group"
+        case .failedToDisconnectGoogleAccount:
+            return "Failed to disconnect Google account"
+        case .failedToJoinGroup:
+            return "Failed to join group"
+        case .failedToLeaveGroup:
+            return "Failed to leave group"
+        case .failedToOpenManageSubscriptions:
+            return "Could not open subscription management"
+        case .failedToRestorePurchases:
+            return "Failed to restore purchases"
+        case .failedToSaveProfile:
+            return "Failed to save profile"
+        case .failedToUpdateGroup:
+            return "Failed to update group"
         case .fillInGroupName:
             return "Fill in group name"
         case .googleAccountConnected:
             return "Google account connected"
         case .googleAccountDisconnected:
             return "Google account disconnected"
+        case .groupNotFound:
+            return "Group not found"
         case .groupCreated:
             return "Group created"
         case .groupDeleted:
@@ -117,6 +163,12 @@ private extension AppMessage.ID {
             return "\(count) photos imported from Google Photos"
         case .pleaseSignInFirst:
             return "Please sign in first"
+        case .purchaseCouldNotBeVerified:
+            return "Purchase could not be verified"
+        case .purchaseFailed:
+            return "Purchase failed"
+        case .purchasePendingApproval:
+            return "Purchase is pending approval"
         case .premiumUnlocked:
             return "Premium unlocked"
         case .profileUpdated:
@@ -133,6 +185,8 @@ private extension AppMessage.ID {
             return "Added to favourites"
         case .selectGroup:
             return "Select a group"
+        case .subscriptionUnavailable:
+            return "Premium subscription is not available right now"
         case .uploadCompleted:
             return "Upload completed"
         case let .groupLimitReached(title, maxGroups):

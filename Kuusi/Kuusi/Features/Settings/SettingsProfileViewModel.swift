@@ -76,7 +76,7 @@ final class SettingsProfileViewModel: ObservableObject {
             bgColour = user.bgColour
             usageMB = user.usageMB
         } catch {
-            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
+            setToastMessage(AppMessage(.failedToLoadProfile, .error))
         }
     }
 
@@ -97,7 +97,7 @@ final class SettingsProfileViewModel: ObservableObject {
             isGoogleLinked = linkedAccount.isLinked
             setToastMessage(AppMessage(.googleAccountConnected, .success))
         } catch {
-            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
+            setToastMessage(AppMessage(.failedToConnectGoogleAccount, .error))
         }
     }
 
@@ -111,7 +111,7 @@ final class SettingsProfileViewModel: ObservableObject {
             isGoogleLinked = false
             setToastMessage(AppMessage(.googleAccountDisconnected, .success))
         } catch {
-            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
+            setToastMessage(AppMessage(.failedToDisconnectGoogleAccount, .error))
         }
     }
 
@@ -142,7 +142,7 @@ final class SettingsProfileViewModel: ObservableObject {
             self.bgColour = bgColour
             setToastMessage(AppMessage(.profileUpdated, .success))
         } catch {
-            setToastMessage(AppMessage(.details(error.localizedDescription), .error))
+            setToastMessage(AppMessage(.failedToSaveProfile, .error))
         }
     }
 

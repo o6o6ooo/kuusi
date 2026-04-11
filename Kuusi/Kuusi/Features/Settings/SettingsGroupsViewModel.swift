@@ -3,6 +3,17 @@ import CoreImage
 import FirebaseAuth
 import Foundation
 
+private extension GroupServiceError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .groupNotFound:
+            return .groupNotFound
+        case .ownerCannotLeave:
+            return .ownerCannotLeave
+        }
+    }
+}
+
 enum GroupInvitePayloadParser {
     static func extractGroupID(from payload: String) -> String? {
         let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -102,8 +113,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             selectedGroupMembers = try await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: nil)
             isMemberListPresented = true
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
-            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
+            setSaveStatus(AppMessage(.failedToLoadGroupMembers, .error))
         }
     }
 
@@ -137,7 +150,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             await loadGroupPreviewIfNeeded(for: created.id, force: true)
             setCreateStatus(AppMessage(.groupCreated, .success))
         } catch {
-            setCreateStatus(AppMessage(.details(error.localizedDescription), .error))
+            setCreateStatus(AppMessage(.failedToCreateGroup, .error))
         }
     }
 
@@ -163,7 +176,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             }
             await loadAllGroupPreviews(force: true)
         } catch {
-            setCreateStatus(AppMessage(.details(error.localizedDescription), .error))
+            setCreateStatus(AppMessage(.failedToLoadGroups, .error))
         }
     }
 
@@ -197,8 +210,10 @@ final class SettingsGroupsViewModel: ObservableObject {
             }
             cacheGroupsForCurrentUser()
             setSaveStatus(AppMessage(.groupUpdated, .success))
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
-            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
+            setSaveStatus(AppMessage(.failedToUpdateGroup, .error))
         }
     }
 
@@ -219,8 +234,10 @@ final class SettingsGroupsViewModel: ObservableObject {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
             setSaveStatus(AppMessage(.groupDeleted, .success))
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
-            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
+            setSaveStatus(AppMessage(.failedToDeleteGroup, .error))
         }
     }
 
@@ -246,10 +263,10 @@ final class SettingsGroupsViewModel: ObservableObject {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
             setSaveStatus(AppMessage(.leftGroup, .success))
-        } catch GroupServiceError.ownerCannotLeave {
-            setSaveStatus(AppMessage(.ownerCannotLeave, .error))
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
-            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
+            setSaveStatus(AppMessage(.failedToLeaveGroup, .error))
         }
     }
 
@@ -285,8 +302,10 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             try await groupService.joinGroup(groupID: groupID, uid: uid)
             setSaveStatus(AppMessage(.joinedGroup, .success))
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
-            setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
+            setSaveStatus(AppMessage(.failedToJoinGroup, .error))
         }
     }
 

@@ -1,5 +1,24 @@
 import SwiftUI
 
+private extension SubscriptionStoreError {
+    var appMessageID: AppMessage.ID? {
+        switch self {
+        case .productUnavailable:
+            return .subscriptionUnavailable
+        case .purchasePending:
+            return .purchasePendingApproval
+        case .purchaseCancelled:
+            return nil
+        case .purchaseUnverified:
+            return .purchaseCouldNotBeVerified
+        case .manageSubscriptionsUnavailable:
+            return .failedToOpenManageSubscriptions
+        case .unknown:
+            return .purchaseFailed
+        }
+    }
+}
+
 private struct SubscriptionCardButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -192,12 +211,12 @@ struct SubscriptionView: View {
             try await subscriptionStore.purchasePremium()
             billingMessage = AppMessage(.premiumUnlocked, .success)
         } catch let error as SubscriptionStoreError {
-            if case .purchaseCancelled = error {
+            guard let messageID = error.appMessageID else {
                 return
             }
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
+            billingMessage = AppMessage(messageID, .error)
         } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
+            billingMessage = AppMessage(.purchaseFailed, .error)
         }
     }
 
@@ -207,7 +226,7 @@ struct SubscriptionView: View {
             try await subscriptionStore.restorePurchases()
             billingMessage = currentPlan == .premium ? AppMessage(.purchasesRestored, .success) : AppMessage(.noActivePurchasesFound, .success)
         } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
+            billingMessage = AppMessage(.failedToRestorePurchases, .error)
         }
     }
 
@@ -216,8 +235,10 @@ struct SubscriptionView: View {
         do {
             try await subscriptionStore.openManageSubscriptions()
             scheduleSubscriptionRefresh()
+        } catch let error as SubscriptionStoreError {
+            billingMessage = AppMessage(error.appMessageID ?? .failedToOpenManageSubscriptions, .error)
         } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
+            billingMessage = AppMessage(.failedToOpenManageSubscriptions, .error)
         }
     }
 
