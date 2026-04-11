@@ -5,8 +5,7 @@ struct GroupsSectionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var viewModel: SettingsGroupsViewModel
 
-    @State private var isCreateAlertPresented = false
-    @State private var isRenameAlertPresented = false
+    @State private var appAlert: AppAlert?
     @State private var pendingCreateGroupName = ""
     @State private var pendingRenameGroupName = ""
 
@@ -22,7 +21,10 @@ struct GroupsSectionView: View {
                 Menu {
                     Button("Create a group", systemImage: "plus") {
                         pendingCreateGroupName = ""
-                        isCreateAlertPresented = true
+                        appAlert = AppAlert(.createGroupPrompt, text: $pendingCreateGroupName) {
+                            viewModel.createGroupName = pendingCreateGroupName
+                            Task { await viewModel.createGroup() }
+                        }
                     }
 
                     Button("Join a group", systemImage: "photo.badge.magnifyingglass") {
@@ -57,26 +59,7 @@ struct GroupsSectionView: View {
             }
             groupActionLinks
         }
-        .alert("Create Group", isPresented: $isCreateAlertPresented) {
-            TextField("Group name", text: $pendingCreateGroupName)
-            Button("Cancel", role: .cancel) {}
-            Button("Create") {
-                viewModel.createGroupName = pendingCreateGroupName
-                Task { await viewModel.createGroup() }
-            }
-        } message: {
-            Text("Enter a name for the new group.")
-        }
-        .alert("Edit Group", isPresented: $isRenameAlertPresented) {
-            TextField("Group name", text: $pendingRenameGroupName)
-            Button("Cancel", role: .cancel) {}
-            Button("Save") {
-                viewModel.editableGroupName = pendingRenameGroupName
-                Task { await viewModel.saveGroupName() }
-            }
-        } message: {
-            Text("Enter a new group name.")
-        }
+        .appAlert($appAlert)
     }
 
     private func groupCard(_ group: GroupSummary) -> some View {
@@ -151,7 +134,10 @@ struct GroupsSectionView: View {
                 viewModel.selectedGroupID = group.id
                 viewModel.editableGroupName = group.name
                 pendingRenameGroupName = group.name
-                isRenameAlertPresented = true
+                appAlert = AppAlert(.editGroupPrompt, text: $pendingRenameGroupName) {
+                    viewModel.editableGroupName = pendingRenameGroupName
+                    Task { await viewModel.saveGroupName() }
+                }
             }
 
             Button(viewModel.selectedGroupID == group.id ? viewModel.destructiveActionButtonTitle : destructiveLabel(for: group), systemImage: destructiveSymbol(for: group), role: .destructive) {

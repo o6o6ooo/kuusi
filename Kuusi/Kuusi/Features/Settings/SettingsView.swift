@@ -8,12 +8,11 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasLoaded = false
-    @State private var isNameEditorPresented = false
     @State private var isEmojiPickerPresented = false
     @State private var isBackgroundPickerPresented = false
     @State private var pendingName = ""
     @State private var selectedQRCodePhoto: PhotosPickerItem?
-    @State private var isDeleteAccountConfirmPresented = false
+    @State private var appAlert: AppAlert?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -25,7 +24,16 @@ struct SettingsView: View {
                         viewModel: profileViewModel,
                         onEditName: {
                             pendingName = profileViewModel.name
-                            isNameEditorPresented = true
+                            appAlert = AppAlert(.editNamePrompt, text: $pendingName) {
+                                let updatedName = pendingName
+                                Task {
+                                    await profileViewModel.saveProfile(
+                                        name: updatedName,
+                                        icon: profileViewModel.icon,
+                                        bgColour: profileViewModel.bgColour
+                                    )
+                                }
+                            }
                         },
                         onEditIcon: {
                             isEmojiPickerPresented = true
@@ -42,7 +50,11 @@ struct SettingsView: View {
                     GroupsSectionView(viewModel: groupsViewModel)
                     SubscriptionView(usageMB: profileViewModel.usageMB)
                     FooterView {
-                        isDeleteAccountConfirmPresented = true
+                        appAlert = AppAlert(.deleteAccountConfirm) {
+                            Task {
+                                await appState.deleteCurrentUserAccount()
+                            }
+                        }
                     }
                 }
                 .padding(16)
@@ -129,8 +141,15 @@ struct SettingsView: View {
                     .presentationDetents([.height(280)])
                     .presentationDragIndicator(.visible)
             }
-            .alert(groupsViewModel.destructiveActionTitle, isPresented: $groupsViewModel.isDeleteConfirmPresented) {
-                Button(groupsViewModel.destructiveActionButtonTitle, role: .destructive) {
+            .onChange(of: groupsViewModel.isDeleteConfirmPresented) { _, isPresented in
+                guard isPresented else { return }
+                appAlert = AppAlert(
+                    .destructiveGroupConfirm(
+                        title: groupsViewModel.destructiveActionTitle,
+                        message: groupsViewModel.destructiveActionMessage,
+                        confirmButtonTitle: groupsViewModel.destructiveActionButtonTitle
+                    )
+                ) {
                     Task {
                         if groupsViewModel.currentUserIsSelectedGroupOwner {
                             await groupsViewModel.deleteSelectedGroup()
@@ -138,37 +157,12 @@ struct SettingsView: View {
                             await groupsViewModel.leaveSelectedGroup()
                         }
                     }
+                } onCancel: {
+                    groupsViewModel.isDeleteConfirmPresented = false
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(groupsViewModel.destructiveActionMessage)
+                groupsViewModel.isDeleteConfirmPresented = false
             }
-            .alert("Delete account?", isPresented: $isDeleteAccountConfirmPresented) {
-                Button("Delete account", role: .destructive) {
-                    Task {
-                        await appState.deleteCurrentUserAccount()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will permanently delete your account, your photos, and any groups you created.")
-            }
-            .alert("Edit Name", isPresented: $isNameEditorPresented) {
-                TextField("Name", text: $pendingName)
-                Button("Cancel", role: .cancel) {}
-                Button("OK") {
-                    let updatedName = pendingName
-                    Task {
-                        await profileViewModel.saveProfile(
-                            name: updatedName,
-                            icon: profileViewModel.icon,
-                            bgColour: profileViewModel.bgColour
-                        )
-                    }
-                }
-            } message: {
-                Text("Enter your display name.")
-            }
+            .appAlert($appAlert)
             .onChange(of: selectedQRCodePhoto) { _, newValue in
                 guard let newValue else { return }
                 Task {

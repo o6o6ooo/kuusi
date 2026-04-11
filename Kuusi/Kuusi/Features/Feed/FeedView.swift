@@ -25,7 +25,7 @@ struct FeedView: View {
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
     @State private var editingPhotoIDs: Set<String> = []
-    @State private var pendingDeletePhoto: FeedPhoto?
+    @State private var appAlert: AppAlert?
     @State private var editingPhoto: FeedPhoto?
     @State private var clearFeedMessageTask: Task<Void, Never>?
 
@@ -136,27 +136,7 @@ struct FeedView: View {
                 .presentationDetents([.height(330)])
                 .presentationDragIndicator(.visible)
             }
-            .alert("Delete photo?", isPresented: Binding(
-                get: { pendingDeletePhoto != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        pendingDeletePhoto = nil
-                    }
-                }
-            )) {
-                Button("Delete", role: .destructive) {
-                    guard let photo = pendingDeletePhoto else { return }
-                    pendingDeletePhoto = nil
-                    Task {
-                        await deletePhoto(photo)
-                    }
-                }
-                Button("Cancel", role: .cancel) {
-                    pendingDeletePhoto = nil
-                }
-            } message: {
-                Text("This will permanently delete the photo.")
-            }
+            .appAlert($appAlert)
             .onDisappear {
                 clearFeedMessageTask?.cancel()
                 clearFeedMessageTask = nil
@@ -216,7 +196,11 @@ struct FeedView: View {
                     onTap: onTap,
                     onEdit: { editingPhoto = photo },
                     onDelete: {
-                        pendingDeletePhoto = photo
+                        appAlert = AppAlert(.deletePhotoConfirm) {
+                            Task {
+                                await deletePhoto(photo)
+                            }
+                        }
                     },
                     onToggleFavourite: {
                         Task { await toggleFavourite(photo) }
