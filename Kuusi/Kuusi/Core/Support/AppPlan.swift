@@ -25,9 +25,9 @@ enum AppPlan: String {
     var title: String {
         switch self {
         case .free:
-            return "Free plan"
+            return "Free"
         case .premium:
-            return "Premium plan"
+            return "Premium"
         }
     }
 
@@ -54,14 +54,14 @@ enum AppPlan: String {
         case .free:
             return [
                 "3GB storage",
-                "Preview photos up to 2 years",
-                "Have up to 3 groups"
+                "2 years photo preview",
+                "Up to 3 groups"
             ]
         case .premium:
             return [
                 "50GB storage",
-                "Preview all photos",
-                "Have up to 10 groups"
+                "All photo preview",
+                "Up to 10 groups"
             ]
         }
     }

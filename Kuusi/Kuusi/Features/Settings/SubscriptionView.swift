@@ -26,6 +26,9 @@ struct SubscriptionView: View {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
     private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
+    private var planCardWidth: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 240 : 200
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -89,42 +92,42 @@ struct SubscriptionView: View {
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 24, weight: .regular))
-                        .opacity(currentPlan == .free ? 1 : 0)
-                        .frame(width: 84)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    planCard(
+                        title: AppPlan.free.title,
+                        features: AppPlan.free.featureLines,
+                        footerText: nil,
+                        footerActionTitle: nil,
+                        isSelected: currentPlan == .free,
+                        action: nil
+                    )
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Free")
-                            .font(.body.weight(.semibold))
-
-                        Text(AppPlan.free.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
-                            .font(.callout.weight(.medium))
-                            .fixedSize(horizontal: false, vertical: true)
+                    if currentPlan == .free {
+                        Button(action: onPurchase) {
+                            planCard(
+                                title: AppPlan.premium.title,
+                                features: AppPlan.premium.featureLines,
+                                footerText: subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel,
+                                footerActionTitle: nil,
+                                isSelected: false,
+                                action: nil
+                            )
+                        }
+                        .buttonStyle(SubscriptionCardButtonStyle())
+                    } else {
+                        planCard(
+                            title: AppPlan.premium.title,
+                            features: AppPlan.premium.featureLines,
+                            footerText: renewalText,
+                            footerActionTitle: subscriptionStore.willAutoRenew ? "Cancel subscription" : "Continue subscription",
+                            isSelected: true,
+                            action: onManage
+                        )
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(14)
-            .background(cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(cardBorder, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if currentPlan == .free {
-                Button(action: onPurchase) {
-                    premiumSubscriptionCardContent
-                }
-                .buttonStyle(SubscriptionCardButtonStyle())
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                premiumSubscriptionCardContent
-            }
             if currentPlan == .free {
                 HStack(spacing: 6) {
                     Text("Already got premium?")
@@ -139,49 +142,58 @@ struct SubscriptionView: View {
         }
     }
 
-    private var premiumSubscriptionCardContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
+    private func planCard(
+        title: String,
+        features: [String],
+        footerText: String?,
+        footerActionTitle: String?,
+        isSelected: Bool,
+        action: (() -> Void)?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.title3.weight(.bold))
+
+                Spacer(minLength: 12)
+
                 Image(systemName: "checkmark")
-                    .font(.system(size: 24, weight: .regular))
-                    .opacity(currentPlan == .premium ? 1 : 0)
-                    .frame(width: 84)
+                    .font(.system(size: 20, weight: .medium))
+                    .opacity(isSelected ? 1 : 0)
+            }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Premium")
-                        .font(.body.weight(.semibold))
-
-                    if let premiumPriceLabel = subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel {
-                        Text(premiumPriceLabel)
-                            .font(.callout.weight(.medium))
-                    }
-
-                    Text(AppPlan.premium.featureLines.map { "•  \($0)" }.joined(separator: "\n"))
-                        .font(.callout.weight(.medium))
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(features, id: \.self) { feature in
+                    Text("•  \(feature)")
+                        .font(.body.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
-
-                    if let renewalText, currentPlan == .premium {
-                        Text(renewalText)
-                            .font(.callout.weight(.medium))
-                    }
-
-                    if currentPlan == .premium {
-                        Button(subscriptionStore.willAutoRenew ? "Cancel subscription" : "Continue subscription", action: onManage)
-                            .buttonStyle(.plain)
-                            .font(.callout.weight(.medium))
-                            .foregroundStyle(Color.accentColor)
-                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 0)
+
+            if let footerText {
+                Text(footerText)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
+            }
+
+            if let footerActionTitle, let action {
+                Button(footerActionTitle, action: action)
+                    .buttonStyle(.plain)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Color.accentColor)
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .frame(width: planCardWidth, alignment: .topLeading)
+        .frame(minHeight: 160, alignment: .topLeading)
         .background(cardBackground)
         .overlay {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 24)
                 .stroke(cardBorder, lineWidth: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .contentShape(RoundedRectangle(cornerRadius: 24))
     }
 }
