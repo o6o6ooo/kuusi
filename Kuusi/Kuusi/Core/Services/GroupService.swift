@@ -1,4 +1,5 @@
 import FirebaseFirestore
+import FirebaseStorage
 import Foundation
 
 enum GroupServiceError: Error {
@@ -24,7 +25,9 @@ struct GroupSummary: Identifiable {
 
 final class GroupService {
     private let db = Firestore.firestore()
+    private let storage = Storage.storage()
     private let groupMemberPreviewLimit = 3
+    private let maxBatchWriteCount = 450
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
@@ -145,25 +148,60 @@ final class GroupService {
     func deleteGroup(groupID: String) async throws {
         let groupRef = db.collection("groups").document(groupID)
         let groupSnapshot = try await getDocument(groupRef)
-        let memberIDs = (groupSnapshot.data()?["members"] as? [String]) ?? []
+        guard groupSnapshot.exists else {
+            throw GroupServiceError.groupNotFound
+        }
 
-        let batch = db.batch()
-        batch.deleteDocument(groupRef)
+        let memberIDs = (groupSnapshot.data()?["members"] as? [String]) ?? []
+        let photos = try await loadGroupPhotos(groupID: groupID)
+        try await deleteStorageAssets(for: photos)
+
+        var usageByUserID: [String: Double] = [:]
+        for photo in photos {
+            guard let postedBy = photo.postedBy,
+                  let sizeMB = photo.sizeMB,
+                  sizeMB > 0 else {
+                continue
+            }
+            usageByUserID[postedBy, default: 0] += sizeMB
+        }
+
+        let favouriteRemovals = try await loadFavouriteRemovals(for: photos.map(\.id))
+        var operations: [(WriteBatch) -> Void] = []
+
+        operations.append { batch in
+            batch.deleteDocument(groupRef)
+        }
 
         for memberID in memberIDs {
             let userRef = db.collection("users").document(memberID)
-            batch.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
-        }
-
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            batch.commit { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
+            operations.append { batch in
+                batch.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
             }
         }
+
+        for photo in photos {
+            let photoRef = db.collection("photos").document(photo.id)
+            operations.append { batch in
+                batch.deleteDocument(photoRef)
+            }
+        }
+
+        for (userID, sizeMB) in usageByUserID {
+            let userRef = db.collection("users").document(userID)
+            operations.append { batch in
+                batch.setData(["usage_mb": FieldValue.increment(-sizeMB)], forDocument: userRef, merge: true)
+            }
+        }
+
+        for (userID, photoIDs) in favouriteRemovals {
+            let userRef = db.collection("users").document(userID)
+            operations.append { batch in
+                batch.setData(["favourites": FieldValue.arrayRemove(Array(photoIDs))], forDocument: userRef, merge: true)
+            }
+        }
+
+        try await commitBatchedOperations(operations)
 
         for memberID in memberIDs {
             removeCachedGroup(groupID: groupID, for: memberID)
@@ -272,6 +310,100 @@ final class GroupService {
         }
     }
 
+    private func fetchQuery(_ query: Query) async throws -> QuerySnapshot {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
+            query.getDocuments { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+    }
+
+    private func commitBatch(_ batch: WriteBatch) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            batch.commit { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+
+    private func loadGroupPhotos(groupID: String) async throws -> [FeedPhoto] {
+        let query = db.collection("photos")
+            .whereField("group_id", isEqualTo: groupID)
+        let snapshot = try await fetchQuery(query)
+        return snapshot.documents.map { FeedPhoto(id: $0.documentID, data: $0.data()) }
+    }
+
+    private func deleteStorageAssets(for photos: [FeedPhoto]) async throws {
+        for photo in photos {
+            if let urlString = photo.photoURL {
+                try await deleteStorageObject(urlString: urlString)
+            }
+            if let urlString = photo.thumbnailURL {
+                try await deleteStorageObject(urlString: urlString)
+            }
+        }
+    }
+
+    private func deleteStorageObject(urlString: String) async throws {
+        guard let url = URL(string: urlString) else { return }
+        let ref = storage.reference(forURL: url.absoluteString)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            ref.delete { error in
+                if let nsError = error as NSError?,
+                   nsError.domain == StorageErrorDomain,
+                   nsError.code == StorageErrorCode.objectNotFound.rawValue {
+                    continuation.resume(returning: ())
+                    return
+                }
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+
+    private func loadFavouriteRemovals(for photoIDs: [String]) async throws -> [String: Set<String>] {
+        guard !photoIDs.isEmpty else { return [:] }
+
+        var favouriteRemovals: [String: Set<String>] = [:]
+        for chunk in photoIDs.chunked(into: 10) where !chunk.isEmpty {
+            let query = db.collection("users")
+                .whereField("favourites", arrayContainsAny: chunk)
+            let snapshot = try await fetchQuery(query)
+            for document in snapshot.documents {
+                favouriteRemovals[document.documentID, default: []].formUnion(chunk)
+            }
+        }
+
+        return favouriteRemovals
+    }
+
+    private func commitBatchedOperations(_ operations: [(WriteBatch) -> Void]) async throws {
+        guard !operations.isEmpty else { return }
+
+        for chunk in operations.chunked(into: maxBatchWriteCount) {
+            let batch = db.batch()
+            for operation in chunk {
+                operation(batch)
+            }
+            try await commitBatch(batch)
+        }
+    }
+
     private func loadMemberPreview(uid: String, ownerUID: String?) async throws -> GroupMemberPreview {
         let snapshot = try await getDocument(db.collection("users").document(uid))
         let data = snapshot.data() ?? [:]
@@ -364,6 +496,24 @@ final class GroupService {
             },
             totalMemberCount: group.totalMemberCount
         )
+    }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+
+        var result: [[Element]] = []
+        result.reserveCapacity((count + size - 1) / size)
+
+        var index = 0
+        while index < count {
+            let end = Swift.min(index + size, count)
+            result.append(Array(self[index..<end]))
+            index += size
+        }
+
+        return result
     }
 }
 

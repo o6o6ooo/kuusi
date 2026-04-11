@@ -71,7 +71,7 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     var destructiveActionMessage: String {
         currentUserIsSelectedGroupOwner
-            ? "This will remove the group for all members."
+            ? "This will remove the group for all members and permanently delete all photos in it."
             : "You will be removed from this group."
     }
 
