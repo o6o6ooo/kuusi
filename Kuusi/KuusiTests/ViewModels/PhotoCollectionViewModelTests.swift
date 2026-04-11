@@ -61,16 +61,6 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
-    func clearMeasuredAspectRatioRemovesStoredValue() {
-        let viewModel = makeViewModel()
-
-        viewModel.measuredAspectRatios["photo-a"] = 1.5
-        viewModel.clearMeasuredAspectRatio(for: "photo-a")
-
-        #expect(viewModel.measuredAspectRatios["photo-a"] == nil)
-    }
-
-    @Test
     func selectGroupLoadsPhotosWhenMissingFromCache() async throws {
         let feedService = FeedServiceSpy()
         let expected = [makePhoto(id: "photo-b", groupID: "group-b", year: 2022)]
@@ -107,47 +97,14 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.isEmpty)
     }
 
-    @Test
-    func requestAspectRatioStoresMeasuredValueForLegacyPhoto() async throws {
-        let photo = makePhoto(
-            id: "photo-a",
-            groupID: "group-a",
-            year: 2024,
-            thumbnailURL: "https://example.com/thumb.jpg",
-            aspectRatio: nil
-        )
-        let viewModel = makeViewModel(aspectRatioMeasurer: { _ in 1.25 })
-
-        viewModel.requestAspectRatioIfNeeded(for: photo)
-        try await Task.sleep(nanoseconds: 50_000_000)
-
-        #expect(viewModel.measuredAspectRatios["photo-a"] == 1.25)
-    }
-
-    @Test
-    func requestAspectRatioSkipsPhotoThatAlreadyHasAspectRatio() async throws {
-        let photo = makePhoto(id: "photo-a", groupID: "group-a", year: 2024, aspectRatio: 1.8)
-        let viewModel = makeViewModel(aspectRatioMeasurer: { _ in
-            Issue.record("Aspect ratio measurer should not be called")
-            return 2.0
-        })
-
-        viewModel.requestAspectRatioIfNeeded(for: photo)
-        try await Task.sleep(nanoseconds: 20_000_000)
-
-        #expect(viewModel.measuredAspectRatios.isEmpty)
-    }
-
     private func makeViewModel(
         feedService: PhotoCollectionFeedServicing = FeedServiceSpy(),
-        groupService: PhotoCollectionGroupServicing = GroupServiceSpy(),
-        aspectRatioMeasurer: @escaping (String) async -> CGFloat? = { _ in nil }
+        groupService: PhotoCollectionGroupServicing = GroupServiceSpy()
     ) -> PhotoCollectionViewModel {
         PhotoCollectionViewModel(
             feedService: feedService,
             groupService: groupService,
-            currentUserIDProvider: { "test-user" },
-            aspectRatioMeasurer: aspectRatioMeasurer
+            currentUserIDProvider: { "test-user" }
         )
     }
 

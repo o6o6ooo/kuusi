@@ -31,7 +31,7 @@ final class UserService {
             "usage_mb": 0.0,
             "groups": [],
             "favourites": [],
-            "createdAt": FieldValue.serverTimestamp()
+            "created_at": FieldValue.serverTimestamp()
         ]
         try await setDocument(ref, data: payload, merge: false)
     }

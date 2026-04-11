@@ -25,7 +25,7 @@ extension AppUser {
         self.email = email
         self.icon = (data["icon"] as? String) ?? "🌸"
         self.bgColour = (data["bgColour"] as? String) ?? "#A5C3DE"
-        self.usageMB = (data["usage_mb"] as? Double) ?? ((data["upload_total_mb"] as? Double) ?? 0)
+        self.usageMB = (data["usage_mb"] as? Double) ?? 0
         self.groups = (data["groups"] as? [String]) ?? []
     }
 }

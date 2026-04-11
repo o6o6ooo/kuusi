@@ -35,19 +35,18 @@ struct AppUserTests {
     }
 
     @Test
-    func initFallsBackToLegacyAndDefaultValues() {
+    func initUsesDefaultsWhenOptionalFieldsAreMissing() {
         let user = AppUser(
             id: "user-1",
             data: [
                 "name": "Sakura",
-                "email": "sakura@example.com",
-                "upload_total_mb": 12.25
+                "email": "sakura@example.com"
             ]
         )
 
         #expect(user?.icon == "🌸")
         #expect(user?.bgColour == "#A5C3DE")
-        #expect(user?.usageMB == 12.25)
+        #expect(user?.usageMB == 0)
         #expect(user?.groups == [])
     }
 }

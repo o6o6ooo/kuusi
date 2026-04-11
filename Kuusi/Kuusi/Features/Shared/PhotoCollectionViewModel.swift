@@ -1,7 +1,6 @@
 import Combine
 import FirebaseAuth
 import SwiftUI
-import UIKit
 
 protocol PhotoCollectionFeedServicing {
     func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int) async throws -> [FeedPhoto]
@@ -20,37 +19,28 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var groups: [GroupSummary] = []
     @Published var selectedGroupID: String?
     @Published var photosByGroupID: [String: [FeedPhoto]] = [:]
-    @Published var measuredAspectRatios: [String: CGFloat] = [:]
     @Published var isLoading = false
     @Published var errorMessage: String?
-
-    private var measuringAspectRatioIDs: Set<String> = []
 
     private let feedService: PhotoCollectionFeedServicing
     private let groupService: PhotoCollectionGroupServicing
     private let currentUserIDProvider: @MainActor () -> String?
-    private let aspectRatioMeasurer: (String) async -> CGFloat?
 
     init(
         feedService: PhotoCollectionFeedServicing,
         groupService: PhotoCollectionGroupServicing,
-        currentUserIDProvider: @escaping @MainActor () -> String?,
-        aspectRatioMeasurer: @escaping (String) async -> CGFloat?
+        currentUserIDProvider: @escaping @MainActor () -> String?
     ) {
         self.feedService = feedService
         self.groupService = groupService
         self.currentUserIDProvider = currentUserIDProvider
-        self.aspectRatioMeasurer = aspectRatioMeasurer
     }
 
     convenience init() {
         self.init(
             feedService: FeedService(),
             groupService: GroupService(),
-            currentUserIDProvider: { Auth.auth().currentUser?.uid },
-            aspectRatioMeasurer: { urlString in
-                await PhotoCollectionViewModel.measureAspectRatioFromURL(urlString)
-            }
+            currentUserIDProvider: { Auth.auth().currentUser?.uid }
         )
     }
 
@@ -130,28 +120,6 @@ final class PhotoCollectionViewModel: ObservableObject {
         photosByGroupID[selectedGroupID] = cachedPhotos
     }
 
-    func clearMeasuredAspectRatio(for photoID: String) {
-        measuredAspectRatios[photoID] = nil
-    }
-
-    func requestAspectRatioIfNeeded(for photo: FeedPhoto) {
-        // TODO: Remove this fallback after all legacy photos have aspect_ratio.
-        if photo.aspectRatio != nil { return }
-        if measuredAspectRatios[photo.id] != nil { return }
-        if measuringAspectRatioIDs.contains(photo.id) { return }
-        guard let urlString = photo.thumbnailURL ?? photo.photoURL else { return }
-
-        measuringAspectRatioIDs.insert(photo.id)
-        Task {
-            let ratio = await aspectRatioMeasurer(urlString)
-            await MainActor.run {
-                self.measuringAspectRatioIDs.remove(photo.id)
-                guard let ratio else { return }
-                self.measuredAspectRatios[photo.id] = ratio
-            }
-        }
-    }
-
     private func fetchPhotosForSelectedGroup(forceReload: Bool, limit: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -183,23 +151,10 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
     }
 
-    nonisolated private static func measureAspectRatioFromURL(_ urlString: String) async -> CGFloat? {
-        guard let url = URL(string: urlString) else { return nil }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let image = UIImage(data: data), image.size.height > 0 else { return nil }
-            return CGFloat(image.size.width / image.size.height)
-        } catch {
-            return nil
-        }
-    }
-
     private func resetState() {
         groups = []
         selectedGroupID = nil
         photosByGroupID = [:]
-        measuredAspectRatios = [:]
         errorMessage = nil
     }
 }

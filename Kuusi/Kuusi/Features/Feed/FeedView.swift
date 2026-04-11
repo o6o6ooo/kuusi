@@ -207,10 +207,8 @@ struct FeedView: View {
             PhotoGridView(
                 photos: displayedPhotos,
                 availableWidth: proxy.size.width,
-                measuredAspectRatios: photoCollection.measuredAspectRatios,
-                onTap: { selectedPhoto = $0 },
-                onRequireAspectRatio: photoCollection.requestAspectRatioIfNeeded
-            ) { photo, columnWidth, displayAspectRatio, onTap, onRequireAspectRatio in
+                onTap: { selectedPhoto = $0 }
+            ) { photo, columnWidth, displayAspectRatio, onTap in
                 PhotoTile(
                     photo: photo,
                     width: columnWidth,
@@ -223,7 +221,6 @@ struct FeedView: View {
                     onToggleFavourite: {
                         Task { await toggleFavourite(photo) }
                     },
-                    onRequireAspectRatio: onRequireAspectRatio,
                     isDeleting: deletingPhotoIDs.contains(photo.id),
                     isFavouriting: favouritingPhotoIDs.contains(photo.id),
                     isEditing: editingPhotoIDs.contains(photo.id)
@@ -542,7 +539,6 @@ struct FeedView: View {
         do {
             try await feedService.deletePhoto(photo, requesterUID: uid)
             photoCollection.removePhoto(id: photo.id)
-            photoCollection.clearMeasuredAspectRatio(for: photo.id)
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = nil
             }
@@ -614,7 +610,6 @@ private struct PhotoTile: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onToggleFavourite: () -> Void
-    let onRequireAspectRatio: () -> Void
     let isDeleting: Bool
     let isFavouriting: Bool
     let isEditing: Bool
@@ -678,9 +673,6 @@ private struct PhotoTile: View {
             }
         }
         .disabled(isDeleting || isEditing)
-        .task {
-            onRequireAspectRatio()
-        }
     }
 }
 

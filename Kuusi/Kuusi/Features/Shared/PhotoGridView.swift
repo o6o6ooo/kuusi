@@ -3,10 +3,8 @@ import SwiftUI
 struct PhotoGridView<Tile: View, Footer: View>: View {
     let photos: [FeedPhoto]
     let availableWidth: CGFloat
-    let measuredAspectRatios: [String: CGFloat]
     let onTap: (FeedPhoto) -> Void
-    let onRequireAspectRatio: (FeedPhoto) -> Void
-    let tile: (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void, @escaping () -> Void) -> Tile
+    let tile: (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile
     let footer: () -> Footer
 
     private let spacing: CGFloat = 8
@@ -15,17 +13,13 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
-        measuredAspectRatios: [String: CGFloat],
         onTap: @escaping (FeedPhoto) -> Void,
-        onRequireAspectRatio: @escaping (FeedPhoto) -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void, @escaping () -> Void) -> Tile,
+        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile,
         @ViewBuilder footer: @escaping () -> Footer
     ) {
         self.photos = photos
         self.availableWidth = availableWidth
-        self.measuredAspectRatios = measuredAspectRatios
         self.onTap = onTap
-        self.onRequireAspectRatio = onRequireAspectRatio
         self.tile = tile
         self.footer = footer
     }
@@ -47,13 +41,11 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
                     LazyVStack(spacing: spacing) {
                         ForEach(columns[columnIndex]) { photo in
                             let onPhotoTap = { onTap(photo) }
-                            let onPhotoRequireAspectRatio = { onRequireAspectRatio(photo) }
                             tile(
                                 photo,
                                 columnWidth,
                                 displayAspectRatio(for: photo),
-                                onPhotoTap,
-                                onPhotoRequireAspectRatio
+                                onPhotoTap
                             )
                         }
                     }
@@ -68,7 +60,7 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
     }
 
     private func displayAspectRatio(for photo: FeedPhoto) -> CGFloat {
-        CGFloat(photo.aspectRatio ?? Double(measuredAspectRatios[photo.id] ?? 1.0))
+        CGFloat(photo.aspectRatio ?? 1.0)
     }
 
     private func makeWaterfallColumns(
@@ -97,17 +89,13 @@ extension PhotoGridView where Footer == EmptyView {
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
-        measuredAspectRatios: [String: CGFloat],
         onTap: @escaping (FeedPhoto) -> Void,
-        onRequireAspectRatio: @escaping (FeedPhoto) -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void, @escaping () -> Void) -> Tile
+        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile
     ) {
         self.init(
             photos: photos,
             availableWidth: availableWidth,
-            measuredAspectRatios: measuredAspectRatios,
             onTap: onTap,
-            onRequireAspectRatio: onRequireAspectRatio,
             tile: tile,
             footer: { EmptyView() }
         )
