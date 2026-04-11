@@ -121,6 +121,11 @@ extension View {
             .foregroundStyle(Color.accentColor)
     }
 
+    func appErrorTextLinkStyle() -> some View {
+        font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.errorText)
+    }
+
     func appSecondaryTextLinkStyle() -> some View {
         font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)

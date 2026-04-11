@@ -76,6 +76,7 @@ final class AppState: ObservableObject {
     private let userService = UserService()
     private let biometricAuthService: BiometricAuthServicing
     private let groupService = GroupService()
+    private let photoDeletionService = PhotoDeletionService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
     private var shouldUnlockAfterInteractiveSignIn = false
@@ -174,6 +175,42 @@ final class AppState: ObservableObject {
         do {
             GIDSignIn.sharedInstance.signOut()
             try Auth.auth().signOut()
+            currentUser = nil
+            route = .signedOut
+            toastMessage = nil
+            prefetchedGroupsUID = nil
+        } catch {
+            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+        }
+    }
+
+    func deleteCurrentUserAccount() async {
+        guard let user = currentUser ?? Auth.auth().currentUser else {
+            toastMessage = AppMessage(.pleaseSignInFirst, .error)
+            return
+        }
+
+        let uid = user.uid
+
+        do {
+            let groups = try await groupService.fetchGroups(for: uid)
+            let ownedGroups = groups.filter { $0.ownerUID == uid }
+            let joinedGroups = groups.filter { $0.ownerUID != uid }
+
+            for group in ownedGroups {
+                try await groupService.deleteGroup(groupID: group.id)
+            }
+
+            for group in joinedGroups {
+                try await groupService.leaveGroup(groupID: group.id, uid: uid)
+            }
+
+            try await photoDeletionService.deletePhotosPosted(by: uid)
+            try await userService.deleteUserDocument(uid: uid)
+            try await deleteAuthUser(user)
+
+            GIDSignIn.sharedInstance.signOut()
+            groupService.clearCachedGroups(for: uid)
             currentUser = nil
             route = .signedOut
             toastMessage = nil
@@ -368,6 +405,18 @@ final class AppState: ObservableObject {
         await withCheckedContinuation { continuation in
             user.getIDTokenForcingRefresh(true) { _, error in
                 continuation.resume(returning: error == nil)
+            }
+        }
+    }
+
+    private func deleteAuthUser(_ user: User) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.delete { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
             }
         }
     }

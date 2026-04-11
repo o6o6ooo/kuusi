@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var billingMessage: AppMessage?
+    @State private var isDeleteAccountConfirmPresented = false
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -77,6 +78,14 @@ struct SettingsView: View {
                                 Task { await openManageSubscriptions() }
                             }
                         )
+
+                        Button {
+                            isDeleteAccountConfirmPresented = true
+                        } label: {
+                            Text("Delete account")
+                                .appErrorTextLinkStyle()
+                        }
+                        .accessibilityIdentifier("settings-delete-account-button")
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")
@@ -194,6 +203,16 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text(groupsViewModel.destructiveActionMessage)
+            }
+            .alert("Delete account?", isPresented: $isDeleteAccountConfirmPresented) {
+                Button("Delete account", role: .destructive) {
+                    Task {
+                        await appState.deleteCurrentUserAccount()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete your account, your photos, and any groups you created.")
             }
             .alert("Edit Name", isPresented: $isNameEditorPresented) {
                 TextField("Name", text: $pendingName)

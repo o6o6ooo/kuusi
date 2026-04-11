@@ -64,6 +64,18 @@ final class PhotoDeletionService {
         try await commitBatchedOperations(operations)
     }
 
+    func deletePhotosPosted(by userID: String) async throws {
+        let query = db.collection("photos")
+            .whereField("posted_by", isEqualTo: userID)
+        let snapshot = try await fetchQuery(query)
+        let photos = snapshot.documents.map { FeedPhoto(id: $0.documentID, data: $0.data()) }
+        try await deletePhotos(
+            photos,
+            favouriteCleanupScope: .allUsers,
+            fallbackOwnerUID: userID
+        )
+    }
+
     private func deleteStorageAssets(for photos: [FeedPhoto]) async throws {
         for photo in photos {
             if let urlString = photo.photoURL {
