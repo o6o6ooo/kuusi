@@ -35,7 +35,7 @@ kuusi/
 │       │   └── Settings/
 │       └── Assets.xcassets/
 ├── docs/
-│   └── swift-migration-plan.md
+│   └── firebase-schema.md
 └── README.md
 ```
 
