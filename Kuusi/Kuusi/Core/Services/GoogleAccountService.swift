@@ -13,30 +13,13 @@ struct GoogleAuthorizedSession {
     let accessToken: String
 }
 
-enum GoogleAccountError: LocalizedError {
+enum GoogleAccountError: Error {
     case missingFirebaseUser
     case missingClientID
     case missingGoogleIDToken
     case missingGoogleEmail
     case noLinkedGoogleAccount
     case mismatchedLinkedAccount(expected: String, actual: String)
-
-    var errorDescription: String? {
-        switch self {
-        case .missingFirebaseUser:
-            return "Please sign in to Kuusi first."
-        case .missingClientID:
-            return "Google Sign-In is not configured yet."
-        case .missingGoogleIDToken:
-            return "Google Sign-In did not return a valid token."
-        case .missingGoogleEmail:
-            return "Google Sign-In did not return an email address."
-        case .noLinkedGoogleAccount:
-            return "Connect a Google account in Settings first."
-        case let .mismatchedLinkedAccount(expected, actual):
-            return "This Google account does not match the one linked to Kuusi. Expected \(expected), got \(actual)."
-        }
-    }
 }
 
 @MainActor

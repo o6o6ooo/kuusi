@@ -15,6 +15,15 @@ struct AppMessage: Equatable {
         case biometricAuthenticationFailed
         case couldNotOpenGooglePhotos
         case couldNotOpenGoogleSignIn
+        case googleAccountMismatch
+        case googlePhotosPickerReturnedInvalidLink
+        case googlePhotosPickerTimedOut
+        case googlePhotosRequestFailed
+        case googleSignInNotConfigured
+        case googleSignInReturnedIncompleteAccount
+        case googleSignInReturnedInvalidToken
+        case noLinkedGoogleAccount
+        case noPhotosSelectedFromGooglePhotos
         case cannotDeleteOthersPhotos
         case cannotEditOthersPhotos
         case debugEmailPasswordProviderDisabled
@@ -30,6 +39,7 @@ struct AppMessage: Equatable {
         case failedToDeleteGroup
         case failedToDeletePhoto
         case failedToDisconnectGoogleAccount
+        case failedToImportFromGooglePhotos
         case failedToJoinGroup
         case failedToLeaveGroup
         case failedToOpenManageSubscriptions
@@ -98,6 +108,24 @@ private extension AppMessage.ID {
             return "Could not open Google Photos"
         case .couldNotOpenGoogleSignIn:
             return "Could not open Google Sign-In"
+        case .googleAccountMismatch:
+            return "This Google account does not match the linked account"
+        case .googlePhotosPickerReturnedInvalidLink:
+            return "Google Photos did not return a valid picker link"
+        case .googlePhotosPickerTimedOut:
+            return "Google Photos selection took too long"
+        case .googlePhotosRequestFailed:
+            return "Google Photos request failed"
+        case .googleSignInNotConfigured:
+            return "Google Sign-In is not configured yet"
+        case .googleSignInReturnedIncompleteAccount:
+            return "Google Sign-In did not return a valid email address"
+        case .googleSignInReturnedInvalidToken:
+            return "Google Sign-In did not return a valid token"
+        case .noLinkedGoogleAccount:
+            return "Connect a Google account in Settings first"
+        case .noPhotosSelectedFromGooglePhotos:
+            return "No photos were selected from Google Photos"
         case .cannotDeleteOthersPhotos:
             return "You can only delete your own photos"
         case .cannotEditOthersPhotos:
@@ -128,6 +156,8 @@ private extension AppMessage.ID {
             return "Failed to delete photo"
         case .failedToDisconnectGoogleAccount:
             return "Failed to disconnect Google account"
+        case .failedToImportFromGooglePhotos:
+            return "Failed to import from Google Photos"
         case .failedToJoinGroup:
             return "Failed to join group"
         case .failedToLeaveGroup:

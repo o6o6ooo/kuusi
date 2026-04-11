@@ -3,6 +3,25 @@ import FirebaseAuth
 import Foundation
 import UIKit
 
+private extension GoogleAccountError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .missingFirebaseUser:
+            return .pleaseSignInFirst
+        case .missingClientID:
+            return .googleSignInNotConfigured
+        case .missingGoogleIDToken:
+            return .googleSignInReturnedInvalidToken
+        case .missingGoogleEmail:
+            return .googleSignInReturnedIncompleteAccount
+        case .noLinkedGoogleAccount:
+            return .noLinkedGoogleAccount
+        case .mismatchedLinkedAccount:
+            return .googleAccountMismatch
+        }
+    }
+}
+
 protocol SettingsProfileUserServicing {
     func fetchUser(uid: String) async throws -> AppUser?
     func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws
@@ -96,6 +115,8 @@ final class SettingsProfileViewModel: ObservableObject {
             googleLinkedEmail = linkedAccount.email
             isGoogleLinked = linkedAccount.isLinked
             setToastMessage(AppMessage(.googleAccountConnected, .success))
+        } catch let error as GoogleAccountError {
+            setToastMessage(AppMessage(error.appMessageID, .error))
         } catch {
             setToastMessage(AppMessage(.failedToConnectGoogleAccount, .error))
         }
@@ -110,6 +131,8 @@ final class SettingsProfileViewModel: ObservableObject {
             googleLinkedEmail = ""
             isGoogleLinked = false
             setToastMessage(AppMessage(.googleAccountDisconnected, .success))
+        } catch let error as GoogleAccountError {
+            setToastMessage(AppMessage(error.appMessageID, .error))
         } catch {
             setToastMessage(AppMessage(.failedToDisconnectGoogleAccount, .error))
         }

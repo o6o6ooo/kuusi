@@ -3,6 +3,40 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
+private extension GoogleAccountError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .missingFirebaseUser:
+            return .pleaseSignInFirst
+        case .missingClientID:
+            return .googleSignInNotConfigured
+        case .missingGoogleIDToken:
+            return .googleSignInReturnedInvalidToken
+        case .missingGoogleEmail:
+            return .googleSignInReturnedIncompleteAccount
+        case .noLinkedGoogleAccount:
+            return .noLinkedGoogleAccount
+        case .mismatchedLinkedAccount:
+            return .googleAccountMismatch
+        }
+    }
+}
+
+private extension GooglePhotosPickerError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .invalidSessionURL:
+            return .googlePhotosPickerReturnedInvalidLink
+        case .noSelectedPhotos:
+            return .noPhotosSelectedFromGooglePhotos
+        case .timedOut:
+            return .googlePhotosPickerTimedOut
+        case .invalidResponse, .requestFailed:
+            return .googlePhotosRequestFailed
+        }
+    }
+}
+
 struct UploadOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -355,7 +389,7 @@ struct UploadOverlayView: View {
             hashtags = []
             toastMessage = AppMessage(.uploadCompleted, .success)
         } catch {
-            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+            toastMessage = AppMessage(.failedToLoadImage, .error)
         }
     }
 
@@ -408,18 +442,31 @@ struct UploadOverlayView: View {
                         googleImportTask = nil
                         isImportingGooglePhotos = false
                     }
+                } catch let error as GooglePhotosPickerError {
+                    await MainActor.run {
+                        googlePickerSession = nil
+                        googleImportTask = nil
+                        isImportingGooglePhotos = false
+                        toastMessage = AppMessage(error.appMessageID, .error)
+                    }
                 } catch {
                     await MainActor.run {
                         googlePickerSession = nil
                         googleImportTask = nil
                         isImportingGooglePhotos = false
-                        toastMessage = AppMessage(.details(error.localizedDescription), .error)
+                        toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
                     }
                 }
             }
+        } catch let error as GoogleAccountError {
+            isImportingGooglePhotos = false
+            toastMessage = AppMessage(error.appMessageID, .error)
+        } catch let error as GooglePhotosPickerError {
+            isImportingGooglePhotos = false
+            toastMessage = AppMessage(error.appMessageID, .error)
         } catch {
             isImportingGooglePhotos = false
-            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+            toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
         }
     }
 }

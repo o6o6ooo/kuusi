@@ -8,27 +8,12 @@ struct GooglePhotosPickingSession: Identifiable {
     let timeout: TimeInterval
 }
 
-enum GooglePhotosPickerError: LocalizedError {
+enum GooglePhotosPickerError: Error {
     case invalidSessionURL
     case noSelectedPhotos
     case timedOut
     case invalidResponse
     case requestFailed(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidSessionURL:
-            return "Google Photos did not return a valid picker link."
-        case .noSelectedPhotos:
-            return "No photos were selected from Google Photos."
-        case .timedOut:
-            return "Google Photos selection took too long. Please try again."
-        case .invalidResponse:
-            return "Google Photos returned an unexpected response."
-        case let .requestFailed(message):
-            return message
-        }
-    }
 }
 
 final class GooglePhotosPickerService {
