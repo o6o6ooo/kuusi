@@ -8,9 +8,6 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasLoaded = false
-    @State private var isEmojiPickerPresented = false
-    @State private var isBackgroundPickerPresented = false
-    @State private var pendingName = ""
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var appAlert: AppAlert?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
@@ -22,25 +19,6 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     ProfileView(
                         viewModel: profileViewModel,
-                        onEditName: {
-                            pendingName = profileViewModel.name
-                            appAlert = AppAlert(.editNamePrompt, text: $pendingName) {
-                                let updatedName = pendingName
-                                Task {
-                                    await profileViewModel.saveProfile(
-                                        name: updatedName,
-                                        icon: profileViewModel.icon,
-                                        bgColour: profileViewModel.bgColour
-                                    )
-                                }
-                            }
-                        },
-                        onEditIcon: {
-                            isEmojiPickerPresented = true
-                        },
-                        onEditBackground: {
-                            isBackgroundPickerPresented = true
-                        },
                         onSignOut: {
                             Task {
                                 await appState.signOut()
@@ -102,33 +80,6 @@ struct SettingsView: View {
                 selection: $selectedQRCodePhoto,
                 matching: .images
             )
-            .sheet(isPresented: $isEmojiPickerPresented) {
-                EmojiPickerSheet(
-                    selectedEmoji: Binding(
-                        get: { profileViewModel.icon },
-                        set: { newValue in
-                            Task {
-                                await profileViewModel.saveProfile(
-                                    name: profileViewModel.name,
-                                    icon: newValue,
-                                    bgColour: profileViewModel.bgColour
-                                )
-                            }
-                        }
-                    )
-                )
-            }
-            .sheet(isPresented: $isBackgroundPickerPresented) {
-                BackgroundColorPickerSheet(selectedColour: profileViewModel.bgColour) { colour in
-                    Task {
-                        await profileViewModel.saveProfile(
-                            name: profileViewModel.name,
-                            icon: profileViewModel.icon,
-                            bgColour: colour
-                        )
-                    }
-                }
-            }
             .sheet(isPresented: $groupsViewModel.isGroupQRCodeOverlayPresented) {
                 if let payload = groupsViewModel.selectedGroupInvitePayload {
                     GroupQRCodeOverlayView(payload: payload)

@@ -2,25 +2,37 @@ import SwiftUI
 
 struct ProfileView: View {
     @ObservedObject var viewModel: SettingsProfileViewModel
-    let onEditName: () -> Void
-    let onEditIcon: () -> Void
-    let onEditBackground: () -> Void
     let onSignOut: () -> Void
+
+    @State private var appAlert: AppAlert?
+    @State private var pendingName = ""
+    @State private var isEmojiPickerPresented = false
+    @State private var isBackgroundPickerPresented = false
 
     var body: some View {
         VStack(spacing: 18) {
             VStack(spacing: 14) {
                 Menu {
                     Button("Edit name", systemImage: "pencil") {
-                        onEditName()
+                        pendingName = viewModel.name
+                        appAlert = AppAlert(.editNamePrompt, text: $pendingName) {
+                            let updatedName = pendingName
+                            Task {
+                                await viewModel.saveProfile(
+                                    name: updatedName,
+                                    icon: viewModel.icon,
+                                    bgColour: viewModel.bgColour
+                                )
+                            }
+                        }
                     }
 
                     Button("Edit icon", systemImage: "face.smiling") {
-                        onEditIcon()
+                        isEmojiPickerPresented = true
                     }
 
                     Button("Edit background", systemImage: "paintpalette") {
-                        onEditBackground()
+                        isBackgroundPickerPresented = true
                     }
                 } label: {
                     ZStack {
@@ -51,6 +63,34 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
+        .sheet(isPresented: $isEmojiPickerPresented) {
+            EmojiPickerSheet(
+                selectedEmoji: Binding(
+                    get: { viewModel.icon },
+                    set: { newValue in
+                        Task {
+                            await viewModel.saveProfile(
+                                name: viewModel.name,
+                                icon: newValue,
+                                bgColour: viewModel.bgColour
+                            )
+                        }
+                    }
+                )
+            )
+        }
+        .sheet(isPresented: $isBackgroundPickerPresented) {
+            BackgroundColorPickerSheet(selectedColour: viewModel.bgColour) { colour in
+                Task {
+                    await viewModel.saveProfile(
+                        name: viewModel.name,
+                        icon: viewModel.icon,
+                        bgColour: colour
+                    )
+                }
+            }
+        }
+        .appAlert($appAlert)
     }
 
     private var googlePhotosSection: some View {
@@ -81,16 +121,16 @@ struct ProfileView: View {
                             await viewModel.disconnectGoogleAccount()
                         }
                     }
-                        .buttonStyle(.appPrimaryCapsule)
-                        .controlSize(.small)
+                    .buttonStyle(.appPrimaryCapsule)
+                    .controlSize(.small)
                 } else {
                     Button("Connect") {
                         Task {
                             await viewModel.connectGoogleAccount()
                         }
                     }
-                        .buttonStyle(.appPrimaryCapsule)
-                        .controlSize(.small)
+                    .buttonStyle(.appPrimaryCapsule)
+                    .controlSize(.small)
                 }
             }
         }
