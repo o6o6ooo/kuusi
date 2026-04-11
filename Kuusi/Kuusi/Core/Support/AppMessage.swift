@@ -64,23 +64,23 @@ private extension AppMessage.ID {
     var text: String {
         switch self {
         case .appleSignInFailed:
-            return "Apple Sign-In failed."
+            return "Apple Sign-In failed"
         case .appleTokenUnavailable:
-            return "Apple ID token was not available."
+            return "Apple ID token was not available"
         case .biometricAuthenticationFailed:
-            return "Biometric authentication failed."
+            return "Biometric authentication failed"
         case .couldNotOpenGooglePhotos:
-            return "Could not open Google Photos."
+            return "Could not open Google Photos"
         case .couldNotOpenGoogleSignIn:
-            return "Could not open Google Sign-In."
+            return "Could not open Google Sign-In"
         case .debugEmailPasswordProviderDisabled:
-            return "Enable Email/Password provider in Firebase Authentication for debug login."
+            return "Enable Email/Password provider in Firebase Authentication for debug login"
         case .debugInvalidCredentials:
-            return "Debug user credentials are invalid. Check email/password in AppState and Firebase Console."
+            return "Debug user credentials are invalid, check email/password"
         case let .debugSignInFailed(description):
             return "Debug sign-in failed: \(description)"
         case .enterValidYear:
-            return "Enter a valid year."
+            return "Enter a valid year"
         case .failedToLoadImage:
             return "Failed to load image"
         case .fillInGroupName:
@@ -90,29 +90,29 @@ private extension AppMessage.ID {
         case .googleAccountDisconnected:
             return "Google account disconnected"
         case .groupCreated:
-            return "Group created. Pull down to refresh."
+            return "Group created"
         case .groupDeleted:
-            return "Group deleted. Pull down to refresh."
+            return "Group deleted"
         case .groupUpdated:
             return "Group updated"
         case .invalidInviteQR:
             return "Invalid invite QR"
         case .joinedGroup:
-            return "Joined group. Pull down to refresh."
+            return "Joined group"
         case .leftGroup:
-            return "Left group. Pull down to refresh."
+            return "Left group"
         case .nameCannotBeEmpty:
-            return "Name cannot be empty."
+            return "Name cannot be empty"
         case .noActivePurchasesFound:
             return "No active purchases found"
         case .photoAlreadyBeingUpdated:
-            return "Photo is already being updated."
+            return "Photo is already being updated"
         case .photoDeleted:
-            return "Photo deleted."
+            return "Photo deleted"
         case let .photosImportedFromGooglePhotos(count):
             return "\(count) photos imported from Google Photos"
         case .pleaseSignInFirst:
-            return "Please sign in first."
+            return "Please sign in first"
         case .premiumUnlocked:
             return "Premium unlocked"
         case .profileUpdated:
@@ -122,15 +122,15 @@ private extension AppMessage.ID {
         case .qrCodeNotFoundInImage:
             return "QR code was not found in the image"
         case .removedFromFavourites:
-            return "Removed from favourites."
+            return "Removed from favourites"
         case .addedToFavourites:
-            return "Added to favourites."
+            return "Added to favourites"
         case .selectGroup:
-            return "Select a group."
+            return "Select a group"
         case .uploadCompleted:
-            return "Upload completed."
+            return "Upload completed"
         case let .groupLimitReached(title, maxGroups):
-            return "\(title) supports up to \(maxGroups) groups."
+            return "\(title) supports up to \(maxGroups) groups"
         case let .details(message):
             return message
         }
