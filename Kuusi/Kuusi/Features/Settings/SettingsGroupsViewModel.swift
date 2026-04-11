@@ -246,6 +246,8 @@ final class SettingsGroupsViewModel: ObservableObject {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
             setSaveStatus(AppMessage(.leftGroup, .success))
+        } catch GroupServiceError.ownerCannotLeave {
+            setSaveStatus(AppMessage(.ownerCannotLeave, .error))
         } catch {
             setSaveStatus(AppMessage(.details(error.localizedDescription), .error))
         }

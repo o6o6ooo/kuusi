@@ -25,6 +25,7 @@ struct AppMessage: Equatable {
         case googleAccountDisconnected
         case groupCreated
         case groupDeleted
+        case ownerCannotLeave
         case groupUpdated
         case invalidInviteQR
         case joinedGroup
@@ -93,6 +94,8 @@ private extension AppMessage.ID {
             return "Group created"
         case .groupDeleted:
             return "Group deleted"
+        case .ownerCannotLeave:
+            return "Group owners cannot leave their group"
         case .groupUpdated:
             return "Group updated"
         case .invalidInviteQR:

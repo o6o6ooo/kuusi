@@ -1,15 +1,9 @@
 import FirebaseFirestore
 import Foundation
 
-enum GroupServiceError: LocalizedError {
+enum GroupServiceError: Error {
     case groupNotFound
-
-    var errorDescription: String? {
-        switch self {
-        case .groupNotFound:
-            return "Group not found."
-        }
-    }
+    case ownerCannotLeave
 }
 
 struct GroupMemberPreview: Identifiable {
@@ -186,6 +180,12 @@ final class GroupService {
                     let groupSnapshot = try transaction.getDocument(groupRef)
                     guard groupSnapshot.exists else {
                         errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
+                        return nil
+                    }
+
+                    let ownerUID = groupSnapshot.data()?["owner_uid"] as? String
+                    if ownerUID == uid {
+                        errorPointer?.pointee = GroupServiceError.ownerCannotLeave as NSError
                         return nil
                     }
                 } catch {
