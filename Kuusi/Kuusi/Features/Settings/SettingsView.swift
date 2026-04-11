@@ -12,30 +12,10 @@ struct SettingsView: View {
     @State private var isEmojiPickerPresented = false
     @State private var isBackgroundPickerPresented = false
     @State private var pendingName = ""
-    @State private var clearBillingMessageTask: Task<Void, Never>?
-    @State private var subscriptionRefreshTask: Task<Void, Never>?
     @State private var selectedQRCodePhoto: PhotosPickerItem?
-    @State private var billingMessage: AppMessage?
     @State private var isDeleteAccountConfirmPresented = false
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
-
-    private var currentPlan: AppPlan { subscriptionStore.isPremiumActive ? .premium : .free }
-    private var effectiveQuotaMB: Double { currentPlan.quotaMB }
-    private var premiumRenewalText: String? {
-        guard let renewalDate = subscriptionStore.renewalDate else { return nil }
-        let label = subscriptionStore.willAutoRenew ? "Renews on" : "Expires on"
-        return "\(label) \(formatDate(renewalDate))"
-    }
-
-    private var usageRatio: Double {
-        guard effectiveQuotaMB > 0 else { return 0 }
-        return min(max(profileViewModel.usageMB / effectiveQuotaMB, 0), 1)
-    }
-
-    private var usageText: String {
-        "\(formatStorage(profileViewModel.usageMB))/\(formatStorage(effectiveQuotaMB))"
-    }
 
     var body: some View {
         NavigationStack {
@@ -53,16 +33,6 @@ struct SettingsView: View {
                         onEditBackground: {
                             isBackgroundPickerPresented = true
                         },
-                        onConnectGooglePhotos: {
-                            Task {
-                                await profileViewModel.connectGoogleAccount()
-                            }
-                        },
-                        onDisconnectGooglePhotos: {
-                            Task {
-                                await profileViewModel.disconnectGoogleAccount()
-                            }
-                        },
                         onSignOut: {
                             Task {
                                 await appState.signOut()
@@ -70,21 +40,7 @@ struct SettingsView: View {
                         }
                     )
                     GroupsSectionView(viewModel: groupsViewModel)
-                    SubscriptionView(
-                        currentPlan: currentPlan,
-                        usageRatio: usageRatio,
-                        usageText: usageText,
-                        renewalText: premiumRenewalText,
-                        onPurchase: {
-                            Task { await purchasePremium() }
-                        },
-                        onRestore: {
-                            Task { await restorePurchases() }
-                        },
-                        onManage: {
-                            Task { await openManageSubscriptions() }
-                        }
-                    )
+                    SubscriptionView(usageMB: profileViewModel.usageMB)
                     FooterView {
                         isDeleteAccountConfirmPresented = true
                     }
@@ -115,18 +71,18 @@ struct SettingsView: View {
                     await subscriptionStore.prepare()
                     await profileViewModel.loadProfile()
                     await groupsViewModel.loadGroups()
-                    syncPlanDependentState()
+                    groupsViewModel.updateCurrentPlan(subscriptionStore.isPremiumActive ? .premium : .free)
                     hasLoaded = true
                 }
             }
             .onChange(of: subscriptionStore.isPremiumActive) { _, _ in
-                syncPlanDependentState()
+                groupsViewModel.updateCurrentPlan(subscriptionStore.isPremiumActive ? .premium : .free)
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 Task {
                     await subscriptionStore.prepare()
-                    syncPlanDependentState()
+                    groupsViewModel.updateCurrentPlan(subscriptionStore.isPremiumActive ? .premium : .free)
                 }
             }
             .photosPicker(
@@ -221,14 +177,7 @@ struct SettingsView: View {
                     selectedQRCodePhoto = nil
                 }
             }
-            .onChange(of: billingMessage) { _, newValue in
-                scheduleBillingMessageAutoClear(for: newValue)
-            }
             .onDisappear {
-                clearBillingMessageTask?.cancel()
-                clearBillingMessageTask = nil
-                subscriptionRefreshTask?.cancel()
-                subscriptionRefreshTask = nil
                 groupsViewModel.onDisappear()
             }
             .appToastMessage(profileViewModel.toastMessage) {
@@ -236,96 +185,7 @@ struct SettingsView: View {
             }
             .appToastMessage(groupsViewModel.createStatusMessage)
             .appToastMessage(groupsViewModel.saveStatusMessage)
-            .appToastMessage(billingMessage) {
-                billingMessage = nil
-            }
             .appToastHost()
-        }
-    }
-
-    private func scheduleBillingMessageAutoClear(for value: AppMessage?) {
-        clearBillingMessageTask?.cancel()
-        clearBillingMessageTask = AppMessageAutoClear.schedule(
-            for: value,
-            currentMessage: { billingMessage },
-            clear: { billingMessage = nil }
-        )
-    }
-
-    @MainActor
-    private func purchasePremium() async {
-        do {
-            try await subscriptionStore.purchasePremium()
-            syncPlanDependentState()
-            billingMessage = AppMessage(.premiumUnlocked, .success)
-        } catch let error as SubscriptionStoreError {
-            if case .purchaseCancelled = error {
-                return
-            }
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
-        } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
-        }
-    }
-
-    @MainActor
-    private func restorePurchases() async {
-        do {
-            try await subscriptionStore.restorePurchases()
-            syncPlanDependentState()
-            billingMessage = currentPlan == .premium ? AppMessage(.purchasesRestored, .success) : AppMessage(.noActivePurchasesFound, .success)
-        } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
-        }
-    }
-
-    @MainActor
-    private func openManageSubscriptions() async {
-        do {
-            try await subscriptionStore.openManageSubscriptions()
-            syncPlanDependentState()
-            scheduleSubscriptionRefresh()
-        } catch {
-            billingMessage = AppMessage(.details(error.localizedDescription), .error)
-        }
-    }
-
-    private func syncPlanDependentState() {
-        groupsViewModel.updateCurrentPlan(currentPlan)
-    }
-
-    private func formatStorage(_ mb: Double) -> String {
-        if mb >= 1024 {
-            let gb = mb / 1024
-            if abs(gb.rounded() - gb) < 0.01 {
-                return "\(Int(gb.rounded()))GB"
-            }
-            return String(format: "%.1fGB", gb)
-        }
-
-        if mb.rounded() >= mb - 0.01 {
-            return "\(Int(mb.rounded()))MB"
-        }
-        return String(format: "%.0fMB", mb)
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
-
-    private func scheduleSubscriptionRefresh() {
-        subscriptionRefreshTask?.cancel()
-        subscriptionRefreshTask = Task { @MainActor in
-            for delay in [300_000_000, 1_000_000_000, 2_500_000_000] {
-                try? await Task.sleep(nanoseconds: UInt64(delay))
-                if Task.isCancelled { return }
-                await subscriptionStore.prepare()
-                syncPlanDependentState()
-            }
         }
     }
 }

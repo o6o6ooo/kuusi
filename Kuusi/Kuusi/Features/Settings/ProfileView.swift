@@ -5,8 +5,6 @@ struct ProfileView: View {
     let onEditName: () -> Void
     let onEditIcon: () -> Void
     let onEditBackground: () -> Void
-    let onConnectGooglePhotos: () -> Void
-    let onDisconnectGooglePhotos: () -> Void
     let onSignOut: () -> Void
 
     var body: some View {
@@ -78,11 +76,19 @@ struct ProfileView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else if viewModel.isGoogleLinked {
-                    Button("Disconnect", action: onDisconnectGooglePhotos)
+                    Button("Disconnect") {
+                        Task {
+                            await viewModel.disconnectGoogleAccount()
+                        }
+                    }
                         .buttonStyle(.appPrimaryCapsule)
                         .controlSize(.small)
                 } else {
-                    Button("Connect", action: onConnectGooglePhotos)
+                    Button("Connect") {
+                        Task {
+                            await viewModel.connectGoogleAccount()
+                        }
+                    }
                         .buttonStyle(.appPrimaryCapsule)
                         .controlSize(.small)
                 }
