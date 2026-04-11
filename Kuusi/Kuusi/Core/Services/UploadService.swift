@@ -4,6 +4,11 @@ import Foundation
 import UIKit
 
 final class UploadService {
+    private let previewMaxDimension: CGFloat = 1200
+    private let previewCompression: CGFloat = 0.6
+    private let thumbnailMaxDimension: CGFloat = 600
+    private let thumbnailCompression: CGFloat = 0.55
+
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
 
@@ -47,8 +52,16 @@ final class UploadService {
                     let id = UUID().uuidString
 
                     guard
-                        let previewData = self.resizedJPEGData(from: image, maxDimension: 1200, compression: 0.6),
-                        let thumbData = self.resizedJPEGData(from: image, maxDimension: 180, compression: 0.45)
+                        let previewData = self.resizedJPEGData(
+                            from: image,
+                            maxDimension: self.previewMaxDimension,
+                            compression: self.previewCompression
+                        ),
+                        let thumbData = self.resizedJPEGData(
+                            from: image,
+                            maxDimension: self.thumbnailMaxDimension,
+                            compression: self.thumbnailCompression
+                        )
                     else {
                         return nil
                     }
@@ -71,7 +84,10 @@ final class UploadService {
     private func resizedJPEGData(from image: UIImage, maxDimension: CGFloat, compression: CGFloat) -> Data? {
         let targetSize = Self.targetSize(for: image.size, maxDimension: maxDimension)
 
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
         let resized = renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
