@@ -66,7 +66,7 @@ struct SettingsProfileViewModelTests {
     }
 
     @Test
-    func saveProfileTrimsValuesAndUsesDefaultIconWhenBlank() async {
+    func saveProfileTrimsValuesAndKeepsBlankIconWhenBlank() async {
         let userService = UserServiceSpy()
         let viewModel = makeViewModel(userService: userService)
         viewModel.name = "  Sakura  "
@@ -78,7 +78,7 @@ struct SettingsProfileViewModelTests {
         #expect(userService.updateCalls.count == 1)
         #expect(userService.updateCalls.first?.uid == "user-1")
         #expect(userService.updateCalls.first?.name == "Sakura")
-        #expect(userService.updateCalls.first?.icon == "🌸")
+        #expect(userService.updateCalls.first?.icon == "")
         #expect(userService.updateCalls.first?.bgColour == "#abcdef")
         #expect(viewModel.toastMessage?.text == "Profile updated")
         if case .success = viewModel.toastMessage?.tone {

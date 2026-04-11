@@ -20,7 +20,7 @@ extension GoogleAccountService: SettingsProfileGoogleAccountServicing {}
 @MainActor
 final class SettingsProfileViewModel: ObservableObject {
     @Published var name = ""
-    @Published var icon = "🌸"
+    @Published var icon = ""
     @Published var bgColour = "#A5C3DE"
     @Published var usageMB: Double = 0
     @Published var googleLinkedEmail = ""
@@ -134,11 +134,11 @@ final class SettingsProfileViewModel: ObservableObject {
             try await userService.updateProfile(
                 uid: uid,
                 name: cleanName,
-                icon: cleanIcon.isEmpty ? "🌸" : cleanIcon,
+                icon: cleanIcon,
                 bgColour: bgColour
             )
             self.name = cleanName
-            self.icon = cleanIcon.isEmpty ? "🌸" : cleanIcon
+            self.icon = cleanIcon
             self.bgColour = bgColour
             setToastMessage(AppMessage(.profileUpdated, .success))
         } catch {
