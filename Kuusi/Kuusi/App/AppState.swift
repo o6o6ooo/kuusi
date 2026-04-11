@@ -215,6 +215,10 @@ final class AppState: ObservableObject {
             route = .signedOut
             toastMessage = nil
             prefetchedGroupsUID = nil
+        } catch let nsError as NSError
+            where nsError.domain == AuthErrorDomain &&
+                  nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
+            toastMessage = AppMessage(.recentLoginRequired, .error)
         } catch {
             toastMessage = AppMessage(.details(error.localizedDescription), .error)
         }

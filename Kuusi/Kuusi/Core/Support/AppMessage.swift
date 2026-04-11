@@ -40,6 +40,7 @@ struct AppMessage: Equatable {
         case profileUpdated
         case purchasesRestored
         case qrCodeNotFoundInImage
+        case recentLoginRequired
         case removedFromFavourites
         case addedToFavourites
         case selectGroup
@@ -124,6 +125,8 @@ private extension AppMessage.ID {
             return "Purchases restored"
         case .qrCodeNotFoundInImage:
             return "QR code was not found in the image"
+        case .recentLoginRequired:
+            return "Please sign in again before deleting your account"
         case .removedFromFavourites:
             return "Removed from favourites"
         case .addedToFavourites:
