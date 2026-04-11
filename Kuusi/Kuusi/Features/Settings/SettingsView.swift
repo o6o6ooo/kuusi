@@ -51,6 +51,11 @@ struct SettingsView: View {
                         },
                         onEditBackground: {
                             isBackgroundPickerPresented = true
+                        },
+                        onSignOut: {
+                            Task {
+                                await appState.signOut()
+                            }
                         }
                     )
                     googlePhotosSection
@@ -72,16 +77,6 @@ struct SettingsView: View {
                                 Task { await openManageSubscriptions() }
                             }
                         )
-
-                        Button {
-                            Task {
-                                await appState.signOut()
-                            }
-                        } label: {
-                            Text("Sign out")
-                                .appTextLinkStyle()
-                        }
-                        .accessibilityIdentifier("settings-sign-out-button")
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Privacy policy")

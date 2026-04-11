@@ -5,6 +5,7 @@ struct ProfileView: View {
     let onEditName: () -> Void
     let onEditIcon: () -> Void
     let onEditBackground: () -> Void
+    let onSignOut: () -> Void
 
     var body: some View {
         VStack(spacing: 14) {
@@ -37,6 +38,12 @@ struct ProfileView: View {
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+
+            Button(action: onSignOut) {
+                Text("Sign out")
+                    .appTextLinkStyle()
+            }
+            .accessibilityIdentifier("settings-sign-out-button")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
