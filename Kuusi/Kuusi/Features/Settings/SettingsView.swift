@@ -53,58 +53,41 @@ struct SettingsView: View {
                         onEditBackground: {
                             isBackgroundPickerPresented = true
                         },
+                        onConnectGooglePhotos: {
+                            Task {
+                                await profileViewModel.connectGoogleAccount()
+                            }
+                        },
+                        onDisconnectGooglePhotos: {
+                            Task {
+                                await profileViewModel.disconnectGoogleAccount()
+                            }
+                        },
                         onSignOut: {
                             Task {
                                 await appState.signOut()
                             }
                         }
                     )
-                    googlePhotosSection
                     GroupsSectionView(viewModel: groupsViewModel)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        SubscriptionView(
-                            currentPlan: currentPlan,
-                            usageRatio: usageRatio,
-                            usageText: usageText,
-                            renewalText: premiumRenewalText,
-                            onPurchase: {
-                                Task { await purchasePremium() }
-                            },
-                            onRestore: {
-                                Task { await restorePurchases() }
-                            },
-                            onManage: {
-                                Task { await openManageSubscriptions() }
-                            }
-                        )
-
-                        Button {
-                            isDeleteAccountConfirmPresented = true
-                        } label: {
-                            Text("Delete account")
-                                .appErrorTextLinkStyle()
+                    SubscriptionView(
+                        currentPlan: currentPlan,
+                        usageRatio: usageRatio,
+                        usageText: usageText,
+                        renewalText: premiumRenewalText,
+                        onPurchase: {
+                            Task { await purchasePremium() }
+                        },
+                        onRestore: {
+                            Task { await restorePurchases() }
+                        },
+                        onManage: {
+                            Task { await openManageSubscriptions() }
                         }
-                        .accessibilityIdentifier("settings-delete-account-button")
-
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Privacy policy")
-                                .appSecondaryTextLinkStyle()
-
-                            Text("Terms of service")
-                                .appSecondaryTextLinkStyle()
-
-                            HStack(spacing: 4) {
-                                Text("Made with love by")
-                                    .appSecondaryTextLinkStyle()
-                                Link("Sakura Wallace", destination: URL(string: "https://github.com/o6o6ooo")!)
-                                    .appSecondaryTextLinkStyle()
-                                    .foregroundStyle(Color.accentColor)
-                            }
-                        }
-                        .padding(.top, 4)
+                    )
+                    FooterView {
+                        isDeleteAccountConfirmPresented = true
                     }
-
                 }
                 .padding(16)
             }
@@ -257,49 +240,6 @@ struct SettingsView: View {
                 billingMessage = nil
             }
             .appToastHost()
-        }
-    }
-
-    private var googlePhotosSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Google Photos")
-                .font(.title3.weight(.bold))
-
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(profileViewModel.isGoogleLinked ? "Connected as \(profileViewModel.googleLinkedEmail)" : "Not connected")
-                        .font(.subheadline.weight(.semibold))
-
-                    if !profileViewModel.isGoogleLinked {
-                        Text("Connect to your Google account to import photos from Google Photos.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                if profileViewModel.isGoogleAccountActionInFlight {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if profileViewModel.isGoogleLinked {
-                    Button("Disconnect") {
-                        Task {
-                            await profileViewModel.disconnectGoogleAccount()
-                        }
-                    }
-                    .buttonStyle(.appPrimaryCapsule)
-                    .controlSize(.small)
-                } else {
-                    Button("Connect") {
-                        Task {
-                            await profileViewModel.connectGoogleAccount()
-                        }
-                    }
-                    .buttonStyle(.appPrimaryCapsule)
-                    .controlSize(.small)
-                }
-            }
         }
     }
 
