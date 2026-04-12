@@ -22,6 +22,15 @@ enum DebugCredentialsError: LocalizedError {
     }
 }
 
+private extension AuthServiceError {
+    var appMessageID: AppMessage.ID {
+        switch self {
+        case .missingResult:
+            return .appleSignInFailed
+        }
+    }
+}
+
 private enum UITestRouteOverride {
     case signedOut
     case locked
@@ -149,9 +158,12 @@ final class AppState: ObservableObject {
             toastMessage = nil
             currentUser = user
             route = .signedIn
+        } catch let error as AuthServiceError {
+            shouldUnlockAfterInteractiveSignIn = false
+            toastMessage = AppMessage(error.appMessageID, .error)
         } catch {
             shouldUnlockAfterInteractiveSignIn = false
-            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+            toastMessage = AppMessage(.appleSignInFailed, .error)
         }
     }
 
@@ -180,7 +192,7 @@ final class AppState: ObservableObject {
             toastMessage = nil
             prefetchedGroupsUID = nil
         } catch {
-            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+            toastMessage = AppMessage(.failedToSignOut, .error)
         }
     }
 
@@ -220,7 +232,7 @@ final class AppState: ObservableObject {
                   nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
             toastMessage = AppMessage(.recentLoginRequired, .error)
         } catch {
-            toastMessage = AppMessage(.details(error.localizedDescription), .error)
+            toastMessage = AppMessage(.failedToDeleteAccount, .error)
         }
     }
 
@@ -252,7 +264,7 @@ final class AppState: ObservableObject {
                       nsError.code == AuthErrorCode.invalidCredential.rawValue {
                 toastMessage = AppMessage(.debugInvalidCredentials, .error)
             } else {
-                toastMessage = AppMessage(.debugSignInFailed(error.localizedDescription), .error)
+                toastMessage = AppMessage(.debugSignInFailed, .error)
             }
         }
     }

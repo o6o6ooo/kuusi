@@ -42,7 +42,8 @@ struct LoginView: View {
                             await appState.signInWithApple(credential: credential, rawNonce: nonce)
                         }
                     case let .failure(error):
-                        appState.toastMessage = AppMessage(.details(error.localizedDescription), .error)
+                        _ = error
+                        appState.toastMessage = AppMessage(.appleSignInFailed, .error)
                     }
                 })
                 .signInWithAppleButtonStyle(.whiteOutline)

@@ -28,7 +28,7 @@ struct AppMessage: Equatable {
         case cannotEditOthersPhotos
         case debugEmailPasswordProviderDisabled
         case debugInvalidCredentials
-        case debugSignInFailed(String)
+        case debugSignInFailed
         case enterValidYear
         case failedToLoadImage
         case failedToLoadGroupMembers
@@ -37,6 +37,7 @@ struct AppMessage: Equatable {
         case failedToConnectGoogleAccount
         case failedToCreateGroup
         case failedToDeleteGroup
+        case failedToDeleteAccount
         case failedToDeletePhoto
         case failedToDisconnectGoogleAccount
         case failedToImportFromGooglePhotos
@@ -45,6 +46,7 @@ struct AppMessage: Equatable {
         case failedToOpenManageSubscriptions
         case failedToRestorePurchases
         case failedToSaveProfile
+        case failedToSignOut
         case failedToUpdateGroup
         case failedToUpdatePhoto
         case failedToUpdateFavourite
@@ -134,8 +136,8 @@ private extension AppMessage.ID {
             return "Enable Email/Password provider in Firebase Authentication for debug login"
         case .debugInvalidCredentials:
             return "Debug user credentials are invalid, check email/password"
-        case let .debugSignInFailed(description):
-            return "Debug sign-in failed: \(description)"
+        case .debugSignInFailed:
+            return "Debug sign-in failed"
         case .enterValidYear:
             return "Enter a valid year"
         case .failedToLoadImage:
@@ -152,6 +154,8 @@ private extension AppMessage.ID {
             return "Failed to create group"
         case .failedToDeleteGroup:
             return "Failed to delete group"
+        case .failedToDeleteAccount:
+            return "Failed to delete account"
         case .failedToDeletePhoto:
             return "Failed to delete photo"
         case .failedToDisconnectGoogleAccount:
@@ -168,6 +172,8 @@ private extension AppMessage.ID {
             return "Failed to restore purchases"
         case .failedToSaveProfile:
             return "Failed to save profile"
+        case .failedToSignOut:
+            return "Failed to sign out"
         case .failedToUpdateGroup:
             return "Failed to update group"
         case .failedToUpdatePhoto:

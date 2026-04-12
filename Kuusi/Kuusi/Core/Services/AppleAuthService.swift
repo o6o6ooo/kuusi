@@ -8,15 +8,8 @@ struct AppleSignInPayload {
     let fullName: PersonNameComponents?
 }
 
-enum AuthServiceError: LocalizedError {
+enum AuthServiceError: Error {
     case missingResult
-
-    var errorDescription: String? {
-        switch self {
-        case .missingResult:
-            return "Failed to sign in."
-        }
-    }
 }
 
 final class AppleAuthService {
