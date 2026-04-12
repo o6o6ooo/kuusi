@@ -23,7 +23,7 @@ struct GroupQRCodeOverlayView: View {
                         .background(cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                 } else {
-                    Text("Failed to generate QR code")
+                    Text(AppMessage.ID.failedToGenerateQRCode.text)
                         .font(.footnote)
                         .foregroundStyle(AppTheme.errorText)
                 }

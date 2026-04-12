@@ -24,6 +24,7 @@ struct AppMessage: Equatable {
         case googleSignInReturnedInvalidToken
         case noLinkedGoogleAccount
         case noPhotosSelectedFromGooglePhotos
+        case failedToGenerateQRCode
         case cannotDeleteOthersPhotos
         case cannotEditOthersPhotos
         case debugEmailPasswordProviderDisabled
@@ -129,6 +130,8 @@ extension AppMessage.ID {
             return "Connect a Google account in Settings first"
         case .noPhotosSelectedFromGooglePhotos:
             return "No photos were selected from Google Photos"
+        case .failedToGenerateQRCode:
+            return "Failed to generate QR code"
         case .cannotDeleteOthersPhotos:
             return "You can only delete your own photos"
         case .cannotEditOthersPhotos:
