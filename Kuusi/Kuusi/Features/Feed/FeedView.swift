@@ -95,7 +95,7 @@ struct FeedView: View {
                         Text("ui-feed-no-groups")
                             .accessibilityIdentifier("ui-feed-no-groups")
                     } else if !photoCollection.isLoading,
-                              photoCollection.errorMessage == nil,
+                              photoCollection.errorMessageID == nil,
                               currentGroupPhotos.isEmpty {
                         Text("ui-feed-no-photos")
                             .accessibilityIdentifier("ui-feed-no-photos")
@@ -170,12 +170,12 @@ struct FeedView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding(.top, 116)
                 .padding(.bottom, 120)
-        } else if let errorMessage = photoCollection.errorMessage {
+        } else if let errorMessageID = photoCollection.errorMessageID {
             emptyFeedState(
                 in: proxy,
                 title: "Failed to load feed",
                 systemImage: "exclamationmark.triangle",
-                description: errorMessage
+                description: errorMessageID.text
             )
         } else if currentGroupPhotos.isEmpty {
             emptyFeedState(

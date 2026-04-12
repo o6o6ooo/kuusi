@@ -41,6 +41,7 @@ struct AppMessage: Equatable {
         case failedToDeletePhoto
         case failedToDisconnectGoogleAccount
         case failedToImportFromGooglePhotos
+        case failedToLoadFeed
         case failedToJoinGroup
         case failedToLeaveGroup
         case failedToOpenManageSubscriptions
@@ -97,7 +98,7 @@ struct AppMessage: Equatable {
     }
 }
 
-private extension AppMessage.ID {
+extension AppMessage.ID {
     var text: String {
         switch self {
         case .appleSignInFailed:
@@ -162,6 +163,8 @@ private extension AppMessage.ID {
             return "Failed to disconnect Google account"
         case .failedToImportFromGooglePhotos:
             return "Failed to import from Google Photos"
+        case .failedToLoadFeed:
+            return "Failed to load photos"
         case .failedToJoinGroup:
             return "Failed to join group"
         case .failedToLeaveGroup:

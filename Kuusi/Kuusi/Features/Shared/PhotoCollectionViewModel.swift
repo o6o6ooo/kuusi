@@ -20,7 +20,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var photosByGroupID: [String: [FeedPhoto]] = [:]
     @Published var isLoading = false
-    @Published var errorMessage: String?
+    @Published var errorMessageID: AppMessage.ID?
 
     private let feedService: PhotoCollectionFeedServicing
     private let groupService: PhotoCollectionGroupServicing
@@ -65,14 +65,14 @@ final class PhotoCollectionViewModel: ObservableObject {
                 cachedGroups = try await groupService.fetchGroups(for: uid)
             } catch {
                 resetState()
-                errorMessage = error.localizedDescription
+                errorMessageID = .failedToLoadGroups
                 return
             }
         }
 
         groups = cachedGroups
         selectedGroupID = cachedGroups.first?.id
-        errorMessage = nil
+        errorMessageID = nil
         await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
     }
 
@@ -89,13 +89,13 @@ final class PhotoCollectionViewModel: ObservableObject {
             }
             await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessageID = .failedToLoadGroups
         }
     }
 
     func selectGroup(_ groupID: String, limit: Int) {
         selectedGroupID = groupID
-        errorMessage = nil
+        errorMessageID = nil
         Task {
             await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
         }
@@ -126,16 +126,16 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         do {
             guard let uid = currentUserIDProvider() else {
-                errorMessage = nil
+                errorMessageID = nil
                 return
             }
             guard let selectedGroupID else {
-                errorMessage = nil
+                errorMessageID = nil
                 return
             }
 
             if !forceReload, photosByGroupID[selectedGroupID] != nil {
-                errorMessage = nil
+                errorMessageID = nil
                 return
             }
 
@@ -145,9 +145,9 @@ final class PhotoCollectionViewModel: ObservableObject {
                 limit: limit
             )
             photosByGroupID[selectedGroupID] = loadedPhotos
-            errorMessage = nil
+            errorMessageID = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessageID = .failedToLoadFeed
         }
     }
 
@@ -155,6 +155,6 @@ final class PhotoCollectionViewModel: ObservableObject {
         groups = []
         selectedGroupID = nil
         photosByGroupID = [:]
-        errorMessage = nil
+        errorMessageID = nil
     }
 }
