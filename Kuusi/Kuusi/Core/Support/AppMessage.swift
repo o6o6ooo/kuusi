@@ -67,6 +67,7 @@ struct AppMessage: Equatable {
         case noActivePurchasesFound
         case photoAlreadyBeingUpdated
         case photoDeleted
+        case photoUpdated
         case photosImportedFromGooglePhotos(Int)
         case pleaseSignInFirst
         case purchaseCouldNotBeVerified
@@ -216,6 +217,8 @@ extension AppMessage.ID {
             return "Photo is already being updated"
         case .photoDeleted:
             return "Photo deleted"
+        case .photoUpdated:
+            return "Photo updated"
         case let .photosImportedFromGooglePhotos(count):
             return "\(count) photos imported from Google Photos"
         case .pleaseSignInFirst:

@@ -584,6 +584,7 @@ struct FeedView: View {
             if selectedPhoto?.id == photo.id {
                 selectedPhoto = updated
             }
+            feedMessage = AppMessage(.photoUpdated, .success)
             editingPhoto = nil
             return .success(())
         } catch let error as FeedServiceError {

@@ -192,7 +192,10 @@ final class SettingsGroupsViewModel: ObservableObject {
     func saveGroupName() async {
         guard let selectedGroupID else { return }
         let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            setSaveStatus(AppMessage(.fillInGroupName, .error))
+            return
+        }
 
         isSavingGroupName = true
         defer { isSavingGroupName = false }
