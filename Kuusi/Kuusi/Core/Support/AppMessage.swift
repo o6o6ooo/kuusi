@@ -84,7 +84,6 @@ struct AppMessage: Equatable {
         case subscriptionUnavailable
         case uploadCompleted
         case groupLimitReached(title: String, maxGroups: Int)
-        case details(String)
     }
 
     let id: ID
@@ -251,8 +250,6 @@ extension AppMessage.ID {
             return "Upload completed"
         case let .groupLimitReached(title, maxGroups):
             return "\(title) supports up to \(maxGroups) groups"
-        case let .details(message):
-            return message
         }
     }
 }

@@ -17,10 +17,10 @@ struct AppMessageTests {
     }
 
     @Test
-    func errorDetailsBuildsErrorMessage() {
-        let message = AppMessage(.details("Failed"), .error)
+    func failedToDeletePhotoBuildsErrorMessage() {
+        let message = AppMessage(.failedToDeletePhoto, .error)
 
-        #expect(message.text == "Failed")
+        #expect(message.text == "Failed to delete photo")
         if case .error = message.tone {
             #expect(Bool(true))
         } else {
@@ -44,7 +44,7 @@ struct AppMessageTests {
     @Test
     @MainActor
     func autoClearSkipsMessagesWithoutDelay() async {
-        var currentMessage: AppMessage? = AppMessage(.details("Failed"), .error, autoClearAfter: nil)
+        var currentMessage: AppMessage? = AppMessage(.failedToDeletePhoto, .error, autoClearAfter: nil)
         let task = AppMessageAutoClear.schedule(
             for: currentMessage,
             currentMessage: { currentMessage },
@@ -52,13 +52,13 @@ struct AppMessageTests {
         )
 
         #expect(task == nil)
-        #expect(currentMessage?.text == "Failed")
+        #expect(currentMessage?.text == "Failed to delete photo")
     }
 
     @Test
     @MainActor
     func autoClearClearsMatchingMessageAfterDelay() async throws {
-        let message = AppMessage(.details("Failed"), .error, autoClearAfter: 0.01)
+        let message = AppMessage(.failedToDeletePhoto, .error, autoClearAfter: 0.01)
         var currentMessage: AppMessage? = message
         let task = AppMessageAutoClear.schedule(
             for: message,
