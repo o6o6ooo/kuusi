@@ -120,6 +120,10 @@ final class PhotoCollectionViewModel: ObservableObject {
         photosByGroupID[selectedGroupID] = cachedPhotos
     }
 
+    func clearErrorMessage() {
+        errorMessageID = nil
+    }
+
     private func fetchPhotosForSelectedGroup(forceReload: Bool, limit: Int) async {
         isLoading = true
         defer { isLoading = false }

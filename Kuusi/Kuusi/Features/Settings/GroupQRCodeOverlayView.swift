@@ -5,15 +5,18 @@ import UIKit
 
 struct GroupQRCodeOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State private var toastMessage: AppMessage?
     let payload: String
     private let context = CIContext()
     private let filter = CIFilter.qrCodeGenerator()
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
 
     var body: some View {
+        let qrImage = makeQRCodeImage(from: payload)
+
         NavigationStack {
             VStack(spacing: 18) {
-                if let image = makeQRCodeImage(from: payload) {
+                if let image = qrImage {
                     Image(uiImage: image)
                         .interpolation(.none)
                         .resizable()
@@ -22,10 +25,6 @@ struct GroupQRCodeOverlayView: View {
                         .padding(18)
                         .background(cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
-                } else {
-                    Text(AppMessage.ID.failedToGenerateQRCode.text)
-                        .font(.footnote)
-                        .foregroundStyle(AppTheme.errorText)
                 }
 
                 ShareLink(item: payload) {
@@ -37,6 +36,15 @@ struct GroupQRCodeOverlayView: View {
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .appOverlayTheme()
+            .task {
+                if qrImage == nil {
+                    toastMessage = AppMessage(.failedToGenerateQRCode, .error)
+                }
+            }
+            .appToastMessage(toastMessage) {
+                toastMessage = nil
+            }
+            .appToastHost()
         }
     }
 

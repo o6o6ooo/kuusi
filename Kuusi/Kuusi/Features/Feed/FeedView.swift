@@ -120,6 +120,11 @@ struct FeedView: View {
             .onChange(of: feedMessage) { _, newValue in
                 scheduleFeedMessageAutoClear(for: newValue)
             }
+            .onChange(of: photoCollection.errorMessageID) { _, newValue in
+                guard let newValue else { return }
+                feedMessage = AppMessage(newValue, .error)
+                photoCollection.clearErrorMessage()
+            }
             .sheet(isPresented: $isUploadOverlayPresented) {
                 UploadOverlayView()
                     .presentationDetents([.fraction(0.68), .large])
@@ -170,13 +175,6 @@ struct FeedView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding(.top, 116)
                 .padding(.bottom, 120)
-        } else if let errorMessageID = photoCollection.errorMessageID {
-            emptyFeedState(
-                in: proxy,
-                title: "Failed to load feed",
-                systemImage: "exclamationmark.triangle",
-                description: errorMessageID.text
-            )
         } else if currentGroupPhotos.isEmpty {
             emptyFeedState(
                 in: proxy,
