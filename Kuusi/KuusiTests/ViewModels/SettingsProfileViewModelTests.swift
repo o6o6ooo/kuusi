@@ -34,12 +34,12 @@ struct SettingsProfileViewModelTests {
     @Test
     func loadProfileShowsErrorMessageWhenFetchFails() async {
         let userService = UserServiceSpy()
-        userService.fetchError = NSError(domain: "Tests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Load failed"])
+        userService.fetchError = NSError(domain: "Tests", code: 1)
         let viewModel = makeViewModel(userService: userService)
 
         await viewModel.loadProfile()
 
-        #expect(viewModel.toastMessage?.text == "Load failed")
+        #expect(viewModel.toastMessage?.id == .failedToLoadProfile)
         if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
@@ -91,14 +91,14 @@ struct SettingsProfileViewModelTests {
     @Test
     func saveProfileShowsErrorWhenUpdateFails() async {
         let userService = UserServiceSpy()
-        userService.updateError = NSError(domain: "Tests", code: 2, userInfo: [NSLocalizedDescriptionKey: "Save failed"])
+        userService.updateError = NSError(domain: "Tests", code: 2)
         let viewModel = makeViewModel(userService: userService)
         viewModel.name = "Sakura"
         viewModel.icon = "🌲"
 
         await viewModel.saveProfile()
 
-        #expect(viewModel.toastMessage?.text == "Save failed")
+        #expect(viewModel.toastMessage?.id == .failedToSaveProfile)
         if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
