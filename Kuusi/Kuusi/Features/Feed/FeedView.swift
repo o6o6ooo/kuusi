@@ -324,6 +324,7 @@ struct FeedView: View {
                 } label: {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.white)
                         .frame(width: 54, height: 54)
                         .background(glassCircleBackground)
                 }
@@ -353,6 +354,7 @@ struct FeedView: View {
             } label: {
                 Image(systemName: "number")
                     .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.white)
                     .frame(width: 54, height: 54)
                     .background(glassCircleBackground)
             }
@@ -381,15 +383,7 @@ struct FeedView: View {
                 .frame(height: 54)
                 .frame(maxWidth: 280)
                 .padding(.horizontal, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 27, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 27, style: .continuous)
-                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.4), lineWidth: 1)
-                        )
-                )
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+                .background(glassPillBackground)
             }
         }
     }
@@ -398,17 +392,35 @@ struct FeedView: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 38)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.white.opacity(colorScheme == .dark ? 0.14 : 0.92) : Color.clear)
+                        .fill(
+                            isSelected
+                                ? AnyShapeStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                : AnyShapeStyle(Color.clear)
+                        )
                 )
                 .overlay {
                     Capsule()
-                        .strokeBorder(Color.clear, lineWidth: 0)
+                        .strokeBorder(
+                            isSelected
+                                ? Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22)
+                                : Color.clear,
+                            lineWidth: isSelected ? 0.8 : 0
+                        )
                 }
         }
         .buttonStyle(.plain)
@@ -423,17 +435,9 @@ struct FeedView: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isSelected ? Color.white : .primary)
+                .foregroundStyle(Color.white)
                 .frame(width: 54, height: 54)
-                .background(
-                    Circle()
-                        .fill(isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.ultraThinMaterial))
-                        .overlay(
-                            Circle()
-                                .strokeBorder(Color.white.opacity(isSelected ? 0.18 : 0.42), lineWidth: 1)
-                        )
-                )
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+                .background(glassCircleBackground(isSelected: isSelected))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -452,13 +456,106 @@ struct FeedView: View {
     }
 
     private var glassCircleBackground: some View {
-        Circle()
-            .fill(.ultraThinMaterial)
-            .overlay(
-                Circle()
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.42), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+        glassCircleBackground(isSelected: false)
+    }
+
+    private func glassCircleBackground(isSelected: Bool) -> some View {
+        let shape = Circle()
+
+        return ZStack {
+            Color.clear
+                .background(.ultraThinMaterial, in: shape)
+
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: isSelected
+                            ? [
+                                Color.white.opacity(colorScheme == .dark ? 0.10 : 0.12),
+                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.06)
+                            ]
+                            : [
+                                Color.white.opacity(colorScheme == .dark ? 0.02 : 0.03),
+                                Color.white.opacity(colorScheme == .dark ? 0.0 : 0.01)
+                            ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.26),
+                            Color.white.opacity(0.04),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+
+            shape
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
+                    lineWidth: 0.6
+                )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+    }
+
+    private var glassPillBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 27, style: .continuous)
+
+        return ZStack {
+            Color.clear
+                .background(.ultraThinMaterial, in: shape)
+
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.02 : 0.03),
+                            Color.white.opacity(colorScheme == .dark ? 0.0 : 0.01)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                            Color.white.opacity(0.04),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+
+            shape
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
+                    lineWidth: 0.6
+                )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.14 : 0.05),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
     }
 
     private var feedSubtitle: String {
