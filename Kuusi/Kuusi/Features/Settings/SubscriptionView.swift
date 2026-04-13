@@ -88,7 +88,7 @@ struct SubscriptionView: View {
                 HStack {
                     Spacer()
                     Text(usageText)
-                        .font(.body.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                 }
 
                 GeometryReader { proxy in
@@ -103,17 +103,6 @@ struct SubscriptionView: View {
                     }
                 }
                 .frame(height: 22)
-
-                if currentPlan == .free {
-                    HStack(spacing: 6) {
-                        Text("Need more storage?")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text("Upgrade to premium.")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
-                    }
-                }
             }
             .padding(14)
             .background(cardBackground)
