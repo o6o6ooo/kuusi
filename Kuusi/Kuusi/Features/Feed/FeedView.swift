@@ -288,6 +288,7 @@ struct FeedView: View {
                     roundChromeButton(
                         systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
                         isSelected: isFavouritesFilterEnabled,
+                        selectedForegroundColor: Color.accentColor,
                         accessibilityIdentifier: "feed-favourites-filter-button"
                     ) {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
@@ -429,13 +430,14 @@ struct FeedView: View {
     private func roundChromeButton(
         systemName: String,
         isSelected: Bool,
+        selectedForegroundColor: Color? = nil,
         accessibilityIdentifier: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(isSelected ? (selectedForegroundColor ?? Color.white) : Color.white)
                 .frame(width: 54, height: 54)
                 .background(glassCircleBackground(isSelected: isSelected))
         }
