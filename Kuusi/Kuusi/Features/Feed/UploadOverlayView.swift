@@ -59,10 +59,11 @@ struct UploadOverlayView: View {
     private let googleAccountService = GoogleAccountService()
     private let googlePhotosPickerService = GooglePhotosPickerService()
 
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
-    private var fieldBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
+    private var surfaceBackground: Color {
+        AppTheme.pageBackground(for: colorScheme)
+            .opacity(0.7)
     }
+    private var surfaceBorder: Color { AppTheme.cardBackground(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     private var selectedGroupName: String {
@@ -95,9 +96,6 @@ struct UploadOverlayView: View {
                         yearField
                         hashtagsField
                     }
-                    .padding(14)
-                    .background(cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
 
                     if !hashtags.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -191,16 +189,10 @@ struct UploadOverlayView: View {
                     maxSelectionCount: 10,
                     matching: .images
                 ) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.title3.weight(.semibold))
-                        Text("Import from photo library")
-                            .font(.headline.weight(.semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    importRow(
+                        title: "Import from photo library",
+                        systemImage: "photo.on.rectangle"
+                    )
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 6)
@@ -208,21 +200,11 @@ struct UploadOverlayView: View {
                 Button {
                     Task { await importFromGooglePhotos() }
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "globe")
-                            .font(.title3.weight(.semibold))
-                        if isImportingGooglePhotos {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Text("Import from Google Photos")
-                                .font(.headline.weight(.semibold))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    importRow(
+                        title: "Import from Google Photos",
+                        systemImage: "globe",
+                        showsProgress: isImportingGooglePhotos
+                    )
                 }
                 .buttonStyle(.plain)
                 .disabled(isImportingGooglePhotos)
@@ -260,6 +242,63 @@ struct UploadOverlayView: View {
         }
     }
 
+    private func importRow(
+        title: String,
+        systemImage: String,
+        showsProgress: Bool = false
+    ) -> some View {
+        HStack(spacing: 10) {
+            if showsProgress {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 24)
+            } else {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 24)
+            }
+
+            Text(title)
+                .font(.headline.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(surfaceBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(surfaceBorder, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+            radius: colorScheme == .dark ? 12 : 16,
+            x: 0,
+            y: 4
+        )
+    }
+
+    private func liftedField<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 12) {
+            content()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 62)
+        .background(surfaceBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(surfaceBorder, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+            radius: colorScheme == .dark ? 10 : 14,
+            x: 0,
+            y: 4
+        )
+    }
+
     private var groupPicker: some View {
         Menu {
             if groups.isEmpty {
@@ -272,18 +311,14 @@ struct UploadOverlayView: View {
                 }
             }
         } label: {
-            HStack {
+            liftedField {
                 Text(selectedGroupName)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Image(systemName: "checkmark")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(primaryText)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
     }
@@ -295,8 +330,18 @@ struct UploadOverlayView: View {
             .autocorrectionDisabled(true)
             .padding(.horizontal, 16)
             .frame(height: 62)
-            .background(fieldBackground)
+            .background(surfaceBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(surfaceBorder, lineWidth: 1)
+            }
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                radius: colorScheme == .dark ? 10 : 14,
+                x: 0,
+                y: 4
+            )
     }
 
     private var hashtagsField: some View {
@@ -305,8 +350,18 @@ struct UploadOverlayView: View {
             .autocorrectionDisabled(true)
             .padding(.horizontal, 16)
             .frame(height: 62)
-            .background(fieldBackground)
+            .background(surfaceBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(surfaceBorder, lineWidth: 1)
+            }
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                radius: colorScheme == .dark ? 10 : 14,
+                x: 0,
+                y: 4
+            )
             .onSubmit {
                 addHashtagsFromInput()
             }
