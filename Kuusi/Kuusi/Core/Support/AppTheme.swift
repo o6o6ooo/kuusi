@@ -99,6 +99,36 @@ private struct OverlayThemeModifier: ViewModifier {
     }
 }
 
+private struct FeedChromePrimaryModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(.regularMaterial)
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.1),
+                radius: 1.5,
+                x: 0,
+                y: 1
+            )
+    }
+}
+
+private struct FeedChromeSecondaryModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(.thinMaterial)
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                radius: 1,
+                x: 0,
+                y: 1
+            )
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
@@ -114,6 +144,14 @@ extension View {
 
     func appOverlayTheme() -> some View {
         modifier(OverlayThemeModifier())
+    }
+
+    func appFeedChromePrimaryStyle() -> some View {
+        modifier(FeedChromePrimaryModifier())
+    }
+
+    func appFeedChromeSecondaryStyle() -> some View {
+        modifier(FeedChromeSecondaryModifier())
     }
 
     func appTextLinkStyle() -> some View {

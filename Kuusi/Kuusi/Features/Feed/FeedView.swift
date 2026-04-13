@@ -266,11 +266,11 @@ struct FeedView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(currentGroupName)
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.primary)
+                    .appFeedChromePrimaryStyle()
                     .lineLimit(1)
                 Text(feedSubtitle)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .appFeedChromeSecondaryStyle()
             }
 
             Spacer(minLength: 12)
@@ -325,7 +325,7 @@ struct FeedView: View {
                 } label: {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.white)
+                        .appFeedChromePrimaryStyle()
                         .frame(width: 54, height: 54)
                         .background(glassCircleBackground)
                 }
@@ -355,7 +355,7 @@ struct FeedView: View {
             } label: {
                 Image(systemName: "number")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color.white)
+                    .appFeedChromePrimaryStyle()
                     .frame(width: 54, height: 54)
                     .background(glassCircleBackground)
             }
@@ -393,7 +393,7 @@ struct FeedView: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.white)
+                .appFeedChromePrimaryStyle()
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 38)
@@ -437,7 +437,18 @@ struct FeedView: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isSelected ? (selectedForegroundColor ?? Color.white) : Color.white)
+                .foregroundStyle(isSelected ? (selectedForegroundColor ?? Color.clear) : Color.clear)
+                .overlay {
+                    if isSelected, let selectedForegroundColor {
+                        Image(systemName: systemName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(selectedForegroundColor)
+                    } else {
+                        Image(systemName: systemName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .appFeedChromePrimaryStyle()
+                    }
+                }
                 .frame(width: 54, height: 54)
                 .background(glassCircleBackground(isSelected: isSelected))
         }
