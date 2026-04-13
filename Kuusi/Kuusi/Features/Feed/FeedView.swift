@@ -306,7 +306,7 @@ struct FeedView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.top, max(0, topInset - 24))
+        .padding(.top, max(0, topInset - 60))
     }
 
     private var bottomChrome: some View {
@@ -340,7 +340,7 @@ struct FeedView: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
-        .padding(.bottom, 6)
+        .padding(.bottom, 0)
         .background(.clear)
     }
 
