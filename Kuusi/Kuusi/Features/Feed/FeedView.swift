@@ -1,6 +1,5 @@
 import FirebaseAuth
 import SwiftUI
-import UIKit
 
 private extension FeedServiceError {
     var appMessageID: AppMessage.ID {
@@ -266,11 +265,13 @@ struct FeedView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(currentGroupName)
                     .font(.system(size: 32, weight: .bold))
-                    .appFeedChromePrimaryStyle()
+                    .foregroundStyle(feedChromePrimaryColor)
+                    .shadow(color: feedChromeShadowColor, radius: 10, x: 0, y: 4)
                     .lineLimit(1)
                 Text(feedSubtitle)
                     .font(.subheadline.weight(.medium))
-                    .appFeedChromeSecondaryStyle()
+                    .foregroundStyle(feedChromeSecondaryColor)
+                    .shadow(color: feedChromeShadowColor.opacity(0.85), radius: 8, x: 0, y: 3)
             }
 
             Spacer(minLength: 12)
@@ -280,6 +281,7 @@ struct FeedView: View {
                     roundChromeButton(
                         systemName: "plus",
                         isSelected: false,
+                        foregroundColor: feedChromePrimaryColor,
                         accessibilityIdentifier: "feed-upload-button"
                     ) {
                         isUploadOverlayPresented = true
@@ -288,6 +290,7 @@ struct FeedView: View {
                     roundChromeButton(
                         systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
                         isSelected: isFavouritesFilterEnabled,
+                        foregroundColor: feedChromePrimaryColor,
                         selectedForegroundColor: Color.accentColor,
                         accessibilityIdentifier: "feed-favourites-filter-button"
                     ) {
@@ -325,7 +328,8 @@ struct FeedView: View {
                 } label: {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .appFeedChromePrimaryStyle()
+                        .foregroundStyle(feedChromePrimaryColor)
+                        .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                         .frame(width: 54, height: 54)
                         .background(glassCircleBackground)
                 }
@@ -355,7 +359,8 @@ struct FeedView: View {
             } label: {
                 Image(systemName: "number")
                     .font(.system(size: 18, weight: .bold))
-                    .appFeedChromePrimaryStyle()
+                    .foregroundStyle(feedChromePrimaryColor)
+                    .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                     .frame(width: 54, height: 54)
                     .background(glassCircleBackground)
             }
@@ -393,7 +398,8 @@ struct FeedView: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .appFeedChromePrimaryStyle()
+                .foregroundStyle(feedChromePrimaryColor)
+                .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 38)
@@ -430,6 +436,7 @@ struct FeedView: View {
     private func roundChromeButton(
         systemName: String,
         isSelected: Bool,
+        foregroundColor: Color,
         selectedForegroundColor: Color? = nil,
         accessibilityIdentifier: String,
         action: @escaping () -> Void
@@ -446,9 +453,10 @@ struct FeedView: View {
                     } else {
                         Image(systemName: systemName)
                             .font(.system(size: 18, weight: .semibold))
-                            .appFeedChromePrimaryStyle()
+                            .foregroundStyle(foregroundColor)
                     }
                 }
+                .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                 .frame(width: 54, height: 54)
                 .background(glassCircleBackground(isSelected: isSelected))
         }
@@ -485,11 +493,11 @@ struct FeedView: View {
                         colors: isSelected
                             ? [
                                 Color.white.opacity(colorScheme == .dark ? 0.10 : 0.12),
-                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.06)
+                                Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08)
                             ]
                             : [
-                                Color.white.opacity(colorScheme == .dark ? 0.02 : 0.03),
-                                Color.white.opacity(colorScheme == .dark ? 0.0 : 0.01)
+                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
+                                Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
                             ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -535,8 +543,8 @@ struct FeedView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.02 : 0.03),
-                            Color.white.opacity(colorScheme == .dark ? 0.0 : 0.01)
+                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
+                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -582,6 +590,18 @@ struct FeedView: View {
             return "#\(selectedHashtag)"
         }
         return "\(currentGroupPhotos.count) photos"
+    }
+
+    private var feedChromePrimaryColor: Color {
+        Color.white.opacity(0.94)
+    }
+
+    private var feedChromeSecondaryColor: Color {
+        Color.white.opacity(0.72)
+    }
+
+    private var feedChromeShadowColor: Color {
+        Color.black.opacity(colorScheme == .dark ? 0.38 : 0.22)
     }
 
     private var emptyStateTitle: String {

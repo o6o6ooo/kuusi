@@ -100,14 +100,14 @@ private struct OverlayThemeModifier: ViewModifier {
 }
 
 private struct FeedChromePrimaryModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
     func body(content: Content) -> some View {
         content
-            .foregroundStyle(.regularMaterial)
+            .foregroundStyle(Color.white)
+            .blendMode(.difference)
+            .opacity(0.9)
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.1),
-                radius: 1.5,
+                color: Color.black.opacity(0.08),
+                radius: 1.2,
                 x: 0,
                 y: 1
             )
@@ -115,13 +115,13 @@ private struct FeedChromePrimaryModifier: ViewModifier {
 }
 
 private struct FeedChromeSecondaryModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
     func body(content: Content) -> some View {
         content
-            .foregroundStyle(.thinMaterial)
+            .foregroundStyle(Color.white)
+            .blendMode(.difference)
+            .opacity(0.68)
             .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                color: Color.black.opacity(0.06),
                 radius: 1,
                 x: 0,
                 y: 1
