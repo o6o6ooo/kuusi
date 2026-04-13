@@ -6,14 +6,26 @@ enum FeedServiceError: Error {
     case cannotDeleteOthersPhotos
 }
 
+struct RecentPhotoFetchResult {
+    let photos: [FeedPhoto]
+    let hasMore: Bool
+}
+
 final class FeedService {
     private let db = Firestore.firestore()
     private let favouritesField = "favourites"
     private let photoDeletionService = PhotoDeletionService()
 
     func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
+        let result = try await fetchRecentPhotoBatch(userID: userID, groupIDs: groupIDs, limit: limit)
+        return result.photos
+    }
+
+    func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int = 15) async throws -> RecentPhotoFetchResult {
         let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
-        guard !visibleGroupIDs.isEmpty else { return [] }
+        guard !visibleGroupIDs.isEmpty else {
+            return RecentPhotoFetchResult(photos: [], hasMore: false)
+        }
         let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
         let fetchLimit = max(limit + 4, limit)
 
@@ -39,7 +51,10 @@ final class FeedService {
             FeedPhoto(id: doc.documentID, data: doc.data())
         }
 
-        return Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit)
+        return RecentPhotoFetchResult(
+            photos: Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit),
+            hasMore: snapshot.documents.count > limit
+        )
     }
 
     func fetchFavouritePhotos(userID: String, groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {

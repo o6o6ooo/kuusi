@@ -215,8 +215,18 @@ struct FeedView: View {
                     isFavouriting: favouritingPhotoIDs.contains(photo.id),
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
+                .onAppear {
+                    guard photo.id == displayedPhotos.last?.id else { return }
+                    photoCollection.loadMoreIfNeeded(pageSize: 6)
+                }
             } footer: {
-                EmptyView()
+                if photoCollection.isLoadingMore {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                } else {
+                    EmptyView()
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .refreshable {

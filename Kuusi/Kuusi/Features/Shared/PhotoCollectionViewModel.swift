@@ -4,6 +4,7 @@ import SwiftUI
 
 protocol PhotoCollectionFeedServicing {
     func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int) async throws -> [FeedPhoto]
+    func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int) async throws -> RecentPhotoFetchResult
 }
 
 protocol PhotoCollectionGroupServicing {
@@ -64,6 +65,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var photosByGroupID: [String: [FeedPhoto]] = [:]
     @Published var isLoading = false
+    @Published var isLoadingMore = false
     @Published var errorMessageID: AppMessage.ID?
 
     private let feedService: PhotoCollectionFeedServicing
@@ -73,6 +75,8 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
     private static let photoCacheKeyPrefix = "feed_photos_cache_v1_"
+    private var loadedLimitByGroupID: [String: Int] = [:]
+    private var hasMorePhotosByGroupID: [String: Bool] = [:]
 
     init(
         feedService: PhotoCollectionFeedServicing,
@@ -101,6 +105,11 @@ final class PhotoCollectionViewModel: ObservableObject {
         currentGroupPhotos.map { "\($0.id)-\($0.year ?? 0)" }
     }
 
+    var canLoadMoreCurrentGroupPhotos: Bool {
+        guard let selectedGroupID else { return false }
+        return hasMorePhotosByGroupID[selectedGroupID] ?? false
+    }
+
     func loadInitial(limit: Int) async {
         guard let uid = currentUserIDProvider() else {
             resetState()
@@ -121,6 +130,8 @@ final class PhotoCollectionViewModel: ObservableObject {
         groups = cachedGroups
         selectedGroupID = cachedGroups.first?.id
         photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(cachedGroups.map(\.id)))
+        loadedLimitByGroupID = photosByGroupID.mapValues(\.count)
+        hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
         errorMessageID = nil
         await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
     }
@@ -138,8 +149,11 @@ final class PhotoCollectionViewModel: ObservableObject {
             }
             let validGroupIDs = Set(freshGroups.map(\.id))
             photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
+            loadedLimitByGroupID = loadedLimitByGroupID.filter { validGroupIDs.contains($0.key) }
+            hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
             persistCachedPhotos(for: uid)
-            await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
+            let refreshLimit = max(loadedLimitByGroupID[self.selectedGroupID ?? ""] ?? 0, limit)
+            await fetchPhotosForSelectedGroup(forceReload: true, limit: refreshLimit)
         } catch {
             errorMessageID = .failedToLoadGroups
         }
@@ -178,9 +192,34 @@ final class PhotoCollectionViewModel: ObservableObject {
         errorMessageID = nil
     }
 
-    private func fetchPhotosForSelectedGroup(forceReload: Bool, limit: Int) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadMoreIfNeeded(pageSize: Int) {
+        guard let selectedGroupID else { return }
+        guard !isLoading, !isLoadingMore else { return }
+        guard hasMorePhotosByGroupID[selectedGroupID] ?? false else { return }
+
+        Task {
+            let currentLimit = max(loadedLimitByGroupID[selectedGroupID] ?? 0, photosByGroupID[selectedGroupID]?.count ?? 0)
+            await fetchPhotosForSelectedGroup(
+                forceReload: true,
+                limit: max(currentLimit, pageSize) + pageSize,
+                isLoadMore: true
+            )
+        }
+    }
+
+    private func fetchPhotosForSelectedGroup(forceReload: Bool, limit: Int, isLoadMore: Bool = false) async {
+        if isLoadMore {
+            isLoadingMore = true
+        } else {
+            isLoading = true
+        }
+        defer {
+            if isLoadMore {
+                isLoadingMore = false
+            } else {
+                isLoading = false
+            }
+        }
 
         do {
             guard let uid = currentUserIDProvider() else {
@@ -193,16 +232,19 @@ final class PhotoCollectionViewModel: ObservableObject {
             }
 
             if !forceReload, photosByGroupID[selectedGroupID] != nil {
+                loadedLimitByGroupID[selectedGroupID] = max(loadedLimitByGroupID[selectedGroupID] ?? 0, photosByGroupID[selectedGroupID]?.count ?? 0)
                 errorMessageID = nil
                 return
             }
 
-            let loadedPhotos = try await feedService.fetchRecentPhotos(
+            let result = try await feedService.fetchRecentPhotoBatch(
                 userID: uid,
                 groupIDs: [selectedGroupID],
                 limit: limit
             )
-            photosByGroupID[selectedGroupID] = loadedPhotos
+            photosByGroupID[selectedGroupID] = result.photos
+            loadedLimitByGroupID[selectedGroupID] = result.photos.count
+            hasMorePhotosByGroupID[selectedGroupID] = result.hasMore
             persistCachedPhotos(for: uid)
             errorMessageID = nil
         } catch {
@@ -214,6 +256,8 @@ final class PhotoCollectionViewModel: ObservableObject {
         groups = []
         selectedGroupID = nil
         photosByGroupID = [:]
+        loadedLimitByGroupID = [:]
+        hasMorePhotosByGroupID = [:]
         errorMessageID = nil
     }
 
