@@ -97,14 +97,44 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.isEmpty)
     }
 
+    @Test
+    func loadInitialRestoresPersistedPhotoCacheBeforeFetching() async throws {
+        let userID = "persisted-cache-user"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
+        let cachedPhoto = makePhoto(id: "photo-a", groupID: "group-a", year: 2024)
+        let firstViewModel = makeViewModel(userID: userID)
+        firstViewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        firstViewModel.selectedGroupID = "group-a"
+        firstViewModel.photosByGroupID = ["group-a": [cachedPhoto]]
+        firstViewModel.replacePhoto(cachedPhoto)
+
+        let feedService = FeedServiceSpy()
+        let groupService = GroupServiceSpy()
+        groupService.cachedGroupsValue = [makeGroup(id: "group-a", name: "Family")]
+        let secondViewModel = makeViewModel(
+            feedService: feedService,
+            groupService: groupService,
+            userID: userID
+        )
+
+        await secondViewModel.loadInitial(limit: 6)
+
+        #expect(secondViewModel.currentGroupPhotos.map(\.id) == ["photo-a"])
+        #expect(feedService.fetchCalls.isEmpty)
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+    }
+
     private func makeViewModel(
         feedService: PhotoCollectionFeedServicing = FeedServiceSpy(),
-        groupService: PhotoCollectionGroupServicing = GroupServiceSpy()
+        groupService: PhotoCollectionGroupServicing = GroupServiceSpy(),
+        userID: String = "test-user"
     ) -> PhotoCollectionViewModel {
         PhotoCollectionViewModel(
             feedService: feedService,
             groupService: groupService,
-            currentUserIDProvider: { "test-user" }
+            currentUserIDProvider: { userID }
         )
     }
 
