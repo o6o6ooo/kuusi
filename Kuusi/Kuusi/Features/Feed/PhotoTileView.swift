@@ -32,9 +32,10 @@ struct PhotoTileView: View {
                     .overlay(ProgressView())
             }
             .frame(width: width, height: isExpanded ? expandedHeight : collapsedHeight)
-
-            if isExpanded {
-                expandedMeta
+            .overlay(alignment: .bottomLeading) {
+                if isExpanded {
+                    expandedMetaOverlay
+                }
             }
         }
         .background(tileBackground)
@@ -117,13 +118,12 @@ struct PhotoTileView: View {
         .padding(12)
     }
 
-    private var expandedMeta: some View {
+    private var expandedMetaOverlay: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(photo.year.map(String.init) ?? "Shared memory")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
+            Text(photo.year.map(String.init) ?? "Shared memory")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(yearOverlayColor)
+                .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
 
             if !photo.hashtags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -131,15 +131,35 @@ struct PhotoTileView: View {
                         ForEach(photo.hashtags, id: \.self) { hashtag in
                             Text("#\(hashtag)")
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.white.opacity(0.92))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(.thinMaterial, in: Capsule())
+                                .background(.black.opacity(0.28), in: Capsule())
                         }
                     }
                 }
             }
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    .clear,
+                    .black.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                    .black.opacity(colorScheme == .dark ? 0.44 : 0.38)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private var yearOverlayColor: Color {
+        Color.white.opacity(0.72)
+    }
+
+    private var overlayShadowColor: Color {
+        Color.black.opacity(colorScheme == .dark ? 0.38 : 0.22)
     }
 }
