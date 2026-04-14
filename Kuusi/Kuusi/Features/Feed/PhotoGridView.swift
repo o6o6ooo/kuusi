@@ -5,16 +5,26 @@ private struct MasonryExpandedKey: LayoutValueKey {
 }
 
 private struct MasonryGridLayout: Layout {
+    struct Cache {
+        var width: CGFloat = 0
+        var expandedStates: [Bool] = []
+        var frames: [CGRect] = []
+    }
+
     let columnCount: Int
     let spacing: CGFloat
+
+    func makeCache(subviews: Subviews) -> Cache {
+        Cache()
+    }
 
     func sizeThatFits(
         proposal: ProposedViewSize,
         subviews: Subviews,
-        cache: inout ()
+        cache: inout Cache
     ) -> CGSize {
         let width = proposal.width ?? 0
-        let frames = makeFrames(for: subviews, width: width)
+        let frames = resolveFrames(for: subviews, width: width, cache: &cache)
         let height = frames.map(\.maxY).max() ?? 0
         return CGSize(width: width, height: height)
     }
@@ -23,9 +33,9 @@ private struct MasonryGridLayout: Layout {
         in bounds: CGRect,
         proposal: ProposedViewSize,
         subviews: Subviews,
-        cache: inout ()
+        cache: inout Cache
     ) {
-        let frames = makeFrames(for: subviews, width: bounds.width)
+        let frames = resolveFrames(for: subviews, width: bounds.width, cache: &cache)
 
         for (index, subview) in subviews.enumerated() {
             guard index < frames.count else { continue }
@@ -35,6 +45,19 @@ private struct MasonryGridLayout: Layout {
                 proposal: ProposedViewSize(width: frame.width, height: frame.height)
             )
         }
+    }
+
+    private func resolveFrames(for subviews: Subviews, width: CGFloat, cache: inout Cache) -> [CGRect] {
+        let expandedStates = subviews.map { $0[MasonryExpandedKey.self] }
+        if cache.width == width, cache.expandedStates == expandedStates, cache.frames.count == subviews.count {
+            return cache.frames
+        }
+
+        let frames = makeFrames(for: subviews, width: width)
+        cache.width = width
+        cache.expandedStates = expandedStates
+        cache.frames = frames
+        return frames
     }
 
     private func makeFrames(for subviews: Subviews, width: CGFloat) -> [CGRect] {
