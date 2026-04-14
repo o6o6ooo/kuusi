@@ -25,10 +25,11 @@ struct EditOverlayView: View {
         _hashtags = State(initialValue: photo.hashtags)
     }
 
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
-    private var fieldBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
+    private var surfaceBackground: Color {
+        AppTheme.pageBackground(for: colorScheme)
+            .opacity(0.7)
     }
+    private var surfaceBorder: Color { AppTheme.cardBackground(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     var body: some View {
@@ -49,9 +50,6 @@ struct EditOverlayView: View {
                     yearField
                     hashtagsField
                 }
-                .padding(14)
-                .background(cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
 
                 if !hashtags.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -92,27 +90,45 @@ struct EditOverlayView: View {
         }
     }
 
+    private func liftedField<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 12) {
+            content()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 62)
+        .background(surfaceBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(surfaceBorder, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+            radius: colorScheme == .dark ? 10 : 14,
+            x: 0,
+            y: 4
+        )
+    }
+
     private var yearField: some View {
-        TextField("year", text: $yearText)
-            .keyboardType(.numberPad)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled(true)
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .foregroundStyle(primaryText)
+        liftedField {
+            TextField("year", text: $yearText)
+                .keyboardType(.numberPad)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .foregroundStyle(primaryText)
+        }
     }
 
     private var hashtagsField: some View {
-        TextField("hashtags", text: $hashtagInput)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled(true)
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .foregroundStyle(primaryText)
+        liftedField {
+            TextField("hashtags", text: $hashtagInput)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .foregroundStyle(primaryText)
+        }
             .onSubmit {
                 addHashtagsFromInput()
             }
