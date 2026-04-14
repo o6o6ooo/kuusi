@@ -175,6 +175,88 @@ private struct CardSurfaceModifier: ViewModifier {
     }
 }
 
+private struct FeedGlassCapsuleModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(glassBackground)
+            .overlay {
+                if isSelected {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+            }
+            .overlay {
+                if isSelected {
+                    Capsule()
+                        .strokeBorder(
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                            lineWidth: 0.8
+                        )
+                }
+            }
+    }
+
+    private var glassBackground: some View {
+        let shape = Capsule(style: .continuous)
+
+        return ZStack {
+            Color.clear
+                .background(.ultraThinMaterial, in: shape)
+
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
+                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                            Color.white.opacity(0.04),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+
+            shape
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
+                    lineWidth: 0.6
+                )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.14 : 0.05),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
@@ -219,6 +301,10 @@ extension View {
     func appTextLinkStyle() -> some View {
         font(.subheadline.weight(.semibold))
             .foregroundStyle(Color.accentColor)
+    }
+
+    func appFeedGlassCapsule(isSelected: Bool = false) -> some View {
+        modifier(FeedGlassCapsuleModifier(isSelected: isSelected))
     }
 
     func appErrorTextLinkStyle() -> some View {

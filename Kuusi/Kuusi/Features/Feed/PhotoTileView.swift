@@ -134,7 +134,7 @@ struct PhotoTileView: View {
                                 .foregroundStyle(.white.opacity(0.92))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(.black.opacity(0.28), in: Capsule())
+                                .appFeedGlassCapsule()
                         }
                     }
                 }
