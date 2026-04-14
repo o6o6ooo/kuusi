@@ -103,28 +103,24 @@ struct SubscriptionView: View {
             Text("Your storage")
                 .font(.title3.weight(.bold))
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Spacer()
-                    Text(usageText)
-                        .font(.caption.weight(.semibold))
-                }
-
-                GeometryReader { proxy in
-                    let barWidth = max(0, proxy.size.width * usageRatio)
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(fieldBackground)
-                            .frame(height: 22)
-                        Capsule()
-                            .fill(Color.accentColor)
-                            .frame(width: barWidth, height: 22)
-                    }
-                }
-                .frame(height: 22)
+            HStack {
+                Spacer()
+                Text(usageText)
+                    .font(.caption.weight(.semibold))
             }
-            .padding(14)
-            .appCardSurface(cornerRadius: 16, shadowRadius: 8)
+
+            GeometryReader { proxy in
+                let barWidth = max(0, proxy.size.width * usageRatio)
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(fieldBackground)
+                        .frame(height: 22)
+                    Capsule()
+                        .fill(Color.accentColor)
+                        .frame(width: barWidth, height: 22)
+                }
+            }
+            .frame(height: 22)
         }
     }
 
