@@ -27,7 +27,6 @@ final class GroupService {
     static let maxGroupMembers = 50
 
     private let db = Firestore.firestore()
-    private let groupMemberPreviewLimit = 3
     private let photoDeletionService = PhotoDeletionService()
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
     private static let cacheLock = NSLock()
