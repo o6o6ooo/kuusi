@@ -1,4 +1,94 @@
+import Combine
 import SwiftUI
+
+@MainActor
+private final class FeedAuthorNameStore {
+    static let shared = FeedAuthorNameStore()
+
+    private let userService = UserService()
+    private let defaults = UserDefaults.standard
+    private let cacheKey = "feed_author_name_cache_v1"
+    private var memoryCache: [String: String] = [:]
+    private var inFlightTasks: [String: Task<String?, Never>] = [:]
+    private var didLoadDefaults = false
+
+    func name(for uid: String) async -> String? {
+        loadDefaultsIfNeeded()
+
+        if let cached = memoryCache[uid] {
+            return cached
+        }
+
+        if let task = inFlightTasks[uid] {
+            return await task.value
+        }
+
+        let task = Task<String?, Never> {
+            defer { self.clearTask(for: uid) }
+
+            do {
+                guard let user = try await userService.fetchUser(uid: uid) else {
+                    return nil
+                }
+                store(user.name, for: uid)
+                return user.name
+            } catch {
+                return nil
+            }
+        }
+
+        inFlightTasks[uid] = task
+        return await task.value
+    }
+
+    private func loadDefaultsIfNeeded() {
+        guard !didLoadDefaults else { return }
+        didLoadDefaults = true
+
+        guard let cached = defaults.dictionary(forKey: cacheKey) as? [String: String] else {
+            return
+        }
+
+        memoryCache = cached
+    }
+
+    private func store(_ name: String, for uid: String) {
+        memoryCache[uid] = name
+        defaults.set(memoryCache, forKey: cacheKey)
+    }
+
+    private func clearTask(for uid: String) {
+        inFlightTasks[uid] = nil
+    }
+}
+
+@MainActor
+private final class PhotoAuthorNameViewModel: ObservableObject {
+    @Published private(set) var name: String?
+
+    func loadName(for uid: String?) async {
+        guard let uid, !uid.isEmpty else {
+            name = nil
+            return
+        }
+
+        name = await FeedAuthorNameStore.shared.name(for: uid)
+    }
+}
+
+private struct PhotoAuthorNameView: View {
+    let uid: String?
+
+    @StateObject private var viewModel = PhotoAuthorNameViewModel()
+
+    var body: some View {
+        Text(viewModel.name ?? " ")
+            .opacity(viewModel.name == nil ? 0 : 1)
+        .task(id: uid) {
+            await viewModel.loadName(for: uid)
+        }
+    }
+}
 
 struct PhotoTileView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -119,10 +209,17 @@ struct PhotoTileView: View {
 
     private var expandedMetaOverlay: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(photo.year.map(String.init) ?? "Shared memory")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(yearOverlayColor)
-                .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(photo.year.map(String.init) ?? "Shared memory")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(yearOverlayColor)
+                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
+
+                PhotoAuthorNameView(uid: photo.postedBy)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(yearOverlayColor)
+                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
+            }
 
             if !photo.hashtags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
