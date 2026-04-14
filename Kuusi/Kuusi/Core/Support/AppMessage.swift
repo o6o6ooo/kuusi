@@ -81,6 +81,8 @@ struct AppMessage: Equatable {
         case removedFromFavourites
         case addedToFavourites
         case selectGroup
+        case subscriptionCancelled
+        case subscriptionResumed
         case subscriptionUnavailable
         case uploadCompleted
         case groupLimitReached(title: String, maxGroups: Int)
@@ -244,6 +246,10 @@ extension AppMessage.ID {
             return "Added to favourites"
         case .selectGroup:
             return "Select a group"
+        case .subscriptionCancelled:
+            return "Subscription cancelled"
+        case .subscriptionResumed:
+            return "Subscription resumed"
         case .subscriptionUnavailable:
             return "Premium subscription is not available right now"
         case .uploadCompleted:

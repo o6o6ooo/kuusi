@@ -40,6 +40,7 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var isRestoring = false
 
     private var updatesTask: Task<Void, Never>?
+    private var subscriptionStatusUpdatesTask: Task<Void, Never>?
     private let premiumProductID = "com.swallace.kuusi.premium.annual"
     nonisolated private static let premiumFallbackPriceLabel = "£24.99 / year"
 
@@ -51,6 +52,7 @@ final class SubscriptionStore: ObservableObject {
 
     init() {
         updatesTask = observeTransactionUpdates()
+        subscriptionStatusUpdatesTask = observeSubscriptionStatusUpdates()
 
         Task {
             await prepare()
@@ -59,6 +61,7 @@ final class SubscriptionStore: ObservableObject {
 
     deinit {
         updatesTask?.cancel()
+        subscriptionStatusUpdatesTask?.cancel()
     }
 
     func prepare() async {
@@ -136,6 +139,14 @@ final class SubscriptionStore: ObservableObject {
         Self.makePremiumPriceLabel(displayPrice: premiumProduct?.displayPrice)
     }
 
+    var entitlementSnapshot: EntitlementSnapshot {
+        Self.makeEntitlementSnapshot(
+            premiumActive: isPremiumActive,
+            renewalDate: renewalDate,
+            autoRenew: willAutoRenew
+        )
+    }
+
     private func refreshEntitlements() async {
         var premiumActive = false
         var nextRenewalDate: Date?
@@ -185,6 +196,14 @@ final class SubscriptionStore: ObservableObject {
             for await result in Transaction.updates {
                 guard let transaction = try? verifiedTransaction(from: result) else { continue }
                 await transaction.finish()
+                await refreshEntitlements()
+            }
+        }
+    }
+
+    private func observeSubscriptionStatusUpdates() -> Task<Void, Never> {
+        Task {
+            for await _ in Product.SubscriptionInfo.Status.updates {
                 await refreshEntitlements()
             }
         }

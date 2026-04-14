@@ -37,11 +37,11 @@ struct SubscriptionView: View {
     private var fieldBackground: Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
-    private var currentPlan: AppPlan { subscriptionStore.isPremiumActive ? .premium : .free }
+    private var currentPlan: AppPlan { displaySnapshot.isPremiumActive ? .premium : .free }
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
     private var premiumRenewalText: String? {
-        guard let renewalDate = subscriptionStore.renewalDate else { return nil }
-        let label = subscriptionStore.willAutoRenew ? "Renews on" : "Expires on"
+        guard let renewalDate = displaySnapshot.renewalDate else { return nil }
+        let label = displaySnapshot.willAutoRenew ? "Renews on" : "Expires on"
         return "\(label) \(formatDate(renewalDate))"
     }
     private var usageRatio: Double {
@@ -56,12 +56,25 @@ struct SubscriptionView: View {
     }
     @State private var billingMessage: AppMessage?
     @State private var clearBillingMessageTask: Task<Void, Never>?
-    @State private var subscriptionRefreshTask: Task<Void, Never>?
+    @State private var displaySnapshot = SubscriptionStore.makeEntitlementSnapshot(
+        premiumActive: false,
+        renewalDate: nil,
+        autoRenew: false
+    )
+    @State private var pendingManageSubscriptionSnapshot: SubscriptionStore.EntitlementSnapshot?
+    @State private var pendingManageSubscriptionClearTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             storageCard
             subscriptionCard
+        }
+        .onAppear {
+            syncDisplaySnapshotFromStore()
+        }
+        .onChange(of: subscriptionStore.entitlementSnapshot) { _, newValue in
+            displaySnapshot = newValue
+            handlePotentialSubscriptionStatusChange(with: newValue)
         }
         .onChange(of: billingMessage) { _, newValue in
             scheduleBillingMessageAutoClear(for: newValue)
@@ -69,8 +82,9 @@ struct SubscriptionView: View {
         .onDisappear {
             clearBillingMessageTask?.cancel()
             clearBillingMessageTask = nil
-            subscriptionRefreshTask?.cancel()
-            subscriptionRefreshTask = nil
+            pendingManageSubscriptionClearTask?.cancel()
+            pendingManageSubscriptionClearTask = nil
+            pendingManageSubscriptionSnapshot = nil
         }
         .appToastMessage(billingMessage) {
             billingMessage = nil
@@ -148,7 +162,7 @@ struct SubscriptionView: View {
                             title: AppPlan.premium.title,
                             features: AppPlan.premium.featureLines,
                             footerText: premiumRenewalText,
-                            footerActionTitle: subscriptionStore.willAutoRenew ? "Cancel subscription" : "Continue subscription",
+                            footerActionTitle: displaySnapshot.willAutoRenew ? "Cancel subscription" : "Continue subscription",
                             isSelected: true,
                             action: {
                                 Task {
@@ -214,12 +228,18 @@ struct SubscriptionView: View {
 
     @MainActor
     private func openManageSubscriptions() async {
+        let initialSnapshot = displaySnapshot
+        pendingManageSubscriptionSnapshot = initialSnapshot
+        schedulePendingManageSubscriptionClear()
+
         do {
             try await subscriptionStore.openManageSubscriptions()
-            scheduleSubscriptionRefresh()
+            syncDisplaySnapshotFromStore()
         } catch let error as SubscriptionStoreError {
+            clearPendingManageSubscriptionTracking()
             billingMessage = AppMessage(error.appMessageID ?? .failedToOpenManageSubscriptions, .error)
         } catch {
+            clearPendingManageSubscriptionTracking()
             billingMessage = AppMessage(.failedToOpenManageSubscriptions, .error)
         }
     }
@@ -247,14 +267,45 @@ struct SubscriptionView: View {
         return formatter.string(from: date)
     }
 
-    private func scheduleSubscriptionRefresh() {
-        subscriptionRefreshTask?.cancel()
-        subscriptionRefreshTask = Task { @MainActor in
-            for delay in [300_000_000, 1_000_000_000, 2_500_000_000] {
-                try? await Task.sleep(nanoseconds: UInt64(delay))
-                if Task.isCancelled { return }
-                await subscriptionStore.prepare()
-            }
+    @MainActor
+    private func presentSubscriptionStatusChange(
+        from previousSnapshot: SubscriptionStore.EntitlementSnapshot,
+        currentSnapshot: SubscriptionStore.EntitlementSnapshot
+    ) -> Bool {
+        guard previousSnapshot.willAutoRenew != currentSnapshot.willAutoRenew else {
+            return false
+        }
+
+        clearPendingManageSubscriptionTracking()
+        billingMessage = AppMessage(currentSnapshot.willAutoRenew ? .subscriptionResumed : .subscriptionCancelled, .success)
+        return true
+    }
+
+    @MainActor
+    private func syncDisplaySnapshotFromStore() {
+        displaySnapshot = subscriptionStore.entitlementSnapshot
+    }
+
+    @MainActor
+    private func handlePotentialSubscriptionStatusChange(with currentSnapshot: SubscriptionStore.EntitlementSnapshot) {
+        guard let previousSnapshot = pendingManageSubscriptionSnapshot else { return }
+        _ = presentSubscriptionStatusChange(from: previousSnapshot, currentSnapshot: currentSnapshot)
+    }
+
+    @MainActor
+    private func clearPendingManageSubscriptionTracking() {
+        pendingManageSubscriptionClearTask?.cancel()
+        pendingManageSubscriptionClearTask = nil
+        pendingManageSubscriptionSnapshot = nil
+    }
+
+    private func schedulePendingManageSubscriptionClear() {
+        pendingManageSubscriptionClearTask?.cancel()
+        pendingManageSubscriptionClearTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+            if Task.isCancelled { return }
+            pendingManageSubscriptionSnapshot = nil
+            pendingManageSubscriptionClearTask = nil
         }
     }
 
