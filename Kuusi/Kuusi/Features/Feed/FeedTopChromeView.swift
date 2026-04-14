@@ -85,7 +85,7 @@ struct FeedTopChromeView: View {
                     }
                 }
                 .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                .frame(width: 54, height: 54)
+                .frame(width: 48, height: 48)
                 .background(glassCircleBackground(isSelected: isSelected))
         }
         .buttonStyle(.plain)
@@ -100,7 +100,7 @@ struct FeedTopChromeView: View {
             Text(profileIcon)
                 .font(.system(size: 26))
         }
-        .frame(width: 54, height: 54)
+        .frame(width: 48, height: 48)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
     }
 

@@ -23,7 +23,7 @@ struct FeedBottomChromeView: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(chromePrimaryColor)
                         .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                        .frame(width: 54, height: 54)
+                        .frame(width: 48, height: 48)
                         .background(glassCircleBackground)
                 }
                 .buttonStyle(.plain)
@@ -54,7 +54,7 @@ struct FeedBottomChromeView: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(chromePrimaryColor)
                     .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 48, height: 48)
                     .background(glassCircleBackground)
             }
             .buttonStyle(.plain)
@@ -79,7 +79,7 @@ struct FeedBottomChromeView: View {
                     }
                     .padding(.horizontal, 8)
                 }
-                .frame(height: 54)
+                .frame(height: 48)
                 .frame(maxWidth: 280)
                 .padding(.horizontal, 6)
                 .background(glassPillBackground)
@@ -95,7 +95,7 @@ struct FeedBottomChromeView: View {
                 .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
-                .frame(height: 38)
+                .frame(height: 36)
                 .background(
                     Capsule()
                         .fill(
