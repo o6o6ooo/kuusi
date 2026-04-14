@@ -86,7 +86,7 @@ struct FeedTopChromeView: View {
                 }
                 .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                 .frame(width: 48, height: 48)
-                .background(glassCircleBackground(isSelected: isSelected))
+                .appFeedGlassCircle(isSelected: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
@@ -102,58 +102,6 @@ struct FeedTopChromeView: View {
         }
         .frame(width: 48, height: 48)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
-    }
-
-    private func glassCircleBackground(isSelected: Bool) -> some View {
-        let shape = Circle()
-
-        return ZStack {
-            Color.clear
-                .background(.ultraThinMaterial, in: shape)
-
-            shape
-                .fill(
-                    LinearGradient(
-                        colors: isSelected
-                            ? [
-                                Color.white.opacity(colorScheme == .dark ? 0.10 : 0.12),
-                                Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08)
-                            ]
-                            : [
-                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
-                                Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
-                            ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            shape
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.26),
-                            Color.white.opacity(0.04),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.9
-                )
-
-            shape
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
-                    lineWidth: 0.6
-                )
-        }
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
     }
 
     private var chromePrimaryColor: Color {

@@ -25,7 +25,7 @@ struct FeedBottomChromeView: View {
                         .foregroundStyle(chromePrimaryColor)
                         .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                         .frame(width: 48, height: 48)
-                        .background(glassCircleBackground)
+                        .appFeedGlassCircle()
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("feed-group-button")
@@ -56,7 +56,7 @@ struct FeedBottomChromeView: View {
                     .foregroundStyle(chromePrimaryColor)
                     .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                     .frame(width: 48, height: 48)
-                    .background(glassCircleBackground)
+                    .appFeedGlassCircle()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("feed-hashtag-toggle-button")
@@ -83,7 +83,7 @@ struct FeedBottomChromeView: View {
                 .frame(height: 48)
                 .frame(maxWidth: 280)
                 .padding(.horizontal, 6)
-                .background(glassPillBackground)
+                .appFeedGlassPill()
             }
         }
     }
@@ -97,133 +97,43 @@ struct FeedBottomChromeView: View {
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 36)
-                .background(
-                    ZStack {
-                        if isSelected {
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .matchedGeometryEffect(id: "selectedHashtagChip", in: hashtagSelectionNamespace)
-                        }
-                    }
-                )
+                .background(selectionFill(isSelected: isSelected))
                 .overlay {
-                    ZStack {
-                        if isSelected {
-                            Capsule()
-                                .strokeBorder(
-                                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                                    lineWidth: 0.8
-                                )
-                                .matchedGeometryEffect(id: "selectedHashtagChipStroke", in: hashtagSelectionNamespace)
-                        }
-                    }
+                    selectionStroke(isSelected: isSelected)
                 }
         }
         .buttonStyle(.plain)
-				.animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
+        .animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
     }
 
-    private var glassCircleBackground: some View {
-        let shape = Circle()
-
-        return ZStack {
-            Color.clear
-                .background(.ultraThinMaterial, in: shape)
-
-            shape
+    @ViewBuilder
+    private func selectionFill(isSelected: Bool) -> some View {
+        if isSelected {
+            Capsule()
                 .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
-                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            shape
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.26),
-                            Color.white.opacity(0.04),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.9
-                )
-
-            shape
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
-                    lineWidth: 0.6
-                )
-        }
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
-    }
-
-    private var glassPillBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 27, style: .continuous)
-
-        return ZStack {
-            Color.clear
-                .background(.ultraThinMaterial, in: shape)
-
-            shape
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
-                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            shape
-                .strokeBorder(
                     LinearGradient(
                         colors: [
                             Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                            Color.white.opacity(0.04),
-                            .clear
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.9
+                    )
                 )
-
-            shape
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
-                    lineWidth: 0.6
-                )
+                .matchedGeometryEffect(id: "selectedHashtagChip", in: hashtagSelectionNamespace)
         }
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.14 : 0.05),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
+    }
+
+    @ViewBuilder
+    private func selectionStroke(isSelected: Bool) -> some View {
+        if isSelected {
+            Capsule()
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                    lineWidth: 0.8
+                )
+                .matchedGeometryEffect(id: "selectedHashtagChipStroke", in: hashtagSelectionNamespace)
+        }
     }
 
     private var chromePrimaryColor: Color {

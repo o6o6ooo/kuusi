@@ -257,6 +257,123 @@ private struct FeedGlassCapsuleModifier: ViewModifier {
     }
 }
 
+private struct FeedGlassCircleModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content.background(glassBackground)
+    }
+
+    private var glassBackground: some View {
+        let shape = Circle()
+
+        return ZStack {
+            Color.clear
+                .background(.ultraThinMaterial, in: shape)
+
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: isSelected
+                            ? [
+                                Color.white.opacity(colorScheme == .dark ? 0.10 : 0.12),
+                                Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08)
+                            ]
+                            : [
+                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
+                                Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
+                            ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.26),
+                            Color.white.opacity(0.04),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+
+            shape
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
+                    lineWidth: 0.6
+                )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+    }
+}
+
+private struct FeedGlassPillModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.background(glassBackground)
+    }
+
+    private var glassBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 27, style: .continuous)
+
+        return ZStack {
+            Color.clear
+                .background(.ultraThinMaterial, in: shape)
+
+            shape
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
+                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                            Color.white.opacity(0.04),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+
+            shape
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
+                    lineWidth: 0.6
+                )
+        }
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.14 : 0.05),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
@@ -301,6 +418,14 @@ extension View {
     func appTextLinkStyle() -> some View {
         font(.subheadline.weight(.semibold))
             .foregroundStyle(Color.accentColor)
+    }
+
+    func appFeedGlassCircle(isSelected: Bool = false) -> some View {
+        modifier(FeedGlassCircleModifier(isSelected: isSelected))
+    }
+
+    func appFeedGlassPill() -> some View {
+        modifier(FeedGlassPillModifier())
     }
 
     func appFeedGlassCapsule(isSelected: Bool = false) -> some View {
