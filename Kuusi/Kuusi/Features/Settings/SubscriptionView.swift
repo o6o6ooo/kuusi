@@ -51,6 +51,7 @@ struct SubscriptionView: View {
     private var usageText: String {
         "\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
     }
+    private var storageBarHeight: CGFloat { 10 }
     private var planCardWidth: CGFloat {
         UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
     }
@@ -114,13 +115,15 @@ struct SubscriptionView: View {
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(fieldBackground)
-                        .frame(height: 22)
-                    Capsule()
-                        .fill(Color.accentColor)
-                        .frame(width: barWidth, height: 22)
+                        .frame(height: storageBarHeight)
+                    if barWidth > 0 {
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .frame(width: max(barWidth, storageBarHeight), height: storageBarHeight)
+                    }
                 }
             }
-            .frame(height: 22)
+            .frame(height: storageBarHeight)
         }
     }
 
@@ -260,16 +263,10 @@ struct SubscriptionView: View {
     private func formatStorage(_ mb: Double) -> String {
         if mb >= 1024 {
             let gb = mb / 1024
-            if abs(gb.rounded() - gb) < 0.01 {
-                return "\(Int(gb.rounded()))GB"
-            }
-            return String(format: "%.1fGB", gb)
+            return String(format: "%.2fGB", gb)
         }
 
-        if mb.rounded() >= mb - 0.01 {
-            return "\(Int(mb.rounded()))MB"
-        }
-        return String(format: "%.0fMB", mb)
+        return String(format: "%.2fMB", mb)
     }
 
     private func formatDate(_ date: Date) -> String {
