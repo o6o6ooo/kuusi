@@ -414,16 +414,33 @@ struct UploadOverlayView: View {
         hashtagInput = ""
     }
 
-    @MainActor
     private func loadImages(from items: [PhotosPickerItem]) async {
-        var loaded: [UIImage] = []
-        for item in items {
-            if let data = try? await item.loadTransferable(type: Data.self),
-               let image = UIImage(data: data) {
-                loaded.append(image)
+        let loaded = await withTaskGroup(of: (Int, UIImage?).self) { group in
+            for (index, item) in items.enumerated() {
+                group.addTask {
+                    guard let data = try? await item.loadTransferable(type: Data.self),
+                          let image = UIImage(data: data) else {
+                        return (index, nil)
+                    }
+                    return (index, image)
+                }
             }
+
+            var imagesByIndex: [Int: UIImage] = [:]
+            for await (index, image) in group {
+                if let image {
+                    imagesByIndex[index] = image
+                }
+            }
+
+            return imagesByIndex
+                .sorted { $0.key < $1.key }
+                .map(\.value)
         }
-        selectedImages = loaded
+
+        await MainActor.run {
+            selectedImages = loaded
+        }
     }
 
     @MainActor

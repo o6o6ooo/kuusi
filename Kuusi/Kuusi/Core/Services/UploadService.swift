@@ -8,77 +8,153 @@ final class UploadService {
     private let previewCompression: CGFloat = 0.6
     private let thumbnailMaxDimension: CGFloat = 600
     private let thumbnailCompression: CGFloat = 0.55
+    private let maxConcurrentImageUploads = 3
 
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
 
     func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
-        var uploadedCount = 0
-        var totalUploadedMB: Double = 0
         let preparedImages = await prepareImagesForUpload(images)
+        guard !preparedImages.isEmpty else { return }
 
-        for prepared in preparedImages {
-            let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
-            let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
-
-            let previewURL = try await uploadData(prepared.previewData, at: previewPath)
-            let thumbURL = try await uploadData(prepared.thumbData, at: thumbPath)
-
-            totalUploadedMB += prepared.sizeMB
-            uploadedCount += 1
-
-            let payload = Self.makePhotoPayload(
-                previewURL: previewURL,
-                thumbURL: thumbURL,
-                groupID: groupID,
-                userID: userID,
-                year: year,
-                hashtags: hashtags,
-                prepared: prepared
-            )
-
-            try await addPhotoDocument(payload)
-        }
-
-        if uploadedCount > 0 {
-            try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
-        }
+        let totalUploadedMB = try await uploadPreparedImages(
+            preparedImages,
+            userID: userID,
+            groupID: groupID,
+            year: year,
+            hashtags: hashtags
+        )
+        try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
     }
 
     private func prepareImagesForUpload(_ images: [UIImage]) async -> [PreparedImage] {
+        await withTaskGroup(of: (Int, PreparedImage?).self) { group in
+            for (index, image) in images.enumerated() {
+                group.addTask(priority: .userInitiated) { [self] in
+                    let prepared = await prepareImage(image)
+                    return (index, prepared)
+                }
+            }
+
+            var preparedByIndex: [Int: PreparedImage] = [:]
+            for await (index, prepared) in group {
+                if let prepared {
+                    preparedByIndex[index] = prepared
+                }
+            }
+
+            return preparedByIndex
+                .sorted { $0.key < $1.key }
+                .map(\.value)
+        }
+    }
+
+    private func prepareImage(_ image: UIImage) async -> PreparedImage? {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                let prepared: [PreparedImage] = images.compactMap { image in
-                    let id = UUID().uuidString
+                let id = UUID().uuidString
 
-                    guard
-                        let previewData = self.resizedJPEGData(
-                            from: image,
-                            maxDimension: self.previewMaxDimension,
-                            compression: self.previewCompression
-                        ),
-                        let thumbData = self.resizedJPEGData(
-                            from: image,
-                            maxDimension: self.thumbnailMaxDimension,
-                            compression: self.thumbnailCompression
-                        )
-                    else {
-                        return nil
-                    }
-
-                    let sizeMB = Double(previewData.count + thumbData.count) / 1024.0 / 1024.0
-                    return PreparedImage(
-                        id: id,
-                        previewData: previewData,
-                        thumbData: thumbData,
-                        aspectRatio: Self.aspectRatio(for: image.size),
-                        sizeMB: sizeMB
+                guard
+                    let previewData = self.resizedJPEGData(
+                        from: image,
+                        maxDimension: self.previewMaxDimension,
+                        compression: self.previewCompression
+                    ),
+                    let thumbData = self.resizedJPEGData(
+                        from: image,
+                        maxDimension: self.thumbnailMaxDimension,
+                        compression: self.thumbnailCompression
                     )
+                else {
+                    continuation.resume(returning: nil)
+                    return
                 }
 
-                continuation.resume(returning: prepared)
+                let sizeMB = Double(previewData.count + thumbData.count) / 1024.0 / 1024.0
+                continuation.resume(returning: PreparedImage(
+                    id: id,
+                    previewData: previewData,
+                    thumbData: thumbData,
+                    aspectRatio: Self.aspectRatio(for: image.size),
+                    sizeMB: sizeMB
+                ))
             }
         }
+    }
+
+    private func uploadPreparedImages(
+        _ preparedImages: [PreparedImage],
+        userID: String,
+        groupID: String,
+        year: Int,
+        hashtags: [String]
+    ) async throws -> Double {
+        var iterator = preparedImages.makeIterator()
+
+        return try await withThrowingTaskGroup(of: Double.self) { group in
+            for _ in 0..<min(maxConcurrentImageUploads, preparedImages.count) {
+                guard let prepared = iterator.next() else { break }
+                group.addTask { [self] in
+                    try await uploadPreparedImage(
+                        prepared,
+                        userID: userID,
+                        groupID: groupID,
+                        year: year,
+                        hashtags: hashtags
+                    )
+                }
+            }
+
+            var totalUploadedMB = 0.0
+
+            while let uploadedMB = try await group.next() {
+                totalUploadedMB += uploadedMB
+
+                if let prepared = iterator.next() {
+                    group.addTask { [self] in
+                        try await uploadPreparedImage(
+                            prepared,
+                            userID: userID,
+                            groupID: groupID,
+                            year: year,
+                            hashtags: hashtags
+                        )
+                    }
+                }
+            }
+
+            return totalUploadedMB
+        }
+    }
+
+    private func uploadPreparedImage(
+        _ prepared: PreparedImage,
+        userID: String,
+        groupID: String,
+        year: Int,
+        hashtags: [String]
+    ) async throws -> Double {
+        let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
+        let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
+
+        async let previewURLTask = uploadData(prepared.previewData, at: previewPath)
+        async let thumbURLTask = uploadData(prepared.thumbData, at: thumbPath)
+
+        let previewURL = try await previewURLTask
+        let thumbURL = try await thumbURLTask
+
+        let payload = Self.makePhotoPayload(
+            previewURL: previewURL,
+            thumbURL: thumbURL,
+            groupID: groupID,
+            userID: userID,
+            year: year,
+            hashtags: hashtags,
+            prepared: prepared
+        )
+
+        try await addPhotoDocument(payload)
+        return prepared.sizeMB
     }
 
     private func resizedJPEGData(from image: UIImage, maxDimension: CGFloat, compression: CGFloat) -> Data? {
@@ -196,7 +272,7 @@ final class UploadService {
     }
 }
 
-struct PreparedImage {
+struct PreparedImage: Sendable {
     let id: String
     let previewData: Data
     let thumbData: Data
