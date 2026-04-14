@@ -16,8 +16,9 @@ struct PhotoTileView: View {
 
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
+        let imageURL = URL(string: photo.thumbnailURL ?? photo.photoURL ?? "")
 
-        AsyncImage(url: URL(string: photo.thumbnailURL ?? photo.photoURL ?? "")) { image in
+        CachedRemoteImageView(url: imageURL) { image in
             image
                 .resizable()
                 .scaledToFill()

@@ -6,8 +6,10 @@ struct PhotoPreviewOverlayView: View {
     let photo: FeedPhoto
 
     var body: some View {
+        let imageURL = URL(string: photo.photoURL ?? photo.thumbnailURL ?? "")
+
         VStack(alignment: .leading, spacing: 12) {
-            AsyncImage(url: URL(string: photo.photoURL ?? photo.thumbnailURL ?? "")) { image in
+            CachedRemoteImageView(url: imageURL) { image in
                 image
                     .resizable()
                     .scaledToFit()
