@@ -247,7 +247,7 @@ extension AppMessage.ID {
         case .selectGroup:
             return "Select a group"
         case .subscriptionCancelled:
-            return "Subscription cancelled"
+            return "Automatic renewal cancelled"
         case .subscriptionResumed:
             return "Subscription resumed"
         case .subscriptionUnavailable:
