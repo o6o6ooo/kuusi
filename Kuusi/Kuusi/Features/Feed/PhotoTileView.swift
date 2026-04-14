@@ -107,15 +107,6 @@ struct PhotoTileView: View {
     @ViewBuilder
     private var statusBadge: some View {
         VStack(alignment: .trailing, spacing: 8) {
-            if isExpanded {
-                Text("Preview")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.black.opacity(0.42), in: Capsule())
-            }
-
             if photo.isFavourite {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 17, weight: .bold))
@@ -132,12 +123,6 @@ struct PhotoTileView: View {
                 Text(photo.year.map(String.init) ?? "Shared memory")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
             }
 
             if !photo.hashtags.isEmpty {
