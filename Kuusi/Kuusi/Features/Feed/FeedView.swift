@@ -14,7 +14,6 @@ private extension FeedServiceError {
 
 @MainActor
 struct FeedView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var photoCollection = PhotoCollectionViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -72,11 +71,41 @@ struct FeedView: View {
                 ZStack(alignment: .top) {
                     content(for: proxy)
 
-                    topChrome(topInset: proxy.safeAreaInsets.top)
+                    FeedTopChromeView(
+                        groupName: currentGroupName,
+                        subtitle: feedSubtitle,
+                        hasGroups: !photoCollection.groups.isEmpty,
+                        profileIcon: profileViewModel.icon,
+                        profileBackgroundColour: profileViewModel.bgColour,
+                        isFavouritesFilterEnabled: isFavouritesFilterEnabled,
+                        topInset: proxy.safeAreaInsets.top,
+                        onUpload: {
+                            isUploadOverlayPresented = true
+                        },
+                        onToggleFavourites: {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                                isFavouritesFilterEnabled.toggle()
+                            }
+                        },
+                        onOpenSettings: {
+                            isSettingsPresented = true
+                        }
+                    )
 
                     VStack {
                         Spacer()
-                        bottomChrome
+                        FeedBottomChromeView(
+                            groups: photoCollection.groups,
+                            availableHashtags: availableHashtags,
+                            selectedHashtag: $selectedHashtag,
+                            isHashtagBarExpanded: $isHashtagBarExpanded,
+                            onSelectGroup: { groupID in
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                                    selectedHashtag = nil
+                                    photoCollection.selectGroup(groupID, limit: 6)
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -255,325 +284,6 @@ struct FeedView: View {
         }
     }
 
-    private func topChrome(topInset: CGFloat) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(currentGroupName)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(feedChromePrimaryColor)
-                    .shadow(color: feedChromeShadowColor, radius: 10, x: 0, y: 4)
-                    .lineLimit(1)
-                Text(feedSubtitle)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(feedChromeSecondaryColor)
-                    .shadow(color: feedChromeShadowColor.opacity(0.85), radius: 8, x: 0, y: 3)
-            }
-
-            Spacer(minLength: 12)
-
-            HStack(spacing: 10) {
-                if !photoCollection.groups.isEmpty {
-                    roundChromeButton(
-                        systemName: "plus",
-                        isSelected: false,
-                        foregroundColor: feedChromePrimaryColor,
-                        accessibilityIdentifier: "feed-upload-button"
-                    ) {
-                        isUploadOverlayPresented = true
-                    }
-
-                    roundChromeButton(
-                        systemName: isFavouritesFilterEnabled ? "heart.fill" : "heart",
-                        isSelected: isFavouritesFilterEnabled,
-                        foregroundColor: feedChromePrimaryColor,
-                        selectedForegroundColor: Color.accentColor,
-                        accessibilityIdentifier: "feed-favourites-filter-button"
-                    ) {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                            isFavouritesFilterEnabled.toggle()
-                        }
-                    }
-                }
-
-                Button {
-                    isSettingsPresented = true
-                } label: {
-                    avatarBadge
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("feed-settings-button")
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, max(0, topInset - 60))
-    }
-
-    private var bottomChrome: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            if !photoCollection.groups.isEmpty {
-                Menu {
-                    ForEach(photoCollection.groups) { group in
-                        Button(group.name) {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                                selectedHashtag = nil
-                                photoCollection.selectGroup(group.id, limit: 6)
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(feedChromePrimaryColor)
-                        .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                        .frame(width: 54, height: 54)
-                        .background(glassCircleBackground)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("feed-group-button")
-            }
-
-            Spacer(minLength: 0)
-
-            if !availableHashtags.isEmpty {
-                hashtagBar
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 10)
-        .padding(.bottom, 0)
-        .background(.clear)
-    }
-
-    private var hashtagBar: some View {
-        HStack(spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                    isHashtagBarExpanded.toggle()
-                }
-            } label: {
-                Image(systemName: "number")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(feedChromePrimaryColor)
-                    .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                    .frame(width: 54, height: 54)
-                    .background(glassCircleBackground)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("feed-hashtag-toggle-button")
-
-            if isHashtagBarExpanded {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        hashtagChip(
-                            title: "All",
-                            isSelected: selectedHashtag == nil,
-                            action: { selectedHashtag = nil }
-                        )
-
-                        ForEach(availableHashtags, id: \.self) { hashtag in
-                            hashtagChip(
-                                title: "#\(hashtag)",
-                                isSelected: selectedHashtag == hashtag,
-                                action: { selectedHashtag = hashtag }
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .frame(height: 54)
-                .frame(maxWidth: 280)
-                .padding(.horizontal, 6)
-                .background(glassPillBackground)
-            }
-        }
-    }
-
-    private func hashtagChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(feedChromePrimaryColor)
-                .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                .lineLimit(1)
-                .padding(.horizontal, 14)
-                .frame(height: 38)
-                .background(
-                    Capsule()
-                        .fill(
-                            isSelected
-                                ? AnyShapeStyle(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                : AnyShapeStyle(Color.clear)
-                        )
-                )
-                .overlay {
-                    Capsule()
-                        .strokeBorder(
-                            isSelected
-                                ? Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22)
-                                : Color.clear,
-                            lineWidth: isSelected ? 0.8 : 0
-                        )
-                }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func roundChromeButton(
-        systemName: String,
-        isSelected: Bool,
-        foregroundColor: Color,
-        selectedForegroundColor: Color? = nil,
-        accessibilityIdentifier: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isSelected ? (selectedForegroundColor ?? Color.clear) : Color.clear)
-                .overlay {
-                    if isSelected, let selectedForegroundColor {
-                        Image(systemName: systemName)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(selectedForegroundColor)
-                    } else {
-                        Image(systemName: systemName)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(foregroundColor)
-                    }
-                }
-                .shadow(color: feedChromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                .frame(width: 54, height: 54)
-                .background(glassCircleBackground(isSelected: isSelected))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityIdentifier)
-    }
-
-    private var avatarBadge: some View {
-        ZStack {
-            Circle()
-                .fill(Color(hex: profileViewModel.bgColour))
-
-            Text(profileViewModel.icon)
-                .font(.system(size: 26))
-        }
-        .frame(width: 54, height: 54)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
-    }
-
-    private var glassCircleBackground: some View {
-        glassCircleBackground(isSelected: false)
-    }
-
-    private func glassCircleBackground(isSelected: Bool) -> some View {
-        let shape = Circle()
-
-        return ZStack {
-            Color.clear
-                .background(.ultraThinMaterial, in: shape)
-
-            shape
-                .fill(
-                    LinearGradient(
-                        colors: isSelected
-                            ? [
-                                Color.white.opacity(colorScheme == .dark ? 0.10 : 0.12),
-                                Color.black.opacity(colorScheme == .dark ? 0.12 : 0.08)
-                            ]
-                            : [
-                                Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
-                                Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
-                            ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            shape
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.22 : 0.26),
-                            Color.white.opacity(0.04),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.9
-                )
-
-            shape
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
-                    lineWidth: 0.6
-                )
-        }
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
-    }
-
-    private var glassPillBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 27, style: .continuous)
-
-        return ZStack {
-            Color.clear
-                .background(.ultraThinMaterial, in: shape)
-
-            shape
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.04 : 0.05),
-                            Color.black.opacity(colorScheme == .dark ? 0.10 : 0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-
-            shape
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                            Color.white.opacity(0.04),
-                            .clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.9
-                )
-
-            shape
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.1),
-                    lineWidth: 0.6
-                )
-        }
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.14 : 0.05),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
-    }
-
     private var feedSubtitle: String {
         if isFavouritesFilterEnabled, let selectedHashtag {
             return "Favourites in #\(selectedHashtag)"
@@ -585,18 +295,6 @@ struct FeedView: View {
             return "#\(selectedHashtag)"
         }
         return "\(currentGroupPhotos.count) photos"
-    }
-
-    private var feedChromePrimaryColor: Color {
-        Color.white.opacity(0.94)
-    }
-
-    private var feedChromeSecondaryColor: Color {
-        Color.white.opacity(0.72)
-    }
-
-    private var feedChromeShadowColor: Color {
-        Color.black.opacity(colorScheme == .dark ? 0.38 : 0.22)
     }
 
     private var emptyStateTitle: String {
