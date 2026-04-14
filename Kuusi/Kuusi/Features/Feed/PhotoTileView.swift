@@ -108,14 +108,14 @@ struct PhotoTileView: View {
     var body: some View {
         let ratio = max(displayAspectRatio, 0.35)
         let collapsedHeight = width / ratio
-        let expandedHeight = min(max(collapsedHeight * 1.58, width * 1.05), width * 2.1)
+        let expandedHeight = width / ratio
         let imageURL = URL(string: isExpanded ? (photo.photoURL ?? photo.thumbnailURL ?? "") : (photo.thumbnailURL ?? photo.photoURL ?? ""))
 
         VStack(alignment: .leading, spacing: 0) {
             CachedRemoteImageView(url: imageURL) { image in
                 image
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
             } placeholder: {
                 Rectangle()
                     .fill(Color.gray.opacity(colorScheme == .dark ? 0.25 : 0.15))
