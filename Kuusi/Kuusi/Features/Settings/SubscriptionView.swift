@@ -34,11 +34,9 @@ struct SubscriptionView: View {
 
     let usageMB: Double
 
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
     private var fieldBackground: Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
     }
-    private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
     private var currentPlan: AppPlan { subscriptionStore.isPremiumActive ? .premium : .free }
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
     private var premiumRenewalText: String? {
@@ -105,12 +103,7 @@ struct SubscriptionView: View {
                 .frame(height: 22)
             }
             .padding(14)
-            .background(cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(cardBorder, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .appCardSurface(cornerRadius: 16)
         }
     }
 
@@ -311,12 +304,7 @@ struct SubscriptionView: View {
         .padding(18)
         .frame(width: planCardWidth, alignment: .topLeading)
         .frame(minHeight: 160, alignment: .topLeading)
-        .background(cardBackground)
-        .overlay {
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(cardBorder, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .appCardSurface(cornerRadius: 24)
         .contentShape(RoundedRectangle(cornerRadius: 24))
     }
 }

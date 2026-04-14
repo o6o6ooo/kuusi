@@ -2,15 +2,11 @@ import FirebaseAuth
 import SwiftUI
 
 struct GroupsSectionView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var viewModel: SettingsGroupsViewModel
 
     @State private var appAlert: AppAlert?
     @State private var pendingCreateGroupName = ""
     @State private var pendingRenameGroupName = ""
-
-    private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
-    private var cardBorder: Color { AppTheme.cardBorder(for: colorScheme) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -87,12 +83,7 @@ struct GroupsSectionView: View {
         }
         .padding(16)
         .frame(width: 168, height: 120, alignment: .topLeading)
-        .background(cardBackground)
-        .overlay {
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(cardBorder, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .appCardSurface(cornerRadius: 22)
     }
 
     private func memberStack(for group: GroupSummary) -> some View {

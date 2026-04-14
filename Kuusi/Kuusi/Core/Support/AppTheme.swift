@@ -31,6 +31,22 @@ struct AppTheme {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06)
     }
 
+    static func cardSurfaceBackground(for colorScheme: ColorScheme) -> Color {
+        pageBackground(for: colorScheme).opacity(0.7)
+    }
+
+    static func cardSurfaceBorder(for colorScheme: ColorScheme) -> Color {
+        cardBackground(for: colorScheme)
+    }
+
+    static func cardSurfaceShadow(for colorScheme: ColorScheme) -> Color {
+        Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08)
+    }
+
+    static func cardSurfaceShadowRadius(for colorScheme: ColorScheme) -> CGFloat {
+        colorScheme == .dark ? 10 : 14
+    }
+
     static let errorText = Color(hex: "#CE0000")
 }
 
@@ -129,6 +145,28 @@ private struct FeedChromeSecondaryModifier: ViewModifier {
     }
 }
 
+private struct CardSurfaceModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background(AppTheme.cardSurfaceBackground(for: colorScheme))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(AppTheme.cardSurfaceBorder(for: colorScheme), lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(
+                color: AppTheme.cardSurfaceShadow(for: colorScheme),
+                radius: AppTheme.cardSurfaceShadowRadius(for: colorScheme),
+                x: 0,
+                y: 4
+            )
+    }
+}
+
 extension View {
     func screenTheme() -> some View {
         modifier(ScreenThemeModifier())
@@ -152,6 +190,10 @@ extension View {
 
     func appFeedChromeSecondaryStyle() -> some View {
         modifier(FeedChromeSecondaryModifier())
+    }
+
+    func appCardSurface(cornerRadius: CGFloat) -> some View {
+        modifier(CardSurfaceModifier(cornerRadius: cornerRadius))
     }
 
     func appTextLinkStyle() -> some View {

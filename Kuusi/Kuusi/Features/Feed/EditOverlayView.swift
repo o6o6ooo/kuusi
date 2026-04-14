@@ -28,10 +28,9 @@ struct EditOverlayView: View {
     }
 
     private var surfaceBackground: Color {
-        AppTheme.pageBackground(for: colorScheme)
-            .opacity(0.7)
+        AppTheme.cardSurfaceBackground(for: colorScheme)
     }
-    private var surfaceBorder: Color { AppTheme.cardBackground(for: colorScheme) }
+    private var surfaceBorder: Color { AppTheme.cardSurfaceBorder(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var yearOptions: [Int] {
         Array(2000...Calendar.current.component(.year, from: Date()))
