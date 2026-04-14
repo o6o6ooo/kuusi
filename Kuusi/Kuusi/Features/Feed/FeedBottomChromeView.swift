@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FeedBottomChromeView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Namespace private var hashtagSelectionNamespace
 
     let groups: [GroupSummary]
     let availableHashtags: [String]
@@ -97,10 +98,10 @@ struct FeedBottomChromeView: View {
                 .padding(.horizontal, 14)
                 .frame(height: 36)
                 .background(
-                    Capsule()
-                        .fill(
-                            isSelected
-                                ? AnyShapeStyle(
+                    ZStack {
+                        if isSelected {
+                            Capsule()
+                                .fill(
                                     LinearGradient(
                                         colors: [
                                             Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
@@ -110,20 +111,25 @@ struct FeedBottomChromeView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                : AnyShapeStyle(Color.clear)
-                        )
+                                .matchedGeometryEffect(id: "selectedHashtagChip", in: hashtagSelectionNamespace)
+                        }
+                    }
                 )
                 .overlay {
-                    Capsule()
-                        .strokeBorder(
-                            isSelected
-                                ? Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22)
-                                : Color.clear,
-                            lineWidth: isSelected ? 0.8 : 0
-                        )
+                    ZStack {
+                        if isSelected {
+                            Capsule()
+                                .strokeBorder(
+                                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
+                                    lineWidth: 0.8
+                                )
+                                .matchedGeometryEffect(id: "selectedHashtagChipStroke", in: hashtagSelectionNamespace)
+                        }
+                    }
                 }
         }
         .buttonStyle(.plain)
+				.animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
     }
 
     private var glassCircleBackground: some View {
