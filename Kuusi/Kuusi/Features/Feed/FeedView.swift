@@ -22,7 +22,7 @@ struct FeedView: View {
     @State private var isSettingsPresented = false
     @State private var isHashtagBarExpanded = false
     @State private var isFavouritesFilterEnabled = false
-    @State private var selectedPhoto: FeedPhoto?
+    @State private var selectedPhotoID: String?
     @State private var feedMessage: AppMessage?
     @State private var deletingPhotoIDs: Set<String> = []
     @State private var favouritingPhotoIDs: Set<String> = []
@@ -149,17 +149,16 @@ struct FeedView: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
-            .sheet(item: $selectedPhoto) { photo in
-                PhotoPreviewOverlayView(photo: photo)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
             .sheet(item: $editingPhoto) { photo in
                 EditOverlayView(photo: photo) { year, hashtags in
                     await savePhotoEdits(photo: photo, year: year, hashtags: hashtags)
                 }
                 .presentationDetents([.height(330)])
                 .presentationDragIndicator(.visible)
+            }
+            .onChange(of: displayedPhotos.map(\.id)) { _, ids in
+                guard let selectedPhotoID, !ids.contains(selectedPhotoID) else { return }
+                self.selectedPhotoID = nil
             }
             .appAlert($appAlert)
             .onDisappear {
@@ -205,12 +204,18 @@ struct FeedView: View {
             PhotoGridView(
                 photos: displayedPhotos,
                 availableWidth: proxy.size.width,
-                onTap: { selectedPhoto = $0 }
-            ) { photo, columnWidth, displayAspectRatio, onTap in
+                expandedPhotoID: selectedPhotoID,
+                onTap: { photo in
+                    withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
+                        selectedPhotoID = selectedPhotoID == photo.id ? nil : photo.id
+                    }
+                }
+            ) { photo, tileWidth, displayAspectRatio, isExpanded, onTap in
                 PhotoTileView(
                     photo: photo,
-                    width: columnWidth,
+                    width: tileWidth,
                     displayAspectRatio: displayAspectRatio,
+                    isExpanded: isExpanded,
                     onTap: onTap,
                     onEdit: { editingPhoto = photo },
                     onDelete: {
@@ -351,8 +356,8 @@ struct FeedView: View {
         do {
             try await feedService.deletePhoto(photo, requesterUID: uid)
             photoCollection.removePhoto(id: photo.id)
-            if selectedPhoto?.id == photo.id {
-                selectedPhoto = nil
+            if selectedPhotoID == photo.id {
+                selectedPhotoID = nil
             }
             feedMessage = AppMessage(.photoDeleted, .success)
         } catch let error as FeedServiceError {
@@ -403,9 +408,6 @@ struct FeedView: View {
             try await feedService.updatePhotoMetadata(photo, requesterUID: uid, year: year, hashtags: hashtags)
             let updated = photo.withMetadata(year: year, hashtags: hashtags)
             photoCollection.replacePhoto(updated)
-            if selectedPhoto?.id == photo.id {
-                selectedPhoto = updated
-            }
             feedMessage = AppMessage(.photoUpdated, .success)
             editingPhoto = nil
             return .success(())

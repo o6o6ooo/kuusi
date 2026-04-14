@@ -1,10 +1,89 @@
 import SwiftUI
 
+private struct MasonryExpandedKey: LayoutValueKey {
+    nonisolated static let defaultValue = false
+}
+
+private struct MasonryGridLayout: Layout {
+    let columnCount: Int
+    let spacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let width = proposal.width ?? 0
+        let frames = makeFrames(for: subviews, width: width)
+        let height = frames.map(\.maxY).max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let frames = makeFrames(for: subviews, width: bounds.width)
+
+        for (index, subview) in subviews.enumerated() {
+            guard index < frames.count else { continue }
+            let frame = frames[index]
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                proposal: ProposedViewSize(width: frame.width, height: frame.height)
+            )
+        }
+    }
+
+    private func makeFrames(for subviews: Subviews, width: CGFloat) -> [CGRect] {
+        guard columnCount > 0, width > 0 else {
+            return Array(repeating: .zero, count: subviews.count)
+        }
+
+        let totalSpacing = spacing * CGFloat(columnCount - 1)
+        let columnWidth = max(80, (width - totalSpacing) / CGFloat(columnCount))
+        let fullWidth = columnWidth * CGFloat(columnCount) + totalSpacing
+
+        var frames: [CGRect] = []
+        frames.reserveCapacity(subviews.count)
+
+        var columnHeights = Array(repeating: CGFloat.zero, count: columnCount)
+
+        for subview in subviews {
+            let isExpanded = subview[MasonryExpandedKey.self]
+
+            if isExpanded {
+                let y = columnHeights.max() ?? 0
+                let size = subview.sizeThatFits(.init(width: fullWidth, height: nil))
+                let height = size.height
+                frames.append(CGRect(x: 0, y: y, width: fullWidth, height: height))
+                let nextY = y + height + spacing
+                for index in columnHeights.indices {
+                    columnHeights[index] = nextY
+                }
+            } else {
+                let columnIndex = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
+                let x = CGFloat(columnIndex) * (columnWidth + spacing)
+                let y = columnHeights[columnIndex]
+                let size = subview.sizeThatFits(.init(width: columnWidth, height: nil))
+                let height = size.height
+                frames.append(CGRect(x: x, y: y, width: columnWidth, height: height))
+                columnHeights[columnIndex] = y + height + spacing
+            }
+        }
+
+        return frames
+    }
+}
+
 struct PhotoGridView<Tile: View, Footer: View>: View {
     let photos: [FeedPhoto]
     let availableWidth: CGFloat
+    let expandedPhotoID: String?
     let onTap: (FeedPhoto) -> Void
-    let tile: (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile
+    let tile: (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
     let footer: () -> Footer
 
     private let spacing: CGFloat = 8
@@ -13,12 +92,14 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
+        expandedPhotoID: String? = nil,
         onTap: @escaping (FeedPhoto) -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile,
+        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
         @ViewBuilder footer: @escaping () -> Footer
     ) {
         self.photos = photos
         self.availableWidth = availableWidth
+        self.expandedPhotoID = expandedPhotoID
         self.onTap = onTap
         self.tile = tile
         self.footer = footer
@@ -29,26 +110,20 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
         let totalSpacing = spacing * CGFloat(columnCount - 1)
         let contentWidth = availableWidth - (horizontalPadding * 2)
         let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
-        let columns = makeWaterfallColumns(
-            photos: photos,
-            columnCount: columnCount,
-            columnWidth: columnWidth
-        )
 
         ScrollView {
-            HStack(alignment: .top, spacing: spacing) {
-                ForEach(0..<columnCount, id: \.self) { columnIndex in
-                    LazyVStack(spacing: spacing) {
-                        ForEach(columns[columnIndex]) { photo in
-                            let onPhotoTap = { onTap(photo) }
-                            tile(
-                                photo,
-                                columnWidth,
-                                displayAspectRatio(for: photo),
-                                onPhotoTap
-                            )
-                        }
-                    }
+            MasonryGridLayout(columnCount: columnCount, spacing: spacing) {
+                ForEach(photos) { photo in
+                    let isExpanded = expandedPhotoID == photo.id
+                    let onPhotoTap = { onTap(photo) }
+                    tile(
+                        photo,
+                        isExpanded ? contentWidth : columnWidth,
+                        displayAspectRatio(for: photo),
+                        isExpanded,
+                        onPhotoTap
+                    )
+                    .layoutValue(key: MasonryExpandedKey.self, value: isExpanded)
                 }
             }
             .padding(.horizontal, horizontalPadding)
@@ -62,39 +137,20 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
     private func displayAspectRatio(for photo: FeedPhoto) -> CGFloat {
         CGFloat(photo.aspectRatio ?? 1.0)
     }
-
-    private func makeWaterfallColumns(
-        photos: [FeedPhoto],
-        columnCount: Int,
-        columnWidth: CGFloat
-    ) -> [[FeedPhoto]] {
-        guard columnCount > 0 else { return [] }
-
-        var columns = Array(repeating: [FeedPhoto](), count: columnCount)
-        var heights = Array(repeating: CGFloat.zero, count: columnCount)
-
-        for photo in photos {
-            let ratio = max(displayAspectRatio(for: photo), 0.35)
-            let tileHeight = columnWidth / ratio
-            let shortest = heights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-            columns[shortest].append(photo)
-            heights[shortest] += tileHeight + spacing
-        }
-
-        return columns
-    }
 }
 
 extension PhotoGridView where Footer == EmptyView {
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
+        expandedPhotoID: String? = nil,
         onTap: @escaping (FeedPhoto) -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, @escaping () -> Void) -> Tile
+        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
     ) {
         self.init(
             photos: photos,
             availableWidth: availableWidth,
+            expandedPhotoID: expandedPhotoID,
             onTap: onTap,
             tile: tile,
             footer: { EmptyView() }
