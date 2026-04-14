@@ -14,6 +14,8 @@ struct EditOverlayView: View {
     @State private var yearText: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
+    @State private var isYearPickerPresented = false
+    @State private var yearSelection = Calendar.current.component(.year, from: Date())
     @State private var toastMessage: AppMessage?
     @State private var isSaving = false
     @State private var clearToastTask: Task<Void, Never>?
@@ -31,6 +33,15 @@ struct EditOverlayView: View {
     }
     private var surfaceBorder: Color { AppTheme.cardBackground(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
+    private var yearOptions: [Int] {
+        Array(2000...Calendar.current.component(.year, from: Date()))
+    }
+    private var parsedYear: Int? {
+        Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+    private var selectedYearLabel: String {
+        parsedYear.map(String.init) ?? "year"
+    }
 
     var body: some View {
         NavigationStack {
@@ -79,6 +90,9 @@ struct EditOverlayView: View {
             .padding(16)
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
+            .onChange(of: yearSelection) { _, newValue in
+                yearText = String(newValue)
+            }
             .onDisappear {
                 clearToastTask?.cancel()
                 clearToastTask = nil
@@ -87,6 +101,14 @@ struct EditOverlayView: View {
                 toastMessage = nil
             }
             .appToastHost()
+            .sheet(isPresented: $isYearPickerPresented) {
+                YearWheelPickerSheet(
+                    years: yearOptions,
+                    selectedYear: $yearSelection
+                )
+                .presentationDetents([.height(300)])
+                .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -113,13 +135,20 @@ struct EditOverlayView: View {
     }
 
     private var yearField: some View {
-        liftedField {
-            TextField("year", text: $yearText)
-                .keyboardType(.numberPad)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-                .foregroundStyle(primaryText)
+        Button {
+            yearSelection = parsedYear ?? Calendar.current.component(.year, from: Date())
+            isYearPickerPresented = true
+        } label: {
+            liftedField {
+                Text(selectedYearLabel)
+                    .foregroundStyle(parsedYear == nil ? .secondary : primaryText)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
+        .buttonStyle(.plain)
     }
 
     private var hashtagsField: some View {

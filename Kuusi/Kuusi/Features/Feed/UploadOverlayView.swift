@@ -49,6 +49,8 @@ struct UploadOverlayView: View {
     @State private var hashtags: [String] = []
     @State private var isUploading = false
     @State private var isImportingGooglePhotos = false
+    @State private var isYearPickerPresented = false
+    @State private var yearSelection = Calendar.current.component(.year, from: Date())
     @State private var toastMessage: AppMessage?
     @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
@@ -69,6 +71,14 @@ struct UploadOverlayView: View {
     private var selectedGroupName: String {
         guard let selectedGroupID else { return "group" }
         return groups.first(where: { $0.id == selectedGroupID })?.name ?? "group"
+    }
+
+    private var yearOptions: [Int] {
+        Array(2000...Calendar.current.component(.year, from: Date()))
+    }
+
+    private var selectedYearLabel: String {
+        parsedYear.map(String.init) ?? "year"
     }
 
     private var parsedYear: Int? {
@@ -158,6 +168,9 @@ struct UploadOverlayView: View {
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }
             }
+            .onChange(of: yearSelection) { _, newValue in
+                yearText = String(newValue)
+            }
             .onChange(of: toastMessage) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
@@ -173,6 +186,14 @@ struct UploadOverlayView: View {
             .appToastHost()
             .task {
                 loadCachedGroupsOnly()
+            }
+            .sheet(isPresented: $isYearPickerPresented) {
+                YearWheelPickerSheet(
+                    years: yearOptions,
+                    selectedYear: $yearSelection
+                )
+                .presentationDetents([.height(300)])
+                .presentationDragIndicator(.visible)
             }
             .sheet(item: $googlePickerSession) { session in
                 SafariSheetView(url: session.pickerURL)
@@ -324,24 +345,20 @@ struct UploadOverlayView: View {
     }
 
     private var yearField: some View {
-        TextField("year", text: $yearText)
-            .keyboardType(.numberPad)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled(true)
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(surfaceBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(surfaceBorder, lineWidth: 1)
+        Button {
+            yearSelection = parsedYear ?? Calendar.current.component(.year, from: Date())
+            isYearPickerPresented = true
+        } label: {
+            liftedField {
+                Text(selectedYearLabel)
+                    .foregroundStyle(parsedYear == nil ? .secondary : primaryText)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-                radius: colorScheme == .dark ? 10 : 14,
-                x: 0,
-                y: 4
-            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var hashtagsField: some View {
