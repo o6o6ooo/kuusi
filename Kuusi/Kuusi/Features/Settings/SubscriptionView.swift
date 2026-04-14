@@ -52,7 +52,10 @@ struct SubscriptionView: View {
         "\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
     }
     private var planCardWidth: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 240 : 200
+        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+    }
+    private var planCardHeight: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
     }
     @State private var billingMessage: AppMessage?
     @State private var clearBillingMessageTask: Task<Void, Never>?
@@ -351,24 +354,24 @@ struct SubscriptionView: View {
                 }
             }
 
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 6) {
+                if let footerText {
+                    Text(footerText)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
+                }
 
-            if let footerText {
-                Text(footerText)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
-            }
-
-            if let footerActionTitle, let action {
-                Button(footerActionTitle, action: action)
-                    .buttonStyle(.plain)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(Color.accentColor)
+                if let footerActionTitle, let action {
+                    Button(footerActionTitle, action: action)
+                        .buttonStyle(.plain)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Color.accentColor)
+                }
             }
         }
         .padding(18)
         .frame(width: planCardWidth, alignment: .topLeading)
-        .frame(minHeight: 160, alignment: .topLeading)
+        .frame(height: planCardHeight, alignment: .topLeading)
         .appCardSurface(cornerRadius: 24, shadowRadius: 8)
         .contentShape(RoundedRectangle(cornerRadius: 24))
     }
