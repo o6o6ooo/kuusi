@@ -230,12 +230,6 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
     var fetchCalls: [FetchCall] = []
     private var batchFetchCountByGroupID: [String: Int] = [:]
 
-    func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int) async throws -> [FeedPhoto] {
-        fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit))
-        guard let groupID = groupIDs.first else { return [] }
-        return photosByGroupID[groupID] ?? []
-    }
-
     func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int) async throws -> RecentPhotoFetchResult {
         fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit))
         guard let groupID = groupIDs.first else {

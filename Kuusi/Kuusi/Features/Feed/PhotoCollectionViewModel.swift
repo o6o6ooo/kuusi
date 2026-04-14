@@ -3,7 +3,6 @@ import FirebaseAuth
 import SwiftUI
 
 protocol PhotoCollectionFeedServicing {
-    func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int) async throws -> [FeedPhoto]
     func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int) async throws -> RecentPhotoFetchResult
 }
 

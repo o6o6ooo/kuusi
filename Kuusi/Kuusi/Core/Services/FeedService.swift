@@ -16,11 +16,6 @@ final class FeedService {
     private let favouritesField = "favourites"
     private let photoDeletionService = PhotoDeletionService()
 
-    func fetchRecentPhotos(userID: String, groupIDs: [String], limit: Int = 15) async throws -> [FeedPhoto] {
-        let result = try await fetchRecentPhotoBatch(userID: userID, groupIDs: groupIDs, limit: limit)
-        return result.photos
-    }
-
     func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int = 15) async throws -> RecentPhotoFetchResult {
         let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
         guard !visibleGroupIDs.isEmpty else {
