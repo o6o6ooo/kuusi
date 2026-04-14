@@ -103,7 +103,7 @@ struct SubscriptionView: View {
                 .frame(height: 22)
             }
             .padding(14)
-            .appCardSurface(cornerRadius: 16)
+            .appCardSurface(cornerRadius: 16, shadowRadius: 8)
         }
     }
 
@@ -304,7 +304,7 @@ struct SubscriptionView: View {
         .padding(18)
         .frame(width: planCardWidth, alignment: .topLeading)
         .frame(minHeight: 160, alignment: .topLeading)
-        .appCardSurface(cornerRadius: 24)
+        .appCardSurface(cornerRadius: 24, shadowRadius: 8)
         .contentShape(RoundedRectangle(cornerRadius: 24))
     }
 }

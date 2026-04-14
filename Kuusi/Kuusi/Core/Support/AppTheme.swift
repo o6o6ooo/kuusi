@@ -149,8 +149,16 @@ private struct CardSurfaceModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
     let cornerRadius: CGFloat
+    let shadowRadius: CGFloat?
+    let shadowYOffset: CGFloat
+    let shadowOpacityMultiplier: Double
 
     func body(content: Content) -> some View {
+        let baseShadowRadius = AppTheme.cardSurfaceShadowRadius(for: colorScheme)
+        let appliedShadowRadius = shadowRadius ?? baseShadowRadius
+        let appliedShadowColor = AppTheme.cardSurfaceShadow(for: colorScheme)
+            .opacity(shadowOpacityMultiplier)
+
         content
             .background(AppTheme.cardSurfaceBackground(for: colorScheme))
             .overlay {
@@ -159,10 +167,10 @@ private struct CardSurfaceModifier: ViewModifier {
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(
-                color: AppTheme.cardSurfaceShadow(for: colorScheme),
-                radius: AppTheme.cardSurfaceShadowRadius(for: colorScheme),
+                color: appliedShadowColor,
+                radius: appliedShadowRadius,
                 x: 0,
-                y: 4
+                y: shadowYOffset
             )
     }
 }
@@ -192,8 +200,20 @@ extension View {
         modifier(FeedChromeSecondaryModifier())
     }
 
-    func appCardSurface(cornerRadius: CGFloat) -> some View {
-        modifier(CardSurfaceModifier(cornerRadius: cornerRadius))
+    func appCardSurface(
+        cornerRadius: CGFloat,
+        shadowRadius: CGFloat? = nil,
+        shadowYOffset: CGFloat = 1,
+        shadowOpacityMultiplier: Double = 0.6
+    ) -> some View {
+        modifier(
+            CardSurfaceModifier(
+                cornerRadius: cornerRadius,
+                shadowRadius: shadowRadius,
+                shadowYOffset: shadowYOffset,
+                shadowOpacityMultiplier: shadowOpacityMultiplier
+            )
+        )
     }
 
     func appTextLinkStyle() -> some View {

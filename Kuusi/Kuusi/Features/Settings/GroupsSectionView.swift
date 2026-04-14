@@ -83,7 +83,7 @@ struct GroupsSectionView: View {
         }
         .padding(16)
         .frame(width: 168, height: 120, alignment: .topLeading)
-        .appCardSurface(cornerRadius: 22)
+        .appCardSurface(cornerRadius: 22, shadowRadius: 7, shadowOpacityMultiplier: 0.55)
     }
 
     private func memberStack(for group: GroupSummary) -> some View {
