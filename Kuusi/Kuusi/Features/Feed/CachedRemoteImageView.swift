@@ -44,11 +44,12 @@ extension CachedRemoteImageView where Content == Image, Placeholder == ProgressV
 private final class Loader: ObservableObject {
     @Published private(set) var image: UIImage?
     private var loadedURL: URL?
+    private var loadTask: Task<Void, Never>?
 
     func load(url: URL?) async {
         guard loadedURL != url else { return }
+        loadTask?.cancel()
         loadedURL = url
-        image = nil
 
         guard let url else { return }
 
@@ -57,12 +58,19 @@ private final class Loader: ObservableObject {
             return
         }
 
-        do {
-            let loaded = try await FeedImageCache.shared.loadImage(from: url)
-            image = loaded
-        } catch {
-            return
+        loadTask = Task { [weak self] in
+            do {
+                let loaded = try await FeedImageCache.shared.loadImage(from: url)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    self?.image = loaded
+                }
+            } catch {
+                return
+            }
         }
+
+        await loadTask?.value
     }
 }
 
