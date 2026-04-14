@@ -4,6 +4,7 @@ import Foundation
 enum GroupServiceError: Error {
     case groupNotFound
     case ownerCannotLeave
+    case memberLimitReached(maxMembers: Int)
 }
 
 struct GroupMemberPreview: Identifiable {
@@ -23,6 +24,8 @@ struct GroupSummary: Identifiable {
 }
 
 final class GroupService {
+    static let maxGroupMembers = 50
+
     private let db = Firestore.firestore()
     private let groupMemberPreviewLimit = 3
     private let photoDeletionService = PhotoDeletionService()
@@ -123,6 +126,12 @@ final class GroupService {
                     let groupSnapshot = try transaction.getDocument(groupRef)
                     guard groupSnapshot.exists else {
                         errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
+                        return nil
+                    }
+
+                    let members = (groupSnapshot.data()?["members"] as? [String]) ?? []
+                    if !members.contains(uid), members.count >= Self.maxGroupMembers {
+                        errorPointer?.pointee = GroupServiceError.memberLimitReached(maxMembers: Self.maxGroupMembers) as NSError
                         return nil
                     }
                 } catch {

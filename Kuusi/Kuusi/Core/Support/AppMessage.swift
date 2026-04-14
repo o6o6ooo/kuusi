@@ -56,6 +56,7 @@ struct AppMessage: Equatable {
         case googleAccountConnected
         case googleAccountDisconnected
         case groupNotFound
+        case groupMemberLimitReached(maxMembers: Int)
         case groupCreated
         case groupDeleted
         case ownerCannotLeave
@@ -196,6 +197,8 @@ extension AppMessage.ID {
             return "Google account disconnected"
         case .groupNotFound:
             return "Group not found"
+        case let .groupMemberLimitReached(maxMembers):
+            return "This group is full. Up to \(maxMembers) members are supported"
         case .groupCreated:
             return "Group created"
         case .groupDeleted:

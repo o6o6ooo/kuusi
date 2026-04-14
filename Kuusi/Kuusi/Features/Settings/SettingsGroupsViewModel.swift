@@ -10,6 +10,8 @@ private extension GroupServiceError {
             return .groupNotFound
         case .ownerCannotLeave:
             return .ownerCannotLeave
+        case let .memberLimitReached(maxMembers):
+            return .groupMemberLimitReached(maxMembers: maxMembers)
         }
     }
 }
