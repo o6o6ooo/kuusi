@@ -64,6 +64,10 @@ struct SubscriptionView: View {
     @State private var pendingManageSubscriptionSnapshot: SubscriptionStore.EntitlementSnapshot?
     @State private var pendingManageSubscriptionClearTask: Task<Void, Never>?
 
+    private var isSubscriptionUpdatePending: Bool {
+        pendingManageSubscriptionSnapshot != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             storageCard
@@ -129,6 +133,16 @@ struct SubscriptionView: View {
             Text("Upgrade to premium, cancel anytime.")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
+
+            if isSubscriptionUpdatePending {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Updating subscription...")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
