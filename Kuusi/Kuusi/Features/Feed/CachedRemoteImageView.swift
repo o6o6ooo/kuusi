@@ -4,6 +4,7 @@ import UIKit
 
 struct CachedRemoteImageView<Content: View, Placeholder: View>: View {
     @StateObject private var loader: Loader
+    private let url: URL?
 
     private let content: (Image) -> Content
     private let placeholder: () -> Placeholder
@@ -13,7 +14,8 @@ struct CachedRemoteImageView<Content: View, Placeholder: View>: View {
         @ViewBuilder content: @escaping (Image) -> Content,
         @ViewBuilder placeholder: @escaping () -> Placeholder
     ) {
-        _loader = StateObject(wrappedValue: Loader(url: url))
+        self.url = url
+        _loader = StateObject(wrappedValue: Loader())
         self.content = content
         self.placeholder = placeholder
     }
@@ -26,8 +28,8 @@ struct CachedRemoteImageView<Content: View, Placeholder: View>: View {
                 placeholder()
             }
         }
-        .task {
-            await loader.loadIfNeeded()
+        .task(id: url) {
+            await loader.load(url: url)
         }
     }
 }
@@ -41,17 +43,12 @@ extension CachedRemoteImageView where Content == Image, Placeholder == ProgressV
 @MainActor
 private final class Loader: ObservableObject {
     @Published private(set) var image: UIImage?
+    private var loadedURL: URL?
 
-    private let url: URL?
-    private var didAttemptLoad = false
-
-    init(url: URL?) {
-        self.url = url
-    }
-
-    func loadIfNeeded() async {
-        guard !didAttemptLoad else { return }
-        didAttemptLoad = true
+    func load(url: URL?) async {
+        guard loadedURL != url else { return }
+        loadedURL = url
+        image = nil
 
         guard let url else { return }
 
