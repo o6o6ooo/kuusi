@@ -19,11 +19,11 @@ struct FeedServiceTests {
     }
 
     @Test
-    func presentRecentPhotosMarksFavouritesSortsAndLimits() {
+    func presentRecentPhotosMarksFavouritesAndLimitsPreservingQueryOrder() {
         let photos = [
-            makePhoto(id: "old", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100)),
             makePhoto(id: "new", groupID: "g1", createdAt: Date(timeIntervalSince1970: 300)),
-            makePhoto(id: "mid", groupID: "g1", createdAt: Date(timeIntervalSince1970: 200))
+            makePhoto(id: "mid", groupID: "g1", createdAt: Date(timeIntervalSince1970: 200)),
+            makePhoto(id: "old", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100))
         ]
 
         let result = FeedService.presentRecentPhotos(photos, favouriteIDs: ["mid"], limit: 2)

@@ -41,18 +41,7 @@ struct FeedView: View {
     }
 
     private var availableHashtags: [String] {
-        var seen = Set<String>()
-        var ordered: [String] = []
-        for photo in currentGroupPhotos {
-            for hashtag in photo.hashtags {
-                let trimmed = hashtag.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { continue }
-                let normalized = trimmed.lowercased()
-                guard seen.insert(normalized).inserted else { continue }
-                ordered.append(trimmed)
-            }
-        }
-        return ordered
+        photoCollection.currentGroupAvailableHashtags
     }
 
     private var displayedPhotos: [FeedPhoto] {

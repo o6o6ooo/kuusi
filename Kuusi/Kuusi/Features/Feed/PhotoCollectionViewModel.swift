@@ -64,6 +64,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var groups: [GroupSummary] = []
     @Published var selectedGroupID: String?
     @Published var photosByGroupID: [String: [FeedPhoto]] = [:]
+    @Published private(set) var availableHashtagsByGroupID: [String: [String]] = [:]
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var errorMessageID: AppMessage.ID?
@@ -105,6 +106,14 @@ final class PhotoCollectionViewModel: ObservableObject {
         currentGroupPhotos.map { "\($0.id)-\($0.year ?? 0)" }
     }
 
+    var currentGroupAvailableHashtags: [String] {
+        guard let selectedGroupID else { return [] }
+        if let cached = availableHashtagsByGroupID[selectedGroupID] {
+            return cached
+        }
+        return Self.makeAvailableHashtags(from: currentGroupPhotos)
+    }
+
     var canLoadMoreCurrentGroupPhotos: Bool {
         guard let selectedGroupID else { return false }
         return hasMorePhotosByGroupID[selectedGroupID] ?? false
@@ -130,6 +139,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         groups = cachedGroups
         selectedGroupID = cachedGroups.first?.id
         photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(cachedGroups.map(\.id)))
+        availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
         loadedLimitByGroupID = photosByGroupID.mapValues(\.count)
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
         errorMessageID = nil
@@ -149,6 +159,7 @@ final class PhotoCollectionViewModel: ObservableObject {
             }
             let validGroupIDs = Set(freshGroups.map(\.id))
             photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
+            availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
             loadedLimitByGroupID = loadedLimitByGroupID.filter { validGroupIDs.contains($0.key) }
             hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
             persistCachedPhotos(for: uid)
@@ -176,6 +187,7 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         cachedPhotos[index] = updatedPhoto
         photosByGroupID[selectedGroupID] = cachedPhotos
+        availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
         persistCachedPhotosIfPossible()
     }
 
@@ -185,6 +197,7 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         cachedPhotos.removeAll { $0.id == id }
         photosByGroupID[selectedGroupID] = cachedPhotos
+        availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
         persistCachedPhotosIfPossible()
     }
 
@@ -243,6 +256,7 @@ final class PhotoCollectionViewModel: ObservableObject {
                 limit: limit
             )
             photosByGroupID[selectedGroupID] = result.photos
+            availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: result.photos)
             loadedLimitByGroupID[selectedGroupID] = result.photos.count
             hasMorePhotosByGroupID[selectedGroupID] = result.hasMore
             persistCachedPhotos(for: uid)
@@ -256,6 +270,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         groups = []
         selectedGroupID = nil
         photosByGroupID = [:]
+        availableHashtagsByGroupID = [:]
         loadedLimitByGroupID = [:]
         hasMorePhotosByGroupID = [:]
         errorMessageID = nil
@@ -319,5 +334,22 @@ final class PhotoCollectionViewModel: ObservableObject {
         defer { cacheLock.unlock() }
         photosCacheByUID[uid] = nil
         defaults.removeObject(forKey: photoCacheKey(for: uid))
+    }
+
+    private static func makeAvailableHashtags(from photos: [FeedPhoto]) -> [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+
+        for photo in photos {
+            for hashtag in photo.hashtags {
+                let trimmed = hashtag.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                let normalized = trimmed.lowercased()
+                guard seen.insert(normalized).inserted else { continue }
+                ordered.append(trimmed)
+            }
+        }
+
+        return ordered
     }
 }

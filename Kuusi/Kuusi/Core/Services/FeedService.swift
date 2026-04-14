@@ -27,34 +27,41 @@ final class FeedService {
             return RecentPhotoFetchResult(photos: [], hasMore: false)
         }
         let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
-        let fetchLimit = max(limit + 4, limit)
+        let orderedFetchLimit = max(limit, 1) + 1
 
-        let query = db.collection("photos")
-            .whereField("group_id", in: visibleGroupIDs)
-            .limit(to: fetchLimit)
+        do {
+            let orderedQuery = db.collection("photos")
+                .whereField("group_id", in: visibleGroupIDs)
+                .order(by: "created_at", descending: true)
+                .limit(to: orderedFetchLimit)
 
-        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
-            query.getDocuments { snapshot, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let snapshot else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
-                    return
-                }
-                continuation.resume(returning: snapshot)
+            let snapshot = try await fetchQuery(orderedQuery)
+            let photos = snapshot.documents.map { doc in
+                FeedPhoto(id: doc.documentID, data: doc.data())
             }
-        }
 
-        let photos = snapshot.documents.map { doc in
-            FeedPhoto(id: doc.documentID, data: doc.data())
-        }
+            return RecentPhotoFetchResult(
+                photos: Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit),
+                hasMore: snapshot.documents.count > limit
+            )
+        } catch {
+            guard Self.isMissingIndexError(error) else { throw error }
 
-        return RecentPhotoFetchResult(
-            photos: Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit),
-            hasMore: snapshot.documents.count > limit
-        )
+            let fallbackFetchLimit = max(limit + 4, limit)
+            let fallbackQuery = db.collection("photos")
+                .whereField("group_id", in: visibleGroupIDs)
+                .limit(to: fallbackFetchLimit)
+
+            let snapshot = try await fetchQuery(fallbackQuery)
+            let photos = snapshot.documents.map { doc in
+                FeedPhoto(id: doc.documentID, data: doc.data())
+            }
+
+            return RecentPhotoFetchResult(
+                photos: Self.presentRecentPhotosFromUnorderedResults(photos, favouriteIDs: favouriteIDs, limit: limit),
+                hasMore: snapshot.documents.count > limit
+            )
+        }
     }
 
     func fetchFavouritePhotos(userID: String, groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
@@ -185,6 +192,13 @@ final class FeedService {
     static func presentRecentPhotos(_ photos: [FeedPhoto], favouriteIDs: Set<String>, limit: Int) -> [FeedPhoto] {
         photos
             .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    static func presentRecentPhotosFromUnorderedResults(_ photos: [FeedPhoto], favouriteIDs: Set<String>, limit: Int) -> [FeedPhoto] {
+        photos
+            .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             .prefix(limit)
             .map { $0 }
@@ -201,6 +215,12 @@ final class FeedService {
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             .prefix(limit)
             .map { $0 }
+    }
+
+    private static func isMissingIndexError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == FirestoreErrorDomain else { return false }
+        return nsError.code == FirestoreErrorCode.failedPrecondition.rawValue
     }
 }
 

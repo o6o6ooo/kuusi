@@ -24,6 +24,33 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func currentGroupAvailableHashtagsFollowsLoadedGroupPhotos() async {
+        let spring = makePhoto(id: "photo-a", groupID: "group-a", year: 2024, hashtags: ["spring", "family"])
+        let winter = makePhoto(id: "photo-b", groupID: "group-b", year: 2023, hashtags: ["winter", "Family"])
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID = [
+            "group-a": [RecentPhotoFetchResult(photos: [spring], hasMore: false)],
+            "group-b": [RecentPhotoFetchResult(photos: [winter], hasMore: false)]
+        ]
+        let groupService = GroupServiceSpy()
+        groupService.cachedGroupsValue = [
+            makeGroup(id: "group-a", name: "Family"),
+            makeGroup(id: "group-b", name: "Friends")
+        ]
+        let viewModel = makeViewModel(feedService: feedService, groupService: groupService)
+
+        await viewModel.loadInitial(limit: 6)
+
+        #expect(viewModel.currentGroupAvailableHashtags == ["spring", "family"])
+
+        viewModel.selectedGroupID = "group-b"
+        viewModel.selectGroup("group-b", limit: 6)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(viewModel.currentGroupAvailableHashtags == ["winter", "Family"])
+    }
+
+    @Test
     func replacePhotoUpdatesOnlySelectedGroupPhoto() {
         let original = makePhoto(
             id: "photo-a",
