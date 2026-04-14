@@ -57,9 +57,8 @@ struct PhotoTileView: View {
                 }
             }
         }
-        .scaleEffect(isExpanded ? 1.015 : 1)
-        .shadow(color: .black.opacity(isExpanded ? 0.18 : 0.08), radius: isExpanded ? 16 : 8, x: 0, y: isExpanded ? 10 : 4)
-        .animation(.spring(response: 0.36, dampingFraction: 0.84), value: isExpanded)
+        .scaleEffect(1)
+        .shadow(color: .black.opacity(isExpanded ? 0.1 : 0.08), radius: isExpanded ? 10 : 8, x: 0, y: isExpanded ? 5 : 4)
         .onTapGesture {
             onTap()
         }

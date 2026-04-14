@@ -206,7 +206,7 @@ struct FeedView: View {
                 availableWidth: proxy.size.width,
                 expandedPhotoID: selectedPhotoID,
                 onTap: { photo in
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.98)) {
                         selectedPhotoID = selectedPhotoID == photo.id ? nil : photo.id
                     }
                 }
