@@ -2,69 +2,9 @@ import Combine
 import SwiftUI
 
 @MainActor
-private final class FeedAuthorNameStore {
-    static let shared = FeedAuthorNameStore()
-
-    private let userService = UserService()
-    private let defaults = UserDefaults.standard
-    private let cacheKey = "feed_author_name_cache_v1"
-    private var memoryCache: [String: String] = [:]
-    private var inFlightTasks: [String: Task<String?, Never>] = [:]
-    private var didLoadDefaults = false
-
-    func name(for uid: String) async -> String? {
-        loadDefaultsIfNeeded()
-
-        if let cached = memoryCache[uid] {
-            return cached
-        }
-
-        if let task = inFlightTasks[uid] {
-            return await task.value
-        }
-
-        let task = Task<String?, Never> {
-            defer { self.clearTask(for: uid) }
-
-            do {
-                guard let user = try await userService.fetchUser(uid: uid) else {
-                    return nil
-                }
-                store(user.name, for: uid)
-                return user.name
-            } catch {
-                return nil
-            }
-        }
-
-        inFlightTasks[uid] = task
-        return await task.value
-    }
-
-    private func loadDefaultsIfNeeded() {
-        guard !didLoadDefaults else { return }
-        didLoadDefaults = true
-
-        guard let cached = defaults.dictionary(forKey: cacheKey) as? [String: String] else {
-            return
-        }
-
-        memoryCache = cached
-    }
-
-    private func store(_ name: String, for uid: String) {
-        memoryCache[uid] = name
-        defaults.set(memoryCache, forKey: cacheKey)
-    }
-
-    private func clearTask(for uid: String) {
-        inFlightTasks[uid] = nil
-    }
-}
-
-@MainActor
 private final class PhotoAuthorNameViewModel: ObservableObject {
     @Published private(set) var name: String?
+    private let userService = UserService()
 
     func loadName(for uid: String?) async {
         guard let uid, !uid.isEmpty else {
@@ -72,7 +12,7 @@ private final class PhotoAuthorNameViewModel: ObservableObject {
             return
         }
 
-        name = await FeedAuthorNameStore.shared.name(for: uid)
+        name = await userService.fetchCachedAuthorName(uid: uid)
     }
 }
 

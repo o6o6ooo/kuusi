@@ -2,8 +2,14 @@ import FirebaseAuth
 import FirebaseFirestore
 import Foundation
 
+@MainActor
 final class UserService {
     private let db = Firestore.firestore()
+    private static let defaults = UserDefaults.standard
+    private static let authorNameCacheKey = "feed_author_name_cache_v1"
+    private static var authorNameMemoryCache: [String: String] = [:]
+    private static var authorNameInFlightTasks: [String: Task<String?, Never>] = [:]
+    private static var didLoadAuthorNameDefaults = false
 
     func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
         let ref = db.collection("users").document(user.uid)
@@ -45,6 +51,41 @@ final class UserService {
         return AppUser(id: snapshot.documentID, data: data)
     }
 
+    func fetchCachedAuthorName(uid: String) async -> String? {
+        loadAuthorNameDefaultsIfNeeded()
+
+        if let cached = Self.authorNameMemoryCache[uid] {
+            return cached
+        }
+
+        if let task = Self.authorNameInFlightTasks[uid] {
+            return await task.value
+        }
+
+        let task = Task<String?, Never> {
+            defer { Self.authorNameInFlightTasks[uid] = nil }
+
+            do {
+                guard let user = try await self.fetchUser(uid: uid) else {
+                    return nil
+                }
+                self.cacheAuthorName(user.name, for: uid)
+                return user.name
+            } catch {
+                return nil
+            }
+        }
+
+        Self.authorNameInFlightTasks[uid] = task
+        return await task.value
+    }
+
+    func cacheAuthorName(_ name: String, for uid: String) {
+        loadAuthorNameDefaultsIfNeeded()
+        Self.authorNameMemoryCache[uid] = name
+        Self.defaults.set(Self.authorNameMemoryCache, forKey: Self.authorNameCacheKey)
+    }
+
     func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws {
         let ref = db.collection("users").document(uid)
         let payload: [String: Any] = [
@@ -82,6 +123,17 @@ final class UserService {
                 continuation.resume(returning: snapshot)
             }
         }
+    }
+
+    private func loadAuthorNameDefaultsIfNeeded() {
+        guard !Self.didLoadAuthorNameDefaults else { return }
+        Self.didLoadAuthorNameDefaults = true
+
+        guard let cached = Self.defaults.dictionary(forKey: Self.authorNameCacheKey) as? [String: String] else {
+            return
+        }
+
+        Self.authorNameMemoryCache = cached
     }
 
     private func setDocument(_ ref: DocumentReference, data: [String: Any], merge: Bool) async throws {
