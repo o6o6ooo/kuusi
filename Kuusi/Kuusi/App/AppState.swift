@@ -301,7 +301,12 @@ final class AppState: ObservableObject {
                     return
                 }
 
-                await self.ensureUserDocumentIfNeeded(for: user)
+                do {
+                    try await self.ensureUserDocumentIfNeeded(for: user)
+                } catch {
+                    await self.handleUserBootstrapFailure()
+                    return
+                }
                 await self.prefetchGroupsIfNeeded(for: user.uid)
                 self.currentUser = user
                 if self.shouldUnlockAfterInteractiveSignIn {
@@ -437,14 +442,23 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func ensureUserDocumentIfNeeded(for user: User) async {
+    private func ensureUserDocumentIfNeeded(for user: User) async throws {
         let suggestedName = user.displayName?.isEmpty == false ? user.displayName : "Sakura Wallace"
         let suggestedEmail = user.email ?? (user.isAnonymous ? "sakura.wallace@kuusi.local" : nil)
-        try? await userService.ensureUserDocument(
+        try await userService.ensureUserDocument(
             for: user,
             suggestedName: suggestedName,
             suggestedEmail: suggestedEmail
         )
+    }
+
+    private func handleUserBootstrapFailure() async {
+        try? Auth.auth().signOut()
+        currentUser = nil
+        route = .signedOut
+        toastMessage = AppMessage(.failedToSetUpAccount, .error)
+        prefetchedGroupsUID = nil
+        shouldUnlockAfterInteractiveSignIn = false
     }
 
     private func prefetchGroupsIfNeeded(for uid: String) async {

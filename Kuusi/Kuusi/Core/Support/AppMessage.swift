@@ -48,6 +48,7 @@ struct AppMessage: Equatable {
         case failedToLeaveGroup
         case failedToOpenManageSubscriptions
         case failedToRestorePurchases
+        case failedToSetUpAccount
         case failedToSaveProfile
         case failedToSignOut
         case failedToUpdateGroup
@@ -185,6 +186,8 @@ extension AppMessage.ID {
             return "Could not open subscription management"
         case .failedToRestorePurchases:
             return "Failed to restore purchases"
+        case .failedToSetUpAccount:
+            return "Failed to set up account"
         case .failedToSaveProfile:
             return "Failed to save profile"
         case .failedToSignOut:
