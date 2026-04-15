@@ -3,6 +3,10 @@ import FirebaseStorage
 import Foundation
 import UIKit
 
+enum UploadServiceError: Error {
+    case failedToPrepareImages
+}
+
 final class UploadService {
     private let previewMaxDimension: CGFloat = 1200
     private let previewCompression: CGFloat = 0.6
@@ -15,7 +19,7 @@ final class UploadService {
 
     func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
         let preparedImages = await prepareImagesForUpload(images)
-        guard !preparedImages.isEmpty else { return }
+        try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
 
         let totalUploadedMB = try await uploadPreparedImages(
             preparedImages,
@@ -247,6 +251,12 @@ final class UploadService {
 
     static func roundedMegabytes(_ sizeMB: Double) -> Double {
         Double(round(100 * sizeMB) / 100)
+    }
+
+    static func ensurePreparedImagesExist(_ preparedImages: [PreparedImage], originalCount: Int) throws {
+        if originalCount > 0 && preparedImages.isEmpty {
+            throw UploadServiceError.failedToPrepareImages
+        }
     }
 
     static func makePhotoPayload(

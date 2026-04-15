@@ -35,6 +35,18 @@ struct UploadServiceTests {
     }
 
     @Test
+    func ensurePreparedImagesExistThrowsWhenAllImagesFailPreparation() {
+        #expect(throws: UploadServiceError.failedToPrepareImages) {
+            try UploadService.ensurePreparedImagesExist([], originalCount: 2)
+        }
+    }
+
+    @Test
+    func ensurePreparedImagesExistAllowsEmptyInputSelection() throws {
+        try UploadService.ensurePreparedImagesExist([], originalCount: 0)
+    }
+
+    @Test
     func makePhotoPayloadMapsPreparedImageFields() {
         let previewURL = URL(string: "https://example.com/preview.jpg")!
         let thumbURL = URL(string: "https://example.com/thumb.jpg")!
