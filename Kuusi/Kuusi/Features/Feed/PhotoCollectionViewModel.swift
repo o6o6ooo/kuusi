@@ -3,7 +3,12 @@ import FirebaseAuth
 import SwiftUI
 
 protocol PhotoCollectionFeedServicing {
-    func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int) async throws -> RecentPhotoFetchResult
+    func fetchRecentPhotoBatch(
+        userID: String,
+        groupIDs: [String],
+        limit: Int,
+        startAfter cursor: FeedPageCursor?
+    ) async throws -> RecentPhotoFetchResult
 }
 
 protocol PhotoCollectionGroupServicing {
@@ -75,7 +80,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
     private static let photoCacheKeyPrefix = "feed_photos_cache_v1_"
-    private var loadedLimitByGroupID: [String: Int] = [:]
+    private var nextCursorByGroupID: [String: FeedPageCursor] = [:]
     private var hasMorePhotosByGroupID: [String: Bool] = [:]
 
     init(
@@ -139,8 +144,8 @@ final class PhotoCollectionViewModel: ObservableObject {
         selectedGroupID = cachedGroups.first?.id
         photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(cachedGroups.map(\.id)))
         availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
-        loadedLimitByGroupID = photosByGroupID.mapValues(\.count)
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
+        nextCursorByGroupID = [:]
         errorMessageID = nil
         await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
     }
@@ -159,11 +164,10 @@ final class PhotoCollectionViewModel: ObservableObject {
             let validGroupIDs = Set(freshGroups.map(\.id))
             photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
             availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
-            loadedLimitByGroupID = loadedLimitByGroupID.filter { validGroupIDs.contains($0.key) }
+            nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
             hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
             persistCachedPhotos(for: uid)
-            let refreshLimit = max(loadedLimitByGroupID[self.selectedGroupID ?? ""] ?? 0, limit)
-            await fetchPhotosForSelectedGroup(forceReload: true, limit: refreshLimit)
+            await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
         } catch {
             errorMessageID = .failedToLoadGroups
         }
@@ -210,10 +214,9 @@ final class PhotoCollectionViewModel: ObservableObject {
         guard hasMorePhotosByGroupID[selectedGroupID] ?? false else { return }
 
         Task {
-            let currentLimit = max(loadedLimitByGroupID[selectedGroupID] ?? 0, photosByGroupID[selectedGroupID]?.count ?? 0)
             await fetchPhotosForSelectedGroup(
-                forceReload: true,
-                limit: max(currentLimit, pageSize) + pageSize,
+                forceReload: false,
+                limit: pageSize,
                 isLoadMore: true
             )
         }
@@ -243,20 +246,34 @@ final class PhotoCollectionViewModel: ObservableObject {
                 return
             }
 
-            if !forceReload, photosByGroupID[selectedGroupID] != nil {
-                loadedLimitByGroupID[selectedGroupID] = max(loadedLimitByGroupID[selectedGroupID] ?? 0, photosByGroupID[selectedGroupID]?.count ?? 0)
+            if !forceReload, !isLoadMore, photosByGroupID[selectedGroupID] != nil {
                 errorMessageID = nil
                 return
             }
 
+            if forceReload {
+                nextCursorByGroupID[selectedGroupID] = nil
+            }
+
+            let cursor = isLoadMore ? nextCursorByGroupID[selectedGroupID] : nil
+
             let result = try await feedService.fetchRecentPhotoBatch(
                 userID: uid,
                 groupIDs: [selectedGroupID],
-                limit: limit
+                limit: limit,
+                startAfter: cursor
             )
-            photosByGroupID[selectedGroupID] = result.photos
-            availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: result.photos)
-            loadedLimitByGroupID[selectedGroupID] = result.photos.count
+            let mergedPhotos: [FeedPhoto]
+            if isLoadMore {
+                let existingPhotos = photosByGroupID[selectedGroupID] ?? []
+                mergedPhotos = Self.mergePhotos(existingPhotos, with: result.photos)
+            } else {
+                mergedPhotos = result.photos
+            }
+
+            photosByGroupID[selectedGroupID] = mergedPhotos
+            availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: mergedPhotos)
+            nextCursorByGroupID[selectedGroupID] = result.nextCursor
             hasMorePhotosByGroupID[selectedGroupID] = result.hasMore
             persistCachedPhotos(for: uid)
             errorMessageID = nil
@@ -270,7 +287,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         selectedGroupID = nil
         photosByGroupID = [:]
         availableHashtagsByGroupID = [:]
-        loadedLimitByGroupID = [:]
+        nextCursorByGroupID = [:]
         hasMorePhotosByGroupID = [:]
         errorMessageID = nil
     }
@@ -350,5 +367,18 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
 
         return ordered
+    }
+
+    private static func mergePhotos(_ existingPhotos: [FeedPhoto], with newPhotos: [FeedPhoto]) -> [FeedPhoto] {
+        guard !existingPhotos.isEmpty else { return newPhotos }
+        guard !newPhotos.isEmpty else { return existingPhotos }
+
+        var merged = existingPhotos
+        var seenIDs = Set(existingPhotos.map(\.id))
+        for photo in newPhotos where !seenIDs.contains(photo.id) {
+            merged.append(photo)
+            seenIDs.insert(photo.id)
+        }
+        return merged
     }
 }

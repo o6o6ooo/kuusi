@@ -6,9 +6,15 @@ enum FeedServiceError: Error {
     case cannotDeleteOthersPhotos
 }
 
+struct FeedPageCursor: Equatable {
+    let createdAt: Date
+    let documentID: String
+}
+
 struct RecentPhotoFetchResult {
     let photos: [FeedPhoto]
     let hasMore: Bool
+    let nextCursor: FeedPageCursor?
 }
 
 final class FeedService {
@@ -16,33 +22,44 @@ final class FeedService {
     private let favouritesField = "favourites"
     private let photoDeletionService = PhotoDeletionService()
 
-    func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int = 15) async throws -> RecentPhotoFetchResult {
+    func fetchRecentPhotoBatch(
+        userID: String,
+        groupIDs: [String],
+        limit: Int = 15,
+        startAfter cursor: FeedPageCursor? = nil
+    ) async throws -> RecentPhotoFetchResult {
         let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
         guard !visibleGroupIDs.isEmpty else {
-            return RecentPhotoFetchResult(photos: [], hasMore: false)
+            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
         }
         let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
         let orderedFetchLimit = max(limit, 1) + 1
 
         do {
-            let orderedQuery = db.collection("photos")
+            var orderedQuery = db.collection("photos")
                 .whereField("group_id", in: visibleGroupIDs)
                 .order(by: "created_at", descending: true)
+                .order(by: FieldPath.documentID(), descending: true)
                 .limit(to: orderedFetchLimit)
+            if let cursor {
+                orderedQuery = orderedQuery.start(after: [Timestamp(date: cursor.createdAt), cursor.documentID])
+            }
 
             let snapshot = try await fetchQuery(orderedQuery)
             let photos = snapshot.documents.map { doc in
                 FeedPhoto(id: doc.documentID, data: doc.data())
             }
+            let presentedPhotos = Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit)
 
             return RecentPhotoFetchResult(
-                photos: Self.presentRecentPhotos(photos, favouriteIDs: favouriteIDs, limit: limit),
-                hasMore: snapshot.documents.count > limit
+                photos: presentedPhotos,
+                hasMore: snapshot.documents.count > limit,
+                nextCursor: Self.makeNextCursor(from: presentedPhotos)
             )
         } catch {
             guard Self.isMissingIndexError(error) else { throw error }
 
-            let fallbackFetchLimit = max(limit + 4, limit)
+            let fallbackFetchLimit = max(limit + 12, limit)
             let fallbackQuery = db.collection("photos")
                 .whereField("group_id", in: visibleGroupIDs)
                 .limit(to: fallbackFetchLimit)
@@ -51,10 +68,17 @@ final class FeedService {
             let photos = snapshot.documents.map { doc in
                 FeedPhoto(id: doc.documentID, data: doc.data())
             }
+            let filteredPhotos = Self.filteredRecentPhotosFromUnorderedResults(
+                photos,
+                favouriteIDs: favouriteIDs,
+                startAfter: cursor
+            )
+            let presentedPhotos = Array(filteredPhotos.prefix(limit))
 
             return RecentPhotoFetchResult(
-                photos: Self.presentRecentPhotosFromUnorderedResults(photos, favouriteIDs: favouriteIDs, limit: limit),
-                hasMore: snapshot.documents.count > limit
+                photos: presentedPhotos,
+                hasMore: filteredPhotos.count > limit,
+                nextCursor: Self.makeNextCursor(from: presentedPhotos)
             )
         }
     }
@@ -191,12 +215,31 @@ final class FeedService {
             .map { $0 }
     }
 
-    static func presentRecentPhotosFromUnorderedResults(_ photos: [FeedPhoto], favouriteIDs: Set<String>, limit: Int) -> [FeedPhoto] {
+    static func presentRecentPhotosFromUnorderedResults(
+        _ photos: [FeedPhoto],
+        favouriteIDs: Set<String>,
+        limit: Int,
+        startAfter cursor: FeedPageCursor? = nil
+    ) -> [FeedPhoto] {
+        Array(filteredRecentPhotosFromUnorderedResults(
+            photos,
+            favouriteIDs: favouriteIDs,
+            startAfter: cursor
+        ).prefix(limit))
+    }
+
+    static func filteredRecentPhotosFromUnorderedResults(
+        _ photos: [FeedPhoto],
+        favouriteIDs: Set<String>,
+        startAfter cursor: FeedPageCursor? = nil
+    ) -> [FeedPhoto] {
         photos
+            .filter { photo in
+                guard let cursor else { return true }
+                return compareFeedPhoto(photo, against: cursor) == .orderedDescending
+            }
             .map { $0.withFavourite(favouriteIDs.contains($0.id)) }
-            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-            .prefix(limit)
-            .map { $0 }
+            .sorted(by: feedPhotosAreOrderedBefore)
     }
 
     static func presentFavouritePhotos(_ photos: [FeedPhoto], visibleGroupIDs: [String], limit: Int) -> [FeedPhoto] {
@@ -217,6 +260,32 @@ final class FeedService {
         guard nsError.domain == FirestoreErrorDomain else { return false }
         return nsError.code == FirestoreErrorCode.failedPrecondition.rawValue
     }
+
+    private static func makeNextCursor(from photos: [FeedPhoto]) -> FeedPageCursor? {
+        guard let lastPhoto = photos.last, let createdAt = lastPhoto.createdAt else { return nil }
+        return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
+    }
+
+}
+
+private func compareFeedPhoto(_ photo: FeedPhoto, against cursor: FeedPageCursor) -> ComparisonResult {
+    let photoCreatedAt = photo.createdAt ?? .distantPast
+    if photoCreatedAt != cursor.createdAt {
+        return photoCreatedAt > cursor.createdAt ? .orderedAscending : .orderedDescending
+    }
+    if photo.id == cursor.documentID {
+        return .orderedSame
+    }
+    return photo.id > cursor.documentID ? .orderedAscending : .orderedDescending
+}
+
+private func feedPhotosAreOrderedBefore(_ lhs: FeedPhoto, _ rhs: FeedPhoto) -> Bool {
+    let lhsCreatedAt = lhs.createdAt ?? .distantPast
+    let rhsCreatedAt = rhs.createdAt ?? .distantPast
+    if lhsCreatedAt != rhsCreatedAt {
+        return lhsCreatedAt > rhsCreatedAt
+    }
+    return lhs.id > rhs.id
 }
 
 private extension Array {

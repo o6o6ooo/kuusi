@@ -53,6 +53,25 @@ struct FeedServiceTests {
     }
 
     @Test
+    func presentRecentPhotosFromUnorderedResultsRespectsCursor() {
+        let photos = [
+            makePhoto(id: "c", groupID: "g1", createdAt: Date(timeIntervalSince1970: 300)),
+            makePhoto(id: "b", groupID: "g1", createdAt: Date(timeIntervalSince1970: 200)),
+            makePhoto(id: "a", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100))
+        ]
+        let cursor = FeedPageCursor(createdAt: Date(timeIntervalSince1970: 200), documentID: "b")
+
+        let result = FeedService.presentRecentPhotosFromUnorderedResults(
+            photos,
+            favouriteIDs: [],
+            limit: 5,
+            startAfter: cursor
+        )
+
+        #expect(result.map(\.id) == ["a"])
+    }
+
+    @Test
     @MainActor
     func updatePhotoMetadataRejectsEditingOtherUsersPhoto() async {
         let service = FeedService()

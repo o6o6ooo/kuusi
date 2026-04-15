@@ -29,8 +29,8 @@ struct PhotoCollectionViewModelTests {
         let winter = makePhoto(id: "photo-b", groupID: "group-b", year: 2023, hashtags: ["winter", "Family"])
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID = [
-            "group-a": [RecentPhotoFetchResult(photos: [spring], hasMore: false)],
-            "group-b": [RecentPhotoFetchResult(photos: [winter], hasMore: false)]
+            "group-a": [RecentPhotoFetchResult(photos: [spring], hasMore: false, nextCursor: nil)],
+            "group-b": [RecentPhotoFetchResult(photos: [winter], hasMore: false, nextCursor: nil)]
         ]
         let groupService = GroupServiceSpy()
         groupService.cachedGroupsValue = [
@@ -92,7 +92,7 @@ struct PhotoCollectionViewModelTests {
         let feedService = FeedServiceSpy()
         let expected = [makePhoto(id: "photo-b", groupID: "group-b", year: 2022)]
         feedService.resultsByGroupID["group-b"] = [
-            RecentPhotoFetchResult(photos: expected, hasMore: false)
+            RecentPhotoFetchResult(photos: expected, hasMore: false, nextCursor: nil)
         ]
         let viewModel = makeViewModel(feedService: feedService)
 
@@ -129,11 +129,29 @@ struct PhotoCollectionViewModelTests {
     @Test
     func loadMoreIfNeededFetchesNextExpandedBatch() async throws {
         let feedService = FeedServiceSpy()
-        let firstBatch = (0..<6).map { makePhoto(id: "photo-\($0)", groupID: "group-a", year: 2024 - $0) }
-        let expandedBatch = (0..<12).map { makePhoto(id: "photo-\($0)", groupID: "group-a", year: 2024 - $0) }
+        let firstBatch = (0..<6).map {
+            makePhoto(
+                id: "photo-\($0)",
+                groupID: "group-a",
+                year: 2024 - $0,
+                createdAt: Date(timeIntervalSince1970: TimeInterval(300 - $0))
+            )
+        }
+        let nextBatch = (6..<12).map {
+            makePhoto(
+                id: "photo-\($0)",
+                groupID: "group-a",
+                year: 2024 - $0,
+                createdAt: Date(timeIntervalSince1970: TimeInterval(300 - $0))
+            )
+        }
         feedService.resultsByGroupID["group-a"] = [
-            RecentPhotoFetchResult(photos: firstBatch, hasMore: true),
-            RecentPhotoFetchResult(photos: expandedBatch, hasMore: false)
+            RecentPhotoFetchResult(
+                photos: firstBatch,
+                hasMore: true,
+                nextCursor: FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5")
+            ),
+            RecentPhotoFetchResult(photos: nextBatch, hasMore: false, nextCursor: nil)
         ]
         let groupService = GroupServiceSpy()
         groupService.cachedGroupsValue = [makeGroup(id: "group-a", name: "Family")]
@@ -145,7 +163,8 @@ struct PhotoCollectionViewModelTests {
 
         #expect(viewModel.currentGroupPhotos.count == 12)
         #expect(feedService.fetchCalls.count == 2)
-        #expect(feedService.fetchCalls.last?.limit == 12)
+        #expect(feedService.fetchCalls.last?.limit == 6)
+        #expect(feedService.fetchCalls.last?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
     }
 
     @Test
@@ -200,7 +219,8 @@ struct PhotoCollectionViewModelTests {
         hashtags: [String] = [],
         isFavourite: Bool = false,
         thumbnailURL: String? = nil,
-        aspectRatio: Double? = 1.0
+        aspectRatio: Double? = 1.0,
+        createdAt: Date? = nil
     ) -> FeedPhoto {
         FeedPhoto(
             id: id,
@@ -213,7 +233,7 @@ struct PhotoCollectionViewModelTests {
             isFavourite: isFavourite,
             sizeMB: 2.0,
             aspectRatio: aspectRatio,
-            createdAt: nil
+            createdAt: createdAt
         )
     }
 }
@@ -223,6 +243,7 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
         let userID: String
         let groupIDs: [String]
         let limit: Int
+        let cursor: FeedPageCursor?
     }
 
     var photosByGroupID: [String: [FeedPhoto]] = [:]
@@ -230,10 +251,15 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
     var fetchCalls: [FetchCall] = []
     private var batchFetchCountByGroupID: [String: Int] = [:]
 
-    func fetchRecentPhotoBatch(userID: String, groupIDs: [String], limit: Int) async throws -> RecentPhotoFetchResult {
-        fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit))
+    func fetchRecentPhotoBatch(
+        userID: String,
+        groupIDs: [String],
+        limit: Int,
+        startAfter cursor: FeedPageCursor?
+    ) async throws -> RecentPhotoFetchResult {
+        fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit, cursor: cursor))
         guard let groupID = groupIDs.first else {
-            return RecentPhotoFetchResult(photos: [], hasMore: false)
+            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
         }
         let index = batchFetchCountByGroupID[groupID, default: 0]
         batchFetchCountByGroupID[groupID] = index + 1
@@ -242,9 +268,9 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
             return results[index]
         }
         if let fallback = photosByGroupID[groupID] {
-            return RecentPhotoFetchResult(photos: fallback, hasMore: false)
+            return RecentPhotoFetchResult(photos: fallback, hasMore: false, nextCursor: nil)
         }
-        return RecentPhotoFetchResult(photos: [], hasMore: false)
+        return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
     }
 }
 
