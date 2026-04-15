@@ -12,7 +12,18 @@ private final class PhotoAuthorNameViewModel: ObservableObject {
             return
         }
 
-        name = await userService.fetchCachedAuthorName(uid: uid)
+        name = userService.cachedAuthorName(uid: uid)
+
+        if name == nil {
+            name = await userService.fetchCachedAuthorName(uid: uid)
+            return
+        }
+
+        guard userService.shouldRefreshCachedAuthorName(uid: uid) else { return }
+        let refreshedName = await userService.refreshAuthorName(uid: uid)
+        if let refreshedName, refreshedName != name {
+            name = refreshedName
+        }
     }
 }
 
