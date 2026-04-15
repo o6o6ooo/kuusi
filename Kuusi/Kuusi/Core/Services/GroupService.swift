@@ -109,7 +109,7 @@ final class GroupService {
         } else {
             previewIDs = memberIDs
         }
-        return (try? await loadMemberPreviews(uids: previewIDs, ownerUID: ownerUID)) ?? []
+        return try await loadMemberPreviews(uids: previewIDs, ownerUID: ownerUID)
     }
 
     func updateGroupName(groupID: String, name: String) async throws {

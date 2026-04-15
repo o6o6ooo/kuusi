@@ -409,17 +409,21 @@ final class SettingsGroupsViewModel: ObservableObject {
         if !force && previewLoadedGroupIDs.contains(groupID) { return }
         guard let index = groups.firstIndex(where: { $0.id == groupID }) else { return }
 
-        let previews = (try? await groupService.loadMemberPreviews(groupID: groupID, limit: 3)) ?? []
-        let existing = groups[index]
-        groups[index] = GroupSummary(
-            id: existing.id,
-            name: existing.name,
-            ownerUID: existing.ownerUID,
-            members: previews,
-            totalMemberCount: existing.totalMemberCount
-        )
-        previewLoadedGroupIDs.insert(groupID)
-        cacheGroupsForCurrentUser()
+        do {
+            let previews = try await groupService.loadMemberPreviews(groupID: groupID, limit: 3)
+            let existing = groups[index]
+            groups[index] = GroupSummary(
+                id: existing.id,
+                name: existing.name,
+                ownerUID: existing.ownerUID,
+                members: previews,
+                totalMemberCount: existing.totalMemberCount
+            )
+            previewLoadedGroupIDs.insert(groupID)
+            cacheGroupsForCurrentUser()
+        } catch {
+            previewLoadedGroupIDs.remove(groupID)
+        }
     }
 
     private func cacheGroupsForCurrentUser() {
