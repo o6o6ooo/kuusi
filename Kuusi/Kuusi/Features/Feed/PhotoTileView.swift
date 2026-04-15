@@ -45,6 +45,7 @@ struct PhotoTileView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let photo: FeedPhoto
+    let previewAccess: PreviewAccess
     let width: CGFloat
     let displayAspectRatio: CGFloat
     let isExpanded: Bool
@@ -60,7 +61,7 @@ struct PhotoTileView: View {
         let ratio = max(displayAspectRatio, 0.35)
         let collapsedHeight = width / ratio
         let expandedHeight = width / ratio
-        let imageURL = URL(string: isExpanded ? (photo.photoURL ?? photo.thumbnailURL ?? "") : (photo.thumbnailURL ?? photo.photoURL ?? ""))
+        let imageURL = URL(string: resolvedImageURLString)
 
         VStack(alignment: .leading, spacing: 0) {
             CachedRemoteImageView(url: imageURL) { image in
@@ -142,6 +143,18 @@ struct PhotoTileView: View {
             } else {
                 Color.clear
             }
+        }
+    }
+
+    private var resolvedImageURLString: String {
+        switch previewAccess {
+        case .full:
+            if isExpanded {
+                return photo.photoURL ?? photo.thumbnailURL ?? ""
+            }
+            return photo.thumbnailURL ?? photo.photoURL ?? ""
+        case .thumbnailOnly:
+            return photo.thumbnailURL ?? photo.photoURL ?? ""
         }
     }
 

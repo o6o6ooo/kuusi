@@ -14,6 +14,7 @@ private extension FeedServiceError {
 
 @MainActor
 struct FeedView: View {
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @StateObject private var photoCollection = PhotoCollectionViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -138,7 +139,10 @@ struct FeedView: View {
                 photoCollection.clearErrorMessage()
             }
             .sheet(isPresented: $isUploadOverlayPresented) {
-                UploadOverlayView()
+                UploadOverlayView(
+                    currentUsageMB: profileViewModel.usageMB,
+                    isPremiumActive: subscriptionStore.isPremiumActive
+                )
                     .presentationDetents([.fraction(0.60)])
                     .presentationDragIndicator(.visible)
             }
@@ -213,6 +217,10 @@ struct FeedView: View {
             ) { photo, tileWidth, displayAspectRatio, isExpanded, onTap in
                 PhotoTileView(
                     photo: photo,
+                    previewAccess: PlanAccessPolicy.previewAccess(
+                        for: photo,
+                        isPremiumActive: subscriptionStore.isPremiumActive
+                    ),
                     width: tileWidth,
                     displayAspectRatio: displayAspectRatio,
                     isExpanded: isExpanded,

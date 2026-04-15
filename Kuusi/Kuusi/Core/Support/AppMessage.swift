@@ -90,6 +90,7 @@ struct AppMessage: Equatable {
         case subscriptionCancelled
         case subscriptionResumed
         case subscriptionUnavailable
+        case storageLimitReached
         case uploadCompleted
         case groupLimitReached(title: String, maxGroups: Int)
     }
@@ -270,6 +271,8 @@ extension AppMessage.ID {
             return "Subscription resumed"
         case .subscriptionUnavailable:
             return "Premium subscription is not available right now"
+        case .storageLimitReached:
+            return "You've reached your storage limit"
         case .uploadCompleted:
             return "Upload completed"
         case let .groupLimitReached(title, maxGroups):

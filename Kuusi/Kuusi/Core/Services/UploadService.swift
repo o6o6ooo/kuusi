@@ -31,6 +31,12 @@ final class UploadService {
         try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
     }
 
+    func estimatedUploadSizeMB(for images: [UIImage]) async throws -> Double {
+        let preparedImages = await prepareImagesForUpload(images)
+        try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
+        return preparedImages.reduce(0) { $0 + $1.sizeMB }
+    }
+
     private func prepareImagesForUpload(_ images: [UIImage]) async -> [PreparedImage] {
         await withTaskGroup(of: (Int, PreparedImage?).self) { group in
             for (index, image) in images.enumerated() {

@@ -66,3 +66,48 @@ enum AppPlan: String {
         }
     }
 }
+
+enum PlanAccessPolicy {
+    static func currentPlan(isPremiumActive: Bool) -> AppPlan {
+        isPremiumActive ? .premium : .free
+    }
+
+    static func previewAccess(
+        for createdAt: Date?,
+        isPremiumActive: Bool,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> PreviewAccess {
+        guard !isPremiumActive else { return .full }
+        guard let createdAt else { return .full }
+        guard let expiryDate = calendar.date(byAdding: .year, value: 2, to: createdAt) else {
+            return .full
+        }
+
+        return now < expiryDate ? .full : .thumbnailOnly
+    }
+
+    static func previewAccess(for photo: FeedPhoto, isPremiumActive: Bool, now: Date = Date()) -> PreviewAccess {
+        previewAccess(for: photo.createdAt, isPremiumActive: isPremiumActive, now: now)
+    }
+
+    static func isStorageLimitReached(usageMB: Double, isPremiumActive: Bool) -> Bool {
+        let quotaMB = currentPlan(isPremiumActive: isPremiumActive).quotaMB
+        return usageMB >= quotaMB
+    }
+
+    static func canUpload(currentUsageMB: Double, additionalUsageMB: Double, isPremiumActive: Bool) -> Bool {
+        let quotaMB = currentPlan(isPremiumActive: isPremiumActive).quotaMB
+        return currentUsageMB + additionalUsageMB <= quotaMB
+    }
+
+    static func overflowMB(usageMB: Double, isPremiumActive: Bool) -> Double {
+        let quotaMB = currentPlan(isPremiumActive: isPremiumActive).quotaMB
+        return max(usageMB - quotaMB, 0)
+    }
+}
+
+enum PreviewAccess: Equatable {
+    case full
+    case thumbnailOnly
+}

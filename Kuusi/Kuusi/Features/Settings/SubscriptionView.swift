@@ -51,6 +51,12 @@ struct SubscriptionView: View {
     private var usageText: String {
         "\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
     }
+    private var isStorageLimitReached: Bool {
+        PlanAccessPolicy.isStorageLimitReached(
+            usageMB: usageMB,
+            isPremiumActive: displaySnapshot.isPremiumActive
+        )
+    }
     private var storageBarHeight: CGFloat { 10 }
     private var planCardWidth: CGFloat {
         UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
@@ -124,6 +130,12 @@ struct SubscriptionView: View {
                 }
             }
             .frame(height: storageBarHeight)
+
+            if isStorageLimitReached {
+                Text("You've reached your storage limit.")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

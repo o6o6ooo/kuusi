@@ -42,6 +42,18 @@ struct AppMessageTests {
     }
 
     @Test
+    func storageLimitReachedBuildsErrorMessage() {
+        let message = AppMessage(.storageLimitReached, .error)
+
+        #expect(message.text == "You've reached your storage limit")
+        if case .error = message.tone {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected error tone")
+        }
+    }
+
+    @Test
     @MainActor
     func autoClearSkipsMessagesWithoutDelay() async {
         var currentMessage: AppMessage? = AppMessage(.failedToDeletePhoto, .error, autoClearAfter: nil)

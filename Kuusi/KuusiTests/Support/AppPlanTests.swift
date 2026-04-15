@@ -29,4 +29,53 @@ struct AppPlanTests {
             "Have up to 10 groups"
         ])
     }
+
+    @Test
+    func freePreviewExpiresOnSecondAnniversaryDate() {
+        let calendar = Calendar(identifier: .gregorian)
+        let createdAt = calendar.date(from: DateComponents(year: 2024, month: 4, day: 15, hour: 9))!
+        let beforeExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 8, minute: 59))!
+        let atExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 9))!
+
+        #expect(
+            PlanAccessPolicy.previewAccess(
+                for: createdAt,
+                isPremiumActive: false,
+                now: beforeExpiry,
+                calendar: calendar
+            ) == .full
+        )
+        #expect(
+            PlanAccessPolicy.previewAccess(
+                for: createdAt,
+                isPremiumActive: false,
+                now: atExpiry,
+                calendar: calendar
+            ) == .thumbnailOnly
+        )
+    }
+
+    @Test
+    func premiumKeepsFullPreviewForOlderPhotos() {
+        let calendar = Calendar(identifier: .gregorian)
+        let createdAt = calendar.date(from: DateComponents(year: 2021, month: 1, day: 1))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
+
+        #expect(
+            PlanAccessPolicy.previewAccess(
+                for: createdAt,
+                isPremiumActive: true,
+                now: now,
+                calendar: calendar
+            ) == .full
+        )
+    }
+
+    @Test
+    func storageLimitChecksMatchPlanQuota() {
+        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 3072, isPremiumActive: false) == true)
+        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 3071.99, isPremiumActive: false) == false)
+        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 0.5, isPremiumActive: false) == true)
+        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 1.1, isPremiumActive: false) == false)
+    }
 }

@@ -55,11 +55,22 @@ struct UploadOverlayView: View {
     @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
     @State private var googleImportTask: Task<Void, Never>?
+    @State private var estimatedUploadSizeMB = 0.0
+    @State private var isEstimatingUploadSize = false
+    @State private var effectiveUsageMB = 0.0
 
     private let uploadService = UploadService()
     private let groupService = GroupService()
     private let googleAccountService = GoogleAccountService()
     private let googlePhotosPickerService = GooglePhotosPickerService()
+    let currentUsageMB: Double
+    let isPremiumActive: Bool
+
+    init(currentUsageMB: Double, isPremiumActive: Bool) {
+        self.currentUsageMB = currentUsageMB
+        self.isPremiumActive = isPremiumActive
+        _effectiveUsageMB = State(initialValue: currentUsageMB)
+    }
 
     private var surfaceBackground: Color {
         AppTheme.cardSurfaceBackground(for: colorScheme)
@@ -90,8 +101,31 @@ struct UploadOverlayView: View {
         !selectedImages.isEmpty &&
         !isUploading &&
         !isImportingGooglePhotos &&
+        !isEstimatingUploadSize &&
         selectedGroupID != nil &&
-        parsedYear != nil
+        parsedYear != nil &&
+        !isStorageLimitReached &&
+        PlanAccessPolicy.canUpload(
+            currentUsageMB: effectiveUsageMB,
+            additionalUsageMB: estimatedUploadSizeMB,
+            isPremiumActive: isPremiumActive
+        )
+    }
+
+    private var wouldExceedStorageLimit: Bool {
+        !selectedImages.isEmpty &&
+        !PlanAccessPolicy.canUpload(
+            currentUsageMB: effectiveUsageMB,
+            additionalUsageMB: estimatedUploadSizeMB,
+            isPremiumActive: isPremiumActive
+        )
+    }
+
+    private var isStorageLimitReached: Bool {
+        PlanAccessPolicy.isStorageLimitReached(
+            usageMB: effectiveUsageMB,
+            isPremiumActive: isPremiumActive
+        )
     }
 
     var body: some View {
@@ -139,6 +173,16 @@ struct UploadOverlayView: View {
                         }
                     }
 
+                    if isEstimatingUploadSize {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Checking storage...")
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     HStack {
                         Spacer()
                         Button {
@@ -167,6 +211,9 @@ struct UploadOverlayView: View {
             .onChange(of: pickerItems) { _, newValue in
                 Task { await loadImages(from: newValue) }
             }
+            .onChange(of: selectedImages.count) { _, _ in
+                Task { await refreshEstimatedUploadSize() }
+            }
             .onChange(of: yearSelection) { _, newValue in
                 yearText = String(newValue)
             }
@@ -185,6 +232,7 @@ struct UploadOverlayView: View {
             .appToastHost()
             .task {
                 loadCachedGroupsOnly()
+                await showStorageLimitToastIfNeeded()
             }
             .sheet(isPresented: $isYearPickerPresented) {
                 YearWheelPickerSheet(
@@ -445,6 +493,11 @@ struct UploadOverlayView: View {
 
     @MainActor
     private func upload() async {
+        guard !isStorageLimitReached else {
+            toastMessage = AppMessage(.storageLimitReached, .error)
+            return
+        }
+
         guard let uid = Auth.auth().currentUser?.uid else {
             toastMessage = AppMessage(.pleaseSignInFirst, .error)
             return
@@ -457,6 +510,15 @@ struct UploadOverlayView: View {
 
         guard let year = parsedYear else {
             toastMessage = AppMessage(.enterValidYear, .error)
+            return
+        }
+
+        if !PlanAccessPolicy.canUpload(
+            currentUsageMB: effectiveUsageMB,
+            additionalUsageMB: estimatedUploadSizeMB,
+            isPremiumActive: isPremiumActive
+        ) {
+            toastMessage = AppMessage(.storageLimitReached, .error)
             return
         }
 
@@ -475,6 +537,8 @@ struct UploadOverlayView: View {
             pickerItems = []
             hashtagInput = ""
             hashtags = []
+            effectiveUsageMB += estimatedUploadSizeMB
+            estimatedUploadSizeMB = 0
             toastMessage = AppMessage(.uploadCompleted, .success)
         } catch {
             toastMessage = AppMessage(.failedToLoadImage, .error)
@@ -492,6 +556,11 @@ struct UploadOverlayView: View {
 
     @MainActor
     private func importFromGooglePhotos() async {
+        guard !isStorageLimitReached else {
+            toastMessage = AppMessage(.storageLimitReached, .error)
+            return
+        }
+
         guard let presentingViewController = UIApplication.topViewController() else {
             toastMessage = AppMessage(.couldNotOpenGooglePhotos, .error)
             return
@@ -556,5 +625,32 @@ struct UploadOverlayView: View {
             isImportingGooglePhotos = false
             toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
         }
+    }
+
+    @MainActor
+    private func refreshEstimatedUploadSize() async {
+        guard !selectedImages.isEmpty else {
+            estimatedUploadSizeMB = 0
+            isEstimatingUploadSize = false
+            return
+        }
+
+        isEstimatingUploadSize = true
+        defer { isEstimatingUploadSize = false }
+
+        do {
+            estimatedUploadSizeMB = try await uploadService.estimatedUploadSizeMB(for: selectedImages)
+            if wouldExceedStorageLimit {
+                toastMessage = AppMessage(.storageLimitReached, .error)
+            }
+        } catch {
+            estimatedUploadSizeMB = 0
+        }
+    }
+
+    @MainActor
+    private func showStorageLimitToastIfNeeded() async {
+        guard isStorageLimitReached else { return }
+        toastMessage = AppMessage(.storageLimitReached, .error)
     }
 }
