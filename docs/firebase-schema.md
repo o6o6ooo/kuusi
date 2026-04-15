@@ -37,3 +37,12 @@ Current Firebase usage in the SwiftUI app.
 ### Uploaded photo assets
 - `photos/{userID}/{photoID}_preview.jpg`
 - `photos/{userID}/{photoID}_thumb.jpg`
+
+## Required Firestore indexes
+
+### `photos`
+- Composite index for feed pagination by group:
+  - `group_id` ascending
+  - `created_at` descending
+
+This is required for queries that filter photos by `group_id` and order the feed by newest `created_at`.
