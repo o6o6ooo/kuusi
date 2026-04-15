@@ -10,8 +10,12 @@ private extension GroupServiceError {
             return .groupNotFound
         case .ownerCannotLeave:
             return .ownerCannotLeave
+        case .ownerCannotBeRemoved:
+            return .ownerCannotBeRemoved
         case let .memberLimitReached(maxMembers):
             return .groupMemberLimitReached(maxMembers: maxMembers)
+        case .onlyOwnerCanRemoveMembers:
+            return .onlyOwnerCanRemoveMembers
         }
     }
 }
@@ -55,6 +59,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isGroupQRCodeOverlayPresented = false
     @Published var isMemberListPresented = false
     @Published var isJoiningGroup = false
+    @Published private(set) var removingMemberID: String?
     @Published private(set) var currentPlan: AppPlan = .free
     @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
@@ -311,6 +316,47 @@ final class SettingsGroupsViewModel: ObservableObject {
             setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
             setSaveStatus(AppMessage(.failedToJoinGroup, .error))
+        }
+    }
+
+    func removeMemberFromSelectedGroup(_ member: GroupMemberPreview) async {
+        guard
+            let selectedGroupID,
+            let requesterUID = Auth.auth().currentUser?.uid
+        else {
+            return
+        }
+
+        removingMemberID = member.id
+        defer { removingMemberID = nil }
+
+        do {
+            try await groupService.removeMember(
+                groupID: selectedGroupID,
+                memberUID: member.id,
+                requesterUID: requesterUID
+            )
+
+            selectedGroupMembers.removeAll { $0.id == member.id }
+
+            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
+                let existing = groups[index]
+                groups[index] = GroupSummary(
+                    id: existing.id,
+                    name: existing.name,
+                    ownerUID: existing.ownerUID,
+                    members: existing.members.filter { $0.id != member.id },
+                    totalMemberCount: max(existing.totalMemberCount - 1, 0)
+                )
+            }
+
+            cacheGroupsForCurrentUser()
+            await loadGroupPreviewIfNeeded(for: selectedGroupID, force: true)
+            setSaveStatus(AppMessage(.memberRemoved, .success))
+        } catch let error as GroupServiceError {
+            setSaveStatus(AppMessage(error.appMessageID, .error))
+        } catch {
+            setSaveStatus(AppMessage(.failedToRemoveMember, .error))
         }
     }
 

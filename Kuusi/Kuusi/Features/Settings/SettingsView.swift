@@ -88,7 +88,16 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $groupsViewModel.isMemberListPresented) {
-                GroupMembersOverlayView(members: groupsViewModel.selectedGroupMembers)
+                GroupMembersOverlayView(
+                    members: groupsViewModel.selectedGroupMembers,
+                    currentUserIsOwner: groupsViewModel.currentUserIsSelectedGroupOwner,
+                    removingMemberID: groupsViewModel.removingMemberID,
+                    onRemoveMember: { member in
+                        Task {
+                            await groupsViewModel.removeMemberFromSelectedGroup(member)
+                        }
+                    }
+                )
                     .presentationDetents([.height(280)])
                     .presentationDragIndicator(.visible)
             }

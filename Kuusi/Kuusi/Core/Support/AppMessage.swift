@@ -40,6 +40,7 @@ struct AppMessage: Equatable {
         case failedToDeleteGroup
         case failedToDeleteAccount
         case failedToDeletePhoto
+        case failedToRemoveMember
         case failedToDisconnectGoogleAccount
         case failedToImportFromGooglePhotos
         case failedToLoadFeed
@@ -64,8 +65,11 @@ struct AppMessage: Equatable {
         case invalidInviteQR
         case joinedGroup
         case leftGroup
+        case memberRemoved
         case nameCannotBeEmpty
         case noActivePurchasesFound
+        case onlyOwnerCanRemoveMembers
+        case ownerCannotBeRemoved
         case photoAlreadyBeingUpdated
         case photoDeleted
         case photoUpdated
@@ -165,6 +169,8 @@ extension AppMessage.ID {
             return "Failed to delete account"
         case .failedToDeletePhoto:
             return "Failed to delete photo"
+        case .failedToRemoveMember:
+            return "Failed to remove member"
         case .failedToDisconnectGoogleAccount:
             return "Failed to disconnect Google account"
         case .failedToImportFromGooglePhotos:
@@ -213,10 +219,16 @@ extension AppMessage.ID {
             return "Joined group"
         case .leftGroup:
             return "Left group"
+        case .memberRemoved:
+            return "Member removed"
         case .nameCannotBeEmpty:
             return "Name cannot be empty"
         case .noActivePurchasesFound:
             return "No active purchases found"
+        case .onlyOwnerCanRemoveMembers:
+            return "Only the group owner can remove members"
+        case .ownerCannotBeRemoved:
+            return "Group owners cannot be removed"
         case .photoAlreadyBeingUpdated:
             return "Photo is already being updated"
         case .photoDeleted:

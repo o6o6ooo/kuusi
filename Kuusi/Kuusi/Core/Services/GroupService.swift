@@ -4,7 +4,9 @@ import Foundation
 enum GroupServiceError: Error {
     case groupNotFound
     case ownerCannotLeave
+    case ownerCannotBeRemoved
     case memberLimitReached(maxMembers: Int)
+    case onlyOwnerCanRemoveMembers
 }
 
 struct GroupMemberPreview: Identifiable {
@@ -217,6 +219,49 @@ final class GroupService {
         }
 
         removeCachedGroup(groupID: groupID, for: uid)
+    }
+
+    func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws {
+        let groupRef = db.collection("groups").document(groupID)
+        let userRef = db.collection("users").document(memberUID)
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer in
+                do {
+                    let groupSnapshot = try transaction.getDocument(groupRef)
+                    guard groupSnapshot.exists else {
+                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
+                        return nil
+                    }
+
+                    let ownerUID = groupSnapshot.data()?["owner_uid"] as? String
+                    if ownerUID != requesterUID {
+                        errorPointer?.pointee = GroupServiceError.onlyOwnerCanRemoveMembers as NSError
+                        return nil
+                    }
+
+                    if ownerUID == memberUID {
+                        errorPointer?.pointee = GroupServiceError.ownerCannotBeRemoved as NSError
+                        return nil
+                    }
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+
+                transaction.updateData(["members": FieldValue.arrayRemove([memberUID])], forDocument: groupRef)
+                transaction.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
+                return nil
+            }, completion: { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            })
+        }
+
+        removeCachedGroup(groupID: groupID, for: memberUID)
     }
 
     func cachedGroups(for uid: String) -> [GroupSummary] {

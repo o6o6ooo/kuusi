@@ -9,6 +9,7 @@ struct AppAlert {
     enum ID {
         case deletePhotoConfirm
         case deleteAccountConfirm
+        case removeGroupMemberConfirm(memberName: String)
         case createGroupPrompt
         case editGroupPrompt
         case editNamePrompt
@@ -16,7 +17,7 @@ struct AppAlert {
 
         var kind: Kind {
             switch self {
-            case .deletePhotoConfirm, .deleteAccountConfirm, .destructiveGroupConfirm:
+            case .deletePhotoConfirm, .deleteAccountConfirm, .removeGroupMemberConfirm, .destructiveGroupConfirm:
                 return .confirmation
             case .createGroupPrompt, .editGroupPrompt, .editNamePrompt:
                 return .prompt
@@ -60,6 +61,8 @@ private extension AppAlert.ID {
             return "Delete photo?"
         case .deleteAccountConfirm:
             return "Delete account?"
+        case .removeGroupMemberConfirm:
+            return "Remove member?"
         case .createGroupPrompt:
             return "Create Group"
         case .editGroupPrompt:
@@ -77,6 +80,8 @@ private extension AppAlert.ID {
             return "This will permanently delete the photo."
         case .deleteAccountConfirm:
             return "This will permanently delete your account, your photos, and any groups you created."
+        case let .removeGroupMemberConfirm(memberName):
+            return "This will remove \(memberName) from the group."
         case .createGroupPrompt:
             return "Enter a name for the new group."
         case .editGroupPrompt:
@@ -94,6 +99,8 @@ private extension AppAlert.ID {
             return "Delete"
         case .deleteAccountConfirm:
             return "Delete account"
+        case .removeGroupMemberConfirm:
+            return "Remove"
         case .createGroupPrompt:
             return "Create"
         case .editGroupPrompt:
@@ -111,7 +118,7 @@ private extension AppAlert.ID {
 
     var confirmButtonRole: ButtonRole? {
         switch self {
-        case .deletePhotoConfirm, .deleteAccountConfirm, .destructiveGroupConfirm:
+        case .deletePhotoConfirm, .deleteAccountConfirm, .removeGroupMemberConfirm, .destructiveGroupConfirm:
             return .destructive
         case .createGroupPrompt, .editGroupPrompt, .editNamePrompt:
             return nil
@@ -124,7 +131,7 @@ private extension AppAlert.ID {
             return "Group name"
         case .editNamePrompt:
             return "Name"
-        case .deletePhotoConfirm, .deleteAccountConfirm, .destructiveGroupConfirm:
+        case .deletePhotoConfirm, .deleteAccountConfirm, .removeGroupMemberConfirm, .destructiveGroupConfirm:
             return nil
         }
     }

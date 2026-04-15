@@ -2,7 +2,12 @@ import SwiftUI
 
 struct GroupMembersOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State private var appAlert: AppAlert?
+
     let members: [GroupMemberPreview]
+    let currentUserIsOwner: Bool
+    let removingMemberID: String?
+    let onRemoveMember: (GroupMemberPreview) -> Void
 
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
     private var cardBackground: Color { AppTheme.cardBackground(for: colorScheme) }
@@ -37,6 +42,27 @@ struct GroupMembersOverlayView: View {
                                 .foregroundStyle(primaryText)
 
                             Spacer()
+
+                            if currentUserIsOwner, !member.isOwner {
+                                Button {
+                                    appAlert = AppAlert(.removeGroupMemberConfirm(memberName: member.name)) {
+                                        onRemoveMember(member)
+                                    }
+                                } label: {
+                                    if removingMemberID == member.id {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .tint(AppTheme.errorText)
+                                    } else {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundStyle(AppTheme.errorText)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(removingMemberID != nil)
+                                .accessibilityLabel("Remove \(member.name)")
+                            }
                         }
                     }
                 }
@@ -45,6 +71,7 @@ struct GroupMembersOverlayView: View {
             .background(cardBackground)
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
+            .appAlert($appAlert)
         }
     }
 }
