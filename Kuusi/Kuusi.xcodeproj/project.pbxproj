@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8F198ED72F9060E3001AFA53 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 8F198ED62F9060E3001AFA53 /* FirebaseAppCheck */; };
+		8F198EDB2F910E06001AFA53 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 8F198EDA2F910E06001AFA53 /* FirebaseFunctions */; };
 		8F198ED92F910E05001AFA53 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 8F198ED82F910E05001AFA53 /* FirebaseMessaging */; };
 		8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F22F5B69B200FB36CB /* FirebaseAuth */; };
 		8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F42F5B69B200FB36CB /* FirebaseCore */; };
@@ -78,6 +79,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */,
+				8F198EDB2F910E06001AFA53 /* FirebaseFunctions in Frameworks */,
 				8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */,
 				8F198ED92F910E05001AFA53 /* FirebaseMessaging in Frameworks */,
 				8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */,
@@ -156,6 +158,7 @@
 				8F35C1F22F5B69B200FB36CB /* FirebaseAuth */,
 				8F35C1F42F5B69B200FB36CB /* FirebaseCore */,
 				8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */,
+				8F198EDA2F910E06001AFA53 /* FirebaseFunctions */,
 				8F35C1F82F5B69B200FB36CB /* FirebaseStorage */,
 				8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */,
 				8F198ED62F9060E3001AFA53 /* FirebaseAppCheck */,
@@ -663,6 +666,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		8F198EDA2F910E06001AFA53 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 		8F35C1F22F5B69B200FB36CB /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;

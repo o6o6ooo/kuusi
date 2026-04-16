@@ -1,4 +1,5 @@
 import FirebaseFirestore
+import FirebaseFunctions
 import Foundation
 
 enum GroupServiceError: Error {
@@ -29,7 +30,7 @@ final class GroupService {
     static let maxGroupMembers = 50
 
     private let db = Firestore.firestore()
-    private let photoDeletionService = PhotoDeletionService()
+    private let functions = Functions.functions()
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
@@ -154,29 +155,18 @@ final class GroupService {
     }
 
     func deleteGroup(groupID: String) async throws {
-        let groupRef = db.collection("groups").document(groupID)
-        let groupSnapshot = try await getDocument(groupRef)
-        guard groupSnapshot.exists else {
+        let snapshot = try await getDocument(db.collection("groups").document(groupID))
+        guard snapshot.exists else {
             throw GroupServiceError.groupNotFound
         }
 
-        let memberIDs = (groupSnapshot.data()?["members"] as? [String]) ?? []
-        let photos = try await loadGroupPhotos(groupID: groupID)
-        try await photoDeletionService.deletePhotos(photos, favouriteCleanupScope: .allUsers)
-        var operations: [(WriteBatch) -> Void] = []
+        let memberIDs = (snapshot.data()?["members"] as? [String]) ?? []
 
-        operations.append { batch in
-            batch.deleteDocument(groupRef)
+        do {
+            _ = try await functions.httpsCallable("deleteGroup").call(["groupId": groupID])
+        } catch {
+            throw mapDeleteGroupError(error)
         }
-
-        for memberID in memberIDs {
-            let userRef = db.collection("users").document(memberID)
-            operations.append { batch in
-                batch.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
-            }
-        }
-
-        try await commitBatchedOperations(operations)
 
         for memberID in memberIDs {
             removeCachedGroup(groupID: groupID, for: memberID)
@@ -340,35 +330,6 @@ final class GroupService {
         }
     }
 
-    private func loadGroupPhotos(groupID: String) async throws -> [FeedPhoto] {
-        let query = db.collection("photos")
-            .whereField("group_id", isEqualTo: groupID)
-        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
-            query.getDocuments { snapshot, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let snapshot else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
-                    return
-                }
-                continuation.resume(returning: snapshot)
-            }
-        }
-        return snapshot.documents.map { FeedPhoto(id: $0.documentID, data: $0.data()) }
-    }
-
-    private func commitBatchedOperations(_ operations: [(WriteBatch) -> Void]) async throws {
-        guard !operations.isEmpty else { return }
-
-        let batch = db.batch()
-        for operation in operations {
-            operation(batch)
-        }
-        try await commitBatch(batch)
-    }
-
     private func loadMemberPreview(uid: String, ownerUID: String?) async throws -> GroupMemberPreview {
         let snapshot = try await getDocument(db.collection("users").document(uid))
         let data = snapshot.data() ?? [:]
@@ -461,6 +422,18 @@ final class GroupService {
             },
             totalMemberCount: group.totalMemberCount
         )
+    }
+
+    private func mapDeleteGroupError(_ error: Error) -> Error {
+        let nsError = error as NSError
+
+        if nsError.domain == FunctionsErrorDomain,
+           let code = FunctionsErrorCode(rawValue: nsError.code),
+           code == .notFound {
+            return GroupServiceError.groupNotFound
+        }
+
+        return error
     }
 }
 
