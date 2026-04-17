@@ -18,6 +18,12 @@ Minimal setup for server-side destructive operations such as `deleteGroup`.
   - Removes the group from each member's `users/{uid}.groups`
   - Cleans `favourites` and decrements `usage_mb`
   - Deletes the `groups/{groupId}` document
+- `deleteCurrentUserData`
+  - Deletes groups owned by the current user using the same server-side cleanup path
+  - Removes the current user from groups they joined
+  - Deletes the current user's remaining posted photos and related favourites/usage cleanup
+  - Deletes the user's Firestore document
+  - Leaves Firebase Auth account deletion to the client so recent-login checks still apply
 
 ## Follow-up
 

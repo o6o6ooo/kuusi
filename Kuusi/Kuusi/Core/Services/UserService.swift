@@ -1,5 +1,6 @@
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFunctions
 import Foundation
 
 private struct CachedAuthorName: Codable {
@@ -10,6 +11,7 @@ private struct CachedAuthorName: Codable {
 @MainActor
 final class UserService {
     private let db = Firestore.firestore()
+    private let functions = Functions.functions()
     private static let defaults = UserDefaults.standard
     private static let authorNameCacheKey = "feed_author_name_cache_v1"
     private static let authorNameTTL: TimeInterval = 7 * 24 * 60 * 60
@@ -128,6 +130,10 @@ final class UserService {
                 continuation.resume(returning: ())
             }
         }
+    }
+
+    func deleteCurrentUserData() async throws {
+        _ = try await functions.httpsCallable("deleteCurrentUserData").call([:])
     }
 
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {

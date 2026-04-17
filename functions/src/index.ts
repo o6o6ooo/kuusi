@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, WriteBatch } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, QueryDocumentSnapshot, WriteBatch } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
@@ -33,15 +33,79 @@ export const deleteGroup = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "groupId is required");
   }
 
+  const deletedPhotoCount = await deleteOwnedGroup(groupId, uid);
+
+  return {
+    deletedGroupId: groupId,
+    deletedPhotoCount
+  };
+});
+
+export const deleteCurrentUserData = onCall(async (request) => {
+  const uid = request.auth?.uid;
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  const groupsSnapshot = await db.collection("groups")
+    .where("members", "array-contains", uid)
+    .get();
+
+  const ownedGroups = groupsSnapshot.docs.filter((doc) => (doc.data() as GroupData).owner_uid === uid);
+  const joinedGroups = groupsSnapshot.docs.filter((doc) => (doc.data() as GroupData).owner_uid !== uid);
+
+  let deletedGroupCount = 0;
+  let deletedPhotoCount = 0;
+
+  for (const groupDoc of ownedGroups) {
+    deletedPhotoCount += await deleteOwnedGroup(groupDoc.id, uid, groupDoc);
+    deletedGroupCount += 1;
+  }
+
+  if (joinedGroups.length > 0) {
+    await commitOperations(
+      joinedGroups.map((groupDoc) => (batch: WriteBatch) =>
+        batch.update(groupDoc.ref, {
+          members: FieldValue.arrayRemove(uid)
+        })
+      )
+    );
+  }
+
+  const userPhotosSnapshot = await db.collection("photos")
+    .where("posted_by", "==", uid)
+    .get();
+  deletedPhotoCount += await deletePhotosAndCleanup(userPhotosSnapshot.docs);
+
+  await db.collection("users").doc(uid).delete();
+
+  return {
+    deletedUserId: uid,
+    deletedGroupCount,
+    deletedJoinedGroupCount: joinedGroups.length,
+    deletedPhotoCount
+  };
+});
+
+function normalizeGroupId(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+async function deleteOwnedGroup(
+  groupId: string,
+  requesterUID: string,
+  existingSnapshot?: QueryDocumentSnapshot
+): Promise<number> {
   const groupRef = db.collection("groups").doc(groupId);
-  const groupSnapshot = await groupRef.get();
+  const groupSnapshot = existingSnapshot ?? await groupRef.get();
 
   if (!groupSnapshot.exists) {
     throw new HttpsError("not-found", "Group not found");
   }
 
   const groupData = groupSnapshot.data() as GroupData;
-  if (groupData.owner_uid !== uid) {
+  if (groupData.owner_uid !== requesterUID) {
     throw new HttpsError("permission-denied", "Only the owner can delete this group");
   }
 
@@ -50,7 +114,29 @@ export const deleteGroup = onCall(async (request) => {
     .where("group_id", "==", groupId)
     .get();
 
-  const photoDocs = photosSnapshot.docs;
+  const deletedPhotoCount = await deletePhotosAndCleanup(photosSnapshot.docs);
+
+  await commitOperations([
+    ...memberIDs.map((memberID) => (batch: WriteBatch) =>
+      batch.set(
+        db.collection("users").doc(memberID),
+        { groups: FieldValue.arrayRemove(groupId) },
+        { merge: true }
+      )
+    ),
+    (batch: WriteBatch) => batch.delete(groupRef)
+  ]);
+
+  return deletedPhotoCount;
+}
+
+async function deletePhotosAndCleanup(
+  photoDocs: QueryDocumentSnapshot[]
+): Promise<number> {
+  if (photoDocs.length === 0) {
+    return 0;
+  }
+
   const photoIDs = photoDocs.map((doc) => doc.id);
   const photos = photoDocs.map((doc) => ({
     id: doc.id,
@@ -64,13 +150,6 @@ export const deleteGroup = onCall(async (request) => {
 
   await commitOperations([
     ...photoDocs.map((photoDoc) => (batch: WriteBatch) => batch.delete(photoDoc.ref)),
-    ...memberIDs.map((memberID) => (batch: WriteBatch) =>
-      batch.set(
-        db.collection("users").doc(memberID),
-        { groups: FieldValue.arrayRemove(groupId) },
-        { merge: true }
-      )
-    ),
     ...Object.entries(usageByUserID).map(([userID, sizeMB]) => (batch: WriteBatch) =>
       batch.set(
         db.collection("users").doc(userID),
@@ -84,18 +163,10 @@ export const deleteGroup = onCall(async (request) => {
         { favourites: FieldValue.arrayRemove(...ids) },
         { merge: true }
       )
-    ),
-    (batch: WriteBatch) => batch.delete(groupRef)
+    )
   ]);
 
-  return {
-    deletedGroupId: groupId,
-    deletedPhotoCount: photoDocs.length
-  };
-});
-
-function normalizeGroupId(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  return photoDocs.length;
 }
 
 function buildUsageMap(photos: Array<{ posted_by?: string; size_mb?: number }>): Record<string, number> {

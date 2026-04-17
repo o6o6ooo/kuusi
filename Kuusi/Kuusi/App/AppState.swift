@@ -85,7 +85,6 @@ final class AppState: ObservableObject {
     private let userService = UserService()
     private let biometricAuthService: BiometricAuthServicing
     private let groupService = GroupService()
-    private let photoDeletionService = PhotoDeletionService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
     private var shouldUnlockAfterInteractiveSignIn = false
@@ -205,20 +204,7 @@ final class AppState: ObservableObject {
         let uid = user.uid
 
         do {
-            let groups = try await groupService.fetchGroups(for: uid)
-            let ownedGroups = groups.filter { $0.ownerUID == uid }
-            let joinedGroups = groups.filter { $0.ownerUID != uid }
-
-            for group in ownedGroups {
-                try await groupService.deleteGroup(groupID: group.id)
-            }
-
-            for group in joinedGroups {
-                try await groupService.leaveGroup(groupID: group.id, uid: uid)
-            }
-
-            try await photoDeletionService.deletePhotosPosted(by: uid)
-            try await userService.deleteUserDocument(uid: uid)
+            try await userService.deleteCurrentUserData()
             try await deleteAuthUser(user)
 
             GIDSignIn.sharedInstance.signOut()
