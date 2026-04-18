@@ -88,6 +88,36 @@ export const deleteCurrentUserData = onCall(async (request) => {
   };
 });
 
+export const deletePhoto = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  const photoId = normalizeGroupId(request.data?.photoId);
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  if (!photoId) {
+    throw new HttpsError("invalid-argument", "photoId is required");
+  }
+
+  const photoSnapshot = await db.collection("photos").doc(photoId).get();
+  if (!photoSnapshot.exists) {
+    throw new HttpsError("not-found", "Photo not found");
+  }
+
+  const photoData = photoSnapshot.data() as PhotoData;
+  if (photoData.posted_by !== uid) {
+    throw new HttpsError("permission-denied", "Only the uploader can delete this photo");
+  }
+
+  const deletedPhotoCount = await deletePhotosAndCleanup([photoSnapshot as QueryDocumentSnapshot]);
+
+  return {
+    deletedPhotoId: photoId,
+    deletedPhotoCount
+  };
+});
+
 function normalizeGroupId(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }

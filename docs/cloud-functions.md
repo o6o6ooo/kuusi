@@ -24,6 +24,11 @@ Minimal setup for server-side destructive operations such as `deleteGroup`.
   - Deletes the current user's remaining posted photos and related favourites/usage cleanup
   - Deletes the user's Firestore document
   - Leaves Firebase Auth account deletion to the client so recent-login checks still apply
+- `deletePhoto`
+  - Verifies the current user is the uploader
+  - Deletes the photo's Storage files
+  - Deletes the photo Firestore document
+  - Cleans favourites and `usage_mb` with the same helper used by group/account deletion
 
 ## Follow-up
 

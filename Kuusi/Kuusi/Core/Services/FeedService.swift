@@ -1,4 +1,5 @@
 import FirebaseFirestore
+import FirebaseFunctions
 import Foundation
 
 enum FeedServiceError: Error {
@@ -20,7 +21,7 @@ struct RecentPhotoFetchResult {
 final class FeedService {
     private let db = Firestore.firestore()
     private let favouritesField = "favourites"
-    private let photoDeletionService = PhotoDeletionService()
+    private let functions = Functions.functions()
 
     func fetchRecentPhotoBatch(
         userID: String,
@@ -151,11 +152,11 @@ final class FeedService {
             throw FeedServiceError.cannotDeleteOthersPhotos
         }
 
-        try await photoDeletionService.deletePhotos(
-            [photo],
-            favouriteCleanupScope: .user(requesterUID),
-            fallbackOwnerUID: requesterUID
-        )
+        do {
+            _ = try await functions.httpsCallable("deletePhoto").call(["photoId": photo.id])
+        } catch {
+            throw mapDeletePhotoError(error)
+        }
     }
 
     private func fetchQuery(_ query: Query) async throws -> QuerySnapshot {
@@ -266,6 +267,17 @@ final class FeedService {
         return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
     }
 
+    private func mapDeletePhotoError(_ error: Error) -> Error {
+        let nsError = error as NSError
+
+        if nsError.domain == FunctionsErrorDomain,
+           let code = FunctionsErrorCode(rawValue: nsError.code),
+           code == .permissionDenied {
+            return FeedServiceError.cannotDeleteOthersPhotos
+        }
+
+        return error
+    }
 }
 
 private func compareFeedPhoto(_ photo: FeedPhoto, against cursor: FeedPageCursor) -> ComparisonResult {
