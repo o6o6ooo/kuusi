@@ -76,6 +76,7 @@ final class AppState: ObservableObject {
     @Published var route: Route = .signedOut
     @Published var toastMessage: AppMessage?
     @Published private(set) var currentUser: User?
+    @Published private(set) var signedInContentResetToken = 0
 #if DEBUG
     @Published private(set) var debugAccounts: [DebugAccount] = []
     @Published var selectedDebugAccountID: String?
@@ -89,6 +90,9 @@ final class AppState: ObservableObject {
     private var prefetchedGroupsUID: String?
     private var shouldUnlockAfterInteractiveSignIn = false
     private let uiTestRouteOverride: UITestRouteOverride?
+    private let now: () -> Date
+    private let relockInterval: TimeInterval
+    private var backgroundEnteredAt: Date?
 
     var isRunningUITests: Bool {
         uiTestRouteOverride != nil
@@ -97,10 +101,14 @@ final class AppState: ObservableObject {
     init(
         launchArguments: [String],
         biometricAuthService: BiometricAuthServicing,
-        shouldObserveAuthState: Bool
+        shouldObserveAuthState: Bool,
+        now: @escaping () -> Date = Date.init,
+        relockInterval: TimeInterval? = nil
     ) {
         self.biometricAuthService = biometricAuthService
         self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
+        self.now = now
+        self.relockInterval = relockInterval ?? 5 * 60
 #if DEBUG
         let loadedAccounts = AppState.loadDebugAccounts()
         debugAccounts = loadedAccounts
@@ -167,16 +175,26 @@ final class AppState: ObservableObject {
     }
 
     func unlockApp() async {
+        let shouldResetSignedInContent = route == .locked
+
         if uiTestRouteOverride != nil {
+            if shouldResetSignedInContent {
+                resetSignedInContent()
+            }
             route = .signedIn
             toastMessage = nil
+            backgroundEnteredAt = nil
             return
         }
 
         let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
         if ok {
+            if shouldResetSignedInContent {
+                resetSignedInContent()
+            }
             route = .signedIn
             toastMessage = nil
+            backgroundEnteredAt = nil
         } else {
             toastMessage = AppMessage(.biometricAuthenticationFailed, .error)
         }
@@ -190,6 +208,7 @@ final class AppState: ObservableObject {
             route = .signedOut
             toastMessage = nil
             prefetchedGroupsUID = nil
+            backgroundEnteredAt = nil
         } catch {
             toastMessage = AppMessage(.failedToSignOut, .error)
         }
@@ -213,6 +232,7 @@ final class AppState: ObservableObject {
             route = .signedOut
             toastMessage = nil
             prefetchedGroupsUID = nil
+            backgroundEnteredAt = nil
         } catch let nsError as NSError
             where nsError.domain == AuthErrorDomain &&
                   nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
@@ -257,10 +277,22 @@ final class AppState: ObservableObject {
 #endif
 
     func handleScenePhaseChange(_ newPhase: ScenePhase) {
-        guard newPhase == .background else { return }
-        guard currentUser != nil, route == .signedIn else { return }
-        route = .locked
-        toastMessage = nil
+        switch newPhase {
+        case .background:
+            guard route == .signedIn else { return }
+            backgroundEnteredAt = now()
+            toastMessage = nil
+        case .active:
+            guard let backgroundEnteredAt, route == .signedIn else { return }
+            self.backgroundEnteredAt = nil
+            guard now().timeIntervalSince(backgroundEnteredAt) >= relockInterval else { return }
+            route = .locked
+            toastMessage = nil
+        case .inactive:
+            break
+        @unknown default:
+            break
+        }
     }
 
     func clearToastMessage() {
@@ -275,6 +307,7 @@ final class AppState: ObservableObject {
                     self.currentUser = nil
                     self.route = .signedOut
                     self.prefetchedGroupsUID = nil
+                    self.backgroundEnteredAt = nil
                     return
                 }
 
@@ -284,6 +317,7 @@ final class AppState: ObservableObject {
                     self.currentUser = nil
                     self.route = .signedOut
                     self.toastMessage = nil
+                    self.backgroundEnteredAt = nil
                     return
                 }
 
@@ -445,6 +479,7 @@ final class AppState: ObservableObject {
         toastMessage = AppMessage(.failedToSetUpAccount, .error)
         prefetchedGroupsUID = nil
         shouldUnlockAfterInteractiveSignIn = false
+        backgroundEnteredAt = nil
     }
 
     private func prefetchGroupsIfNeeded(for uid: String) async {
@@ -455,5 +490,9 @@ final class AppState: ObservableObject {
         } catch {
             // Keep retrying on next auth-state callback if prefetch fails.
         }
+    }
+
+    private func resetSignedInContent() {
+        signedInContentResetToken &+= 1
     }
 }

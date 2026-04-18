@@ -110,6 +110,60 @@ struct AppStateTests {
         #expect(appState.route == .signedOut)
         #expect(appState.toastMessage?.id == .failedToSignOut)
     }
+
+    @Test
+    func handleScenePhaseChangeKeepsSignedInSessionWithinRelockWindow() {
+        var currentDate = Date(timeIntervalSince1970: 1_000)
+        let appState = AppState(
+            launchArguments: [],
+            biometricAuthService: BiometricAuthServiceSpy(result: true),
+            shouldObserveAuthState: false,
+            now: { currentDate },
+            relockInterval: 300
+        )
+        appState.route = .signedIn
+
+        appState.handleScenePhaseChange(.background)
+        currentDate = currentDate.addingTimeInterval(299)
+        appState.handleScenePhaseChange(.active)
+
+        #expect(appState.route == .signedIn)
+    }
+
+    @Test
+    func handleScenePhaseChangeLocksSignedInSessionAfterRelockWindow() {
+        var currentDate = Date(timeIntervalSince1970: 1_000)
+        let appState = AppState(
+            launchArguments: [],
+            biometricAuthService: BiometricAuthServiceSpy(result: true),
+            shouldObserveAuthState: false,
+            now: { currentDate },
+            relockInterval: 300
+        )
+        appState.route = .signedIn
+
+        appState.handleScenePhaseChange(.background)
+        currentDate = currentDate.addingTimeInterval(301)
+        appState.handleScenePhaseChange(.active)
+
+        #expect(appState.route == .locked)
+    }
+
+    @Test
+    func unlockAppResetsSignedInContentAfterRelock() async {
+        let biometricService = BiometricAuthServiceSpy(result: true)
+        let appState = AppState(
+            launchArguments: [],
+            biometricAuthService: biometricService,
+            shouldObserveAuthState: false
+        )
+        appState.route = .locked
+
+        await appState.unlockApp()
+
+        #expect(appState.route == .signedIn)
+        #expect(appState.signedInContentResetToken == 1)
+    }
 }
 
 private final class BiometricAuthServiceSpy: BiometricAuthServicing {
