@@ -125,11 +125,7 @@ final class FeedService {
         }
     }
 
-    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID: String, year: Int, hashtags: [String]) async throws {
-        if let postedBy = photo.postedBy, postedBy != requesterUID {
-            throw FeedServiceError.cannotEditOthersPhotos
-        }
-
+    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID _: String, year: Int, hashtags: [String]) async throws {
         let ref = db.collection("photos").document(photo.id)
         let payload: [String: Any] = [
             "year": year,

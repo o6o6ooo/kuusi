@@ -45,6 +45,10 @@ struct FeedView: View {
         photoCollection.currentGroupAvailableHashtags
     }
 
+    private var currentUserID: String? {
+        Auth.auth().currentUser?.uid
+    }
+
     private var displayedPhotos: [FeedPhoto] {
         currentGroupPhotos.filter { photo in
             let matchesHashtag = selectedHashtag == nil || photo.hashtags.contains {
@@ -224,6 +228,7 @@ struct FeedView: View {
                     width: tileWidth,
                     displayAspectRatio: displayAspectRatio,
                     isExpanded: isExpanded,
+                    canDelete: photo.isOwned(by: currentUserID),
                     onTap: onTap,
                     onEdit: { editingPhoto = photo },
                     onDelete: {
@@ -353,7 +358,7 @@ struct FeedView: View {
 
     private func deletePhoto(_ photo: FeedPhoto) async {
         guard !deletingPhotoIDs.contains(photo.id) else { return }
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard let uid = currentUserID else {
             feedMessage = AppMessage(.pleaseSignInFirst, .error)
             return
         }
@@ -382,7 +387,7 @@ struct FeedView: View {
 
         let newValue = !photo.isFavourite
         do {
-            guard let uid = Auth.auth().currentUser?.uid else {
+            guard let uid = currentUserID else {
                 feedMessage = AppMessage(.pleaseSignInFirst, .error)
                 return
             }
@@ -405,7 +410,7 @@ struct FeedView: View {
 
     private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
         guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(toastMessage: AppMessage(.photoAlreadyBeingUpdated, .error))) }
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard let uid = currentUserID else {
             return .failure(FeedEditError(toastMessage: AppMessage(.pleaseSignInFirst, .error)))
         }
 

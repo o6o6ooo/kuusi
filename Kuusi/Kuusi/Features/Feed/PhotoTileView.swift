@@ -49,6 +49,7 @@ struct PhotoTileView: View {
     let width: CGFloat
     let displayAspectRatio: CGFloat
     let isExpanded: Bool
+    let canDelete: Bool
     let onTap: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -120,10 +121,12 @@ struct PhotoTileView: View {
                 )
             }
 
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if canDelete {
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
         .disabled(isDeleting || isEditing || isFavouriting)

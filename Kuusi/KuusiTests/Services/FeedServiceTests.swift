@@ -73,31 +73,6 @@ struct FeedServiceTests {
 
     @Test
     @MainActor
-    func updatePhotoMetadataRejectsEditingOtherUsersPhoto() async {
-        let service = FeedService()
-        let photo = makePhoto(
-            id: "photo-1",
-            groupID: "g1",
-            postedBy: "owner-1",
-            createdAt: Date(timeIntervalSince1970: 100)
-        )
-
-        do {
-            try await service.updatePhotoMetadata(photo, requesterUID: "owner-2", year: 2025, hashtags: ["family"])
-            Issue.record("Expected updatePhotoMetadata to reject edits from a different owner.")
-        } catch {
-            let nsError = error as NSError
-            if nsError.domain != "FeedService" {
-                Issue.record("Unexpected error domain: \(nsError.domain)")
-            }
-            if nsError.code != 403 {
-                Issue.record("Unexpected error code: \(nsError.code)")
-            }
-        }
-    }
-
-    @Test
-    @MainActor
     func deletePhotoRejectsDeletingOtherUsersPhoto() async {
         let service = FeedService()
         let photo = makePhoto(

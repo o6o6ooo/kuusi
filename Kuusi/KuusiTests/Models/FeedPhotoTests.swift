@@ -98,4 +98,25 @@ struct FeedPhotoTests {
         #expect(updated.photoURL == original.photoURL)
         #expect(updated.groupID == original.groupID)
     }
+
+    @Test
+    func isOwnedMatchesPostedByAgainstCurrentUser() {
+        let photo = FeedPhoto(
+            id: "photo-1",
+            photoURL: "https://example.com/full.jpg",
+            thumbnailURL: nil,
+            groupID: "group-a",
+            postedBy: "user-1",
+            year: 2024,
+            hashtags: ["spring"],
+            isFavourite: false,
+            sizeMB: 4.5,
+            aspectRatio: 1.0,
+            createdAt: nil
+        )
+
+        #expect(photo.isOwned(by: "user-1"))
+        #expect(!photo.isOwned(by: "user-2"))
+        #expect(!photo.isOwned(by: nil))
+    }
 }

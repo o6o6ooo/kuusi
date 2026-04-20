@@ -16,6 +16,11 @@ struct FeedPhoto: Identifiable {
 }
 
 extension FeedPhoto {
+    func isOwned(by userID: String?) -> Bool {
+        guard let userID, let postedBy else { return false }
+        return postedBy == userID
+    }
+
     init(id: String, data: [String: Any]) {
         self.id = id
         self.photoURL = data["photo_url"] as? String
