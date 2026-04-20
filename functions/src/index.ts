@@ -13,6 +13,7 @@ const storage = getStorage();
 const maxBatchWriteCount = 450;
 const maxGroupMembers = 50;
 const maxMessagingBatchSize = 500;
+const notificationFunctionRegion = "europe-west2";
 const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 const invalidMessagingTokenCodes = new Set([
@@ -318,7 +319,10 @@ export const removeGroupMember = onCall(async (request) => {
   };
 });
 
-export const onPhotoCreated = onDocumentCreated("photos/{photoId}", async (event) => {
+export const onPhotoCreated = onDocumentCreated({
+  document: "photos/{photoId}",
+  region: notificationFunctionRegion
+}, async (event) => {
   const snapshot = event.data;
   if (!snapshot) {
     return;
@@ -368,7 +372,10 @@ export const onPhotoCreated = onDocumentCreated("photos/{photoId}", async (event
   });
 });
 
-export const onAdminNotificationCreated = onDocumentCreated("admin_notifications/{notificationId}", async (event) => {
+export const onAdminNotificationCreated = onDocumentCreated({
+  document: "admin_notifications/{notificationId}",
+  region: notificationFunctionRegion
+}, async (event) => {
   const snapshot = event.data;
   if (!snapshot) {
     return;

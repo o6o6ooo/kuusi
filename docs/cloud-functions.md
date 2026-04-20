@@ -34,13 +34,13 @@ Server-side helpers for destructive actions and notification fan-out.
   - Removes the target user from `groups/{groupId}.members`
   - Removes the `groupId` from the target user's `users/{uid}.groups`
 - `onPhotoCreated`
-  - Triggers when `photos/{photoId}` is created
+  - Triggers when `photos/{photoId}` is created in `europe-west2`
   - Loads the target group and excludes the uploader from delivery
   - Reads active device tokens from `users/{uid}/devices/{deviceId}`
   - Sends a push notification announcing the new photo
   - Deletes stale tokens when FCM reports them invalid
 - `onAdminNotificationCreated`
-  - Triggers when `admin_notifications/{notificationId}` is created
+  - Triggers when `admin_notifications/{notificationId}` is created in `europe-west2`
   - Supports `target = "all"` and `target = "group"`
   - Sends maintenance or announcement pushes with optional deep-link metadata
   - Writes delivery counts plus `status = sent` or `status = failed`
@@ -66,3 +66,5 @@ Optional fields:
 ## Follow-up
 
 The iOS app now owns device token registration. Deploy the notification functions alongside the client changes so `users/{uid}/devices/{deviceId}` is populated before fan-out is expected to work.
+
+When moving these notification triggers from `us-central1` to `europe-west2`, delete the old `us-central1` copies after the new deployment succeeds so the same Firestore event is not processed twice.
