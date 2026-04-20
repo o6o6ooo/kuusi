@@ -44,15 +44,15 @@ Current Firebase usage in the SwiftUI app.
 ### `admin_notifications/{notificationId}`
 - `title: string`
 - `body: string`
-- `target: "all" | "group"`
-- `target_group_ids: string[]`
+- `target: "all"`
 - `deep_link: string`
 - `status: "draft" | "sent" | "failed"`
+- `failure_reason: string`
 - `sent_at: timestamp`
 - `updated_at: timestamp`
-- `delivery.sent_count: number`
-- `delivery.failed_count: number`
-- `delivery.token_count: number`
+- `delivery.mode: "topic"`
+- `delivery.topic: "announcements"`
+- `delivery.message_id: string`
 
 ## Storage
 
@@ -72,6 +72,7 @@ This is required for queries that filter photos by `group_id` and order the feed
 ## Notification flow
 
 - iOS devices store their current FCM token under `users/{uid}/devices/{deviceId}`
+- iOS devices subscribe to the FCM topic `announcements` after notification permission is granted
 - `photos/{photoId}` creation triggers a Cloud Function that fans out push notifications to the other group members
-- `admin_notifications/{notificationId}` creation triggers a Cloud Function that sends maintenance or announcement pushes
+- `admin_notifications/{notificationId}` creation triggers a Cloud Function that sends maintenance or announcement pushes to the `announcements` topic
 - Invalid or expired device tokens are deleted server-side during notification delivery cleanup

@@ -41,9 +41,9 @@ Server-side helpers for destructive actions and notification fan-out.
   - Deletes stale tokens when FCM reports them invalid
 - `onAdminNotificationCreated`
   - Triggers when `admin_notifications/{notificationId}` is created in `europe-west2`
-  - Supports `target = "all"` and `target = "group"`
-  - Sends maintenance or announcement pushes with optional deep-link metadata
-  - Writes delivery counts plus `status = sent` or `status = failed`
+  - Supports `target = "all"` only
+  - Sends maintenance or announcement pushes to the FCM topic `announcements`
+  - Writes topic delivery metadata plus `status = sent` or `status = failed`
 
 ## Admin notification authoring
 
@@ -52,16 +52,16 @@ Create a Firestore document in `admin_notifications` with at least:
 - `title`
 - `body`
 - `target`
-  - `"all"` to notify every active device
-  - `"group"` to notify only the groups listed in `target_group_ids`
+  - `"all"` to notify every signed-in device subscribed to the announcements topic
 
 Optional fields:
 
-- `target_group_ids`
 - `deep_link`
 - `status`
   - Use `"draft"` to save without sending
   - Omit it, or use any non-draft value, to send immediately on create
+
+If `target` is set to anything other than `"all"`, the function marks the document as failed with `failure_reason = "unsupported_target"`.
 
 ## Follow-up
 

@@ -13,6 +13,8 @@ protocol NotificationServicing {
 
 @MainActor
 final class NotificationService: NotificationServicing {
+    private static let announcementsTopic = "announcements"
+
     @MainActor
     static let shared = NotificationService(
         userService: UserService(),
@@ -52,6 +54,9 @@ final class NotificationService: NotificationServicing {
         let settings = await ensureNotificationAuthorization()
         if isAuthorized(settings.authorizationStatus) {
             application.registerForRemoteNotifications()
+            await subscribeToAnnouncementsTopicIfPossible()
+        } else {
+            await unsubscribeFromAnnouncementsTopic()
         }
 
         await persistCurrentDevice(for: uid, authorizationStatus: settings.authorizationStatus)
@@ -65,6 +70,7 @@ final class NotificationService: NotificationServicing {
         guard let resolvedUID else { return }
 
         do {
+            await unsubscribeFromAnnouncementsTopic()
             try await userService.deleteNotificationDevice(uid: resolvedUID, deviceID: deviceID)
         } catch {
             // Keep sign-out resilient even if device cleanup fails.
@@ -80,6 +86,9 @@ final class NotificationService: NotificationServicing {
 
         guard let currentUserID else { return }
         let settings = await notificationSettings()
+        if isAuthorized(settings.authorizationStatus) {
+            await subscribeToAnnouncementsTopicIfPossible()
+        }
         await persistCurrentDevice(for: currentUserID, authorizationStatus: settings.authorizationStatus)
     }
 
@@ -164,6 +173,23 @@ final class NotificationService: NotificationServicing {
             return build
         default:
             return "unknown"
+        }
+    }
+
+    private func subscribeToAnnouncementsTopicIfPossible() async {
+        guard currentFCMToken != nil else { return }
+        await withCheckedContinuation { continuation in
+            Messaging.messaging().subscribe(toTopic: Self.announcementsTopic) { _ in
+                continuation.resume()
+            }
+        }
+    }
+
+    private func unsubscribeFromAnnouncementsTopic() async {
+        await withCheckedContinuation { continuation in
+            Messaging.messaging().unsubscribe(fromTopic: Self.announcementsTopic) { _ in
+                continuation.resume()
+            }
         }
     }
 }

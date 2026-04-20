@@ -14,6 +14,7 @@ const maxBatchWriteCount = 450;
 const maxGroupMembers = 50;
 const maxMessagingBatchSize = 500;
 const notificationFunctionRegion = "europe-west2";
+const announcementsTopic = "announcements";
 const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 const invalidMessagingTokenCodes = new Set([
@@ -62,7 +63,6 @@ type AdminNotificationData = {
   title?: string;
   body?: string;
   target?: string;
-  target_group_ids?: string[];
   deep_link?: string;
   status?: string;
 };
@@ -405,48 +405,32 @@ export const onAdminNotificationCreated = onDocumentCreated({
   }
 
   const target = normalizeText(notificationData.target) ?? "all";
-  let delivery: { sentCount: number; failedCount: number; tokenCount: number };
-
-  if (target === "group") {
-    const groupIDs = normalizeStringArray(notificationData.target_group_ids);
-    if (groupIDs.length === 0) {
-      await notificationRef.set({
-        status: "failed",
-        failure_reason: "target_group_ids_required",
-        updated_at: FieldValue.serverTimestamp()
-      }, { merge: true });
-      return;
-    }
-
-    const memberUIDs = await loadMemberUIDsForGroups(groupIDs);
-    delivery = await sendPushToUserIDs(memberUIDs, {
-      title,
-      body,
-      data: {
-        type: "admin_announcement",
-        notification_id: notificationId,
-        deep_link: normalizeText(notificationData.deep_link) ?? "feed"
-      }
-    });
-  } else {
-    delivery = await sendPushToAllDevices({
-      title,
-      body,
-      data: {
-        type: "admin_announcement",
-        notification_id: notificationId,
-        deep_link: normalizeText(notificationData.deep_link) ?? "feed"
-      }
-    });
+  if (target !== "all") {
+    await notificationRef.set({
+      status: "failed",
+      failure_reason: "unsupported_target",
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return;
   }
+
+  const messageId = await sendPushToTopic(announcementsTopic, {
+    title,
+    body,
+    data: {
+      type: "admin_announcement",
+      notification_id: notificationId,
+      deep_link: normalizeText(notificationData.deep_link) ?? "feed"
+    }
+  });
 
   await notificationRef.set({
     status: "sent",
     sent_at: FieldValue.serverTimestamp(),
     delivery: {
-      sent_count: delivery.sentCount,
-      failed_count: delivery.failedCount,
-      token_count: delivery.tokenCount
+      mode: "topic",
+      topic: announcementsTopic,
+      message_id: messageId
     },
     updated_at: FieldValue.serverTimestamp()
   }, { merge: true });
@@ -458,16 +442,6 @@ function normalizeGroupId(value: unknown): string | null {
 
 function normalizeText(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((item) => normalizeText(item))
-    .filter((item): item is string => item !== null);
 }
 
 async function deleteOwnedGroup(
@@ -619,33 +593,6 @@ async function loadUserDisplayName(uid: string): Promise<string> {
   return name ?? "Someone";
 }
 
-async function loadMemberUIDsForGroups(groupIDs: string[]): Promise<string[]> {
-  const memberUIDs = new Set<string>();
-
-  for (const groupID of groupIDs) {
-    const groupSnapshot = await db.collection("groups").doc(groupID).get();
-    if (!groupSnapshot.exists) {
-      continue;
-    }
-
-    const groupData = groupSnapshot.data() as GroupData;
-    for (const memberUID of normalizeStringArray(groupData.members)) {
-      memberUIDs.add(memberUID);
-    }
-  }
-
-  return Array.from(memberUIDs);
-}
-
-async function sendPushToAllDevices(payload: PushPayload): Promise<{ sentCount: number; failedCount: number; tokenCount: number }> {
-  const snapshot = await db.collectionGroup("devices")
-    .where("notifications_enabled", "==", true)
-    .get();
-
-  const targets = snapshot.docs.flatMap((document) => deviceTargetsFromData(document.ref, document.data() as DeviceData));
-  return sendPushToDeviceTargets(targets, payload);
-}
-
 async function sendPushToUserIDs(
   userIDs: string[],
   payload: PushPayload
@@ -731,6 +678,24 @@ async function sendPushToDeviceTargets(
     failedCount,
     tokenCount: dedupedTargets.length
   };
+}
+
+async function sendPushToTopic(topic: string, payload: PushPayload): Promise<string> {
+  return getMessaging().send({
+    topic,
+    notification: {
+      title: payload.title,
+      body: payload.body
+    },
+    data: payload.data,
+    apns: {
+      payload: {
+        aps: {
+          sound: "default"
+        }
+      }
+    }
+  });
 }
 
 function parseStoragePath(urlString: string | undefined): string | null {
