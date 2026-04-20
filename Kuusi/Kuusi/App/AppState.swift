@@ -85,6 +85,7 @@ final class AppState: ObservableObject {
     private let authService = AppleAuthService()
     private let userService = UserService()
     private let biometricAuthService: BiometricAuthServicing
+    private let notificationService: NotificationServicing
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
@@ -103,9 +104,11 @@ final class AppState: ObservableObject {
         biometricAuthService: BiometricAuthServicing,
         shouldObserveAuthState: Bool,
         now: @escaping () -> Date = Date.init,
-        relockInterval: TimeInterval? = nil
+        relockInterval: TimeInterval? = nil,
+        notificationService: NotificationServicing
     ) {
         self.biometricAuthService = biometricAuthService
+        self.notificationService = notificationService
         self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
         self.now = now
         self.relockInterval = relockInterval ?? 5 * 60
@@ -134,7 +137,8 @@ final class AppState: ObservableObject {
         self.init(
             launchArguments: ProcessInfo.processInfo.arguments,
             biometricAuthService: BiometricAuthService(),
-            shouldObserveAuthState: true
+            shouldObserveAuthState: true,
+            notificationService: NotificationService.shared
         )
     }
 
@@ -165,6 +169,7 @@ final class AppState: ObservableObject {
             toastMessage = nil
             currentUser = user
             route = .signedIn
+            await notificationService.handleSignedInUser(user.uid)
         } catch let error as AuthServiceError {
             shouldUnlockAfterInteractiveSignIn = false
             toastMessage = AppMessage(error.appMessageID, .error)
@@ -195,6 +200,9 @@ final class AppState: ObservableObject {
             route = .signedIn
             toastMessage = nil
             backgroundEnteredAt = nil
+            if let uid = currentUser?.uid {
+                await notificationService.handleSignedInUser(uid)
+            }
         } else {
             toastMessage = AppMessage(.biometricAuthenticationFailed, .error)
         }
@@ -202,6 +210,8 @@ final class AppState: ObservableObject {
 
     func signOut() async {
         do {
+            let signedOutUID = currentUser?.uid ?? Auth.auth().currentUser?.uid
+            await notificationService.handleSignedOutUser(signedOutUID)
             GIDSignIn.sharedInstance.signOut()
             try Auth.auth().signOut()
             currentUser = nil
@@ -223,6 +233,7 @@ final class AppState: ObservableObject {
         let uid = user.uid
 
         do {
+            await notificationService.handleSignedOutUser(uid)
             try await userService.deleteCurrentUserData()
             try await deleteAuthUser(user)
 
@@ -261,6 +272,7 @@ final class AppState: ObservableObject {
             currentUser = user
             toastMessage = nil
             route = .signedIn
+            await notificationService.handleSignedInUser(user.uid)
         } catch {
             shouldUnlockAfterInteractiveSignIn = false
             if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
@@ -303,7 +315,9 @@ final class AppState: ObservableObject {
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             Task { @MainActor in
+                let previousUID = self.currentUser?.uid
                 guard let user else {
+                    await self.notificationService.handleSignedOutUser(previousUID)
                     self.currentUser = nil
                     self.route = .signedOut
                     self.prefetchedGroupsUID = nil
@@ -313,6 +327,7 @@ final class AppState: ObservableObject {
 
                 let validSession = await self.validateCurrentUserSession(user)
                 if !validSession {
+                    await self.notificationService.handleSignedOutUser(previousUID ?? user.uid)
                     try? Auth.auth().signOut()
                     self.currentUser = nil
                     self.route = .signedOut

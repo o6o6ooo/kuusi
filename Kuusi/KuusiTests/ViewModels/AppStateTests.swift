@@ -6,7 +6,7 @@ import Testing
 struct AppStateTests {
     @Test
     func defaultsToSignedOutWhenNoUiTestRouteIsProvided() {
-        let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
+        let appState = makeAppState()
 
         #expect(appState.route == .signedOut)
         #expect(appState.isRunningUITests == false)
@@ -17,7 +17,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: ["UI_TEST_ROUTE_SIGNED_OUT"],
             biometricAuthService: BiometricAuthServiceSpy(result: true),
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
 
         #expect(appState.route == .signedOut)
@@ -29,7 +30,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: ["UI_TEST_ROUTE_LOCKED"],
             biometricAuthService: BiometricAuthServiceSpy(result: true),
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
 
         #expect(appState.route == .locked)
@@ -41,7 +43,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: ["UI_TEST_ROUTE_SIGNED_IN"],
             biometricAuthService: BiometricAuthServiceSpy(result: true),
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
 
         #expect(appState.route == .signedIn)
@@ -54,7 +57,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: [],
             biometricAuthService: biometricService,
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
         appState.route = .locked
 
@@ -72,7 +76,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: [],
             biometricAuthService: biometricService,
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
         appState.route = .locked
 
@@ -89,7 +94,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: ["UI_TEST_ROUTE_LOCKED"],
             biometricAuthService: biometricService,
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
 
         await appState.unlockApp()
@@ -101,7 +107,7 @@ struct AppStateTests {
 
     @Test
     func handleScenePhaseChangeLeavesSignedOutStateUnchanged() {
-        let appState = AppState(launchArguments: [], biometricAuthService: BiometricAuthServiceSpy(result: true), shouldObserveAuthState: false)
+        let appState = makeAppState()
         appState.route = .signedOut
         appState.toastMessage = AppMessage(.failedToSignOut, .error)
 
@@ -119,7 +125,8 @@ struct AppStateTests {
             biometricAuthService: BiometricAuthServiceSpy(result: true),
             shouldObserveAuthState: false,
             now: { currentDate },
-            relockInterval: 300
+            relockInterval: 300,
+            notificationService: NotificationServiceSpy()
         )
         appState.route = .signedIn
 
@@ -138,7 +145,8 @@ struct AppStateTests {
             biometricAuthService: BiometricAuthServiceSpy(result: true),
             shouldObserveAuthState: false,
             now: { currentDate },
-            relockInterval: 300
+            relockInterval: 300,
+            notificationService: NotificationServiceSpy()
         )
         appState.route = .signedIn
 
@@ -155,7 +163,8 @@ struct AppStateTests {
         let appState = AppState(
             launchArguments: [],
             biometricAuthService: biometricService,
-            shouldObserveAuthState: false
+            shouldObserveAuthState: false,
+            notificationService: NotificationServiceSpy()
         )
         appState.route = .locked
 
@@ -164,6 +173,16 @@ struct AppStateTests {
         #expect(appState.route == .signedIn)
         #expect(appState.signedInContentResetToken == 1)
     }
+}
+
+@MainActor
+private func makeAppState() -> AppState {
+    AppState(
+        launchArguments: [],
+        biometricAuthService: BiometricAuthServiceSpy(result: true),
+        shouldObserveAuthState: false,
+        notificationService: NotificationServiceSpy()
+    )
 }
 
 private final class BiometricAuthServiceSpy: BiometricAuthServicing {
@@ -180,4 +199,12 @@ private final class BiometricAuthServiceSpy: BiometricAuthServicing {
         lastReason = reason
         return result
     }
+}
+
+@MainActor
+private final class NotificationServiceSpy: NotificationServicing {
+    func handleSignedInUser(_ uid: String) async {}
+    func handleSignedOutUser(_ uid: String?) async {}
+    func didRegisterForRemoteNotifications(deviceToken: Data) {}
+    func didReceiveRegistrationToken(_ fcmToken: String?) async {}
 }

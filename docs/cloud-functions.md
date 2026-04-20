@@ -1,6 +1,6 @@
 # Cloud Functions
 
-Minimal setup for server-side destructive operations such as `deleteGroup`.
+Server-side helpers for destructive actions and notification fan-out.
 
 ## First-time setup
 
@@ -22,7 +22,7 @@ Minimal setup for server-side destructive operations such as `deleteGroup`.
   - Deletes groups owned by the current user using the same server-side cleanup path
   - Removes the current user from groups they joined
   - Deletes the current user's remaining posted photos and related favourites/usage cleanup
-  - Deletes the user's Firestore document
+  - Deletes the user's `devices` subcollection and Firestore document
   - Leaves Firebase Auth account deletion to the client so recent-login checks still apply
 - `deletePhoto`
   - Verifies the current user is the uploader
@@ -33,7 +33,36 @@ Minimal setup for server-side destructive operations such as `deleteGroup`.
   - Verifies the caller owns the group
   - Removes the target user from `groups/{groupId}.members`
   - Removes the `groupId` from the target user's `users/{uid}.groups`
+- `onPhotoCreated`
+  - Triggers when `photos/{photoId}` is created
+  - Loads the target group and excludes the uploader from delivery
+  - Reads active device tokens from `users/{uid}/devices/{deviceId}`
+  - Sends a push notification announcing the new photo
+  - Deletes stale tokens when FCM reports them invalid
+- `onAdminNotificationCreated`
+  - Triggers when `admin_notifications/{notificationId}` is created
+  - Supports `target = "all"` and `target = "group"`
+  - Sends maintenance or announcement pushes with optional deep-link metadata
+  - Writes delivery counts plus `status = sent` or `status = failed`
+
+## Admin notification authoring
+
+Create a Firestore document in `admin_notifications` with at least:
+
+- `title`
+- `body`
+- `target`
+  - `"all"` to notify every active device
+  - `"group"` to notify only the groups listed in `target_group_ids`
+
+Optional fields:
+
+- `target_group_ids`
+- `deep_link`
+- `status`
+  - Use `"draft"` to save without sending
+  - Omit it, or use any non-draft value, to send immediately on create
 
 ## Follow-up
 
-Once `deleteGroup` is deployed and working, `deleteAccount` can follow the same pattern so client-side rules can stay tight.
+The iOS app now owns device token registration. Deploy the notification functions alongside the client changes so `users/{uid}/devices/{deviceId}` is populated before fan-out is expected to work.

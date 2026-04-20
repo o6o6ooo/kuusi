@@ -136,6 +136,51 @@ final class UserService {
         _ = try await functions.httpsCallable("deleteCurrentUserData").call([:])
     }
 
+    func upsertNotificationDevice(
+        uid: String,
+        deviceID: String,
+        fcmToken: String?,
+        notificationsEnabled: Bool,
+        platform: String = "ios",
+        deviceName: String?,
+        appVersion: String
+    ) async throws {
+        let ref = db.collection("users").document(uid).collection("devices").document(deviceID)
+
+        var payload: [String: Any] = [
+            "platform": platform,
+            "app_version": appVersion,
+            "notifications_enabled": notificationsEnabled,
+            "last_seen_at": FieldValue.serverTimestamp(),
+            "updated_at": FieldValue.serverTimestamp()
+        ]
+
+        if let deviceName, !deviceName.isEmpty {
+            payload["device_name"] = deviceName
+        }
+
+        if let fcmToken, !fcmToken.isEmpty {
+            payload["fcm_token"] = fcmToken
+        } else {
+            payload["fcm_token"] = FieldValue.delete()
+        }
+
+        try await setDocument(ref, data: payload, merge: true)
+    }
+
+    func deleteNotificationDevice(uid: String, deviceID: String) async throws {
+        let ref = db.collection("users").document(uid).collection("devices").document(deviceID)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            ref.delete { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
+        }
+    }
+
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<DocumentSnapshot, Error>) in
             ref.getDocument { snapshot, error in
