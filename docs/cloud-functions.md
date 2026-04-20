@@ -29,6 +29,10 @@ Minimal setup for server-side destructive operations such as `deleteGroup`.
   - Deletes the photo's Storage files
   - Deletes the photo Firestore document
   - Cleans favourites and `usage_mb` with the same helper used by group/account deletion
+- `removeGroupMember`
+  - Verifies the caller owns the group
+  - Removes the target user from `groups/{groupId}.members`
+  - Removes the `groupId` from the target user's `users/{uid}.groups`
 
 ## Follow-up
 

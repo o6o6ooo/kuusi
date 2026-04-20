@@ -245,43 +245,13 @@ final class GroupService {
     }
 
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws {
-        let groupRef = db.collection("groups").document(groupID)
-        let userRef = db.collection("users").document(memberUID)
-
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.runTransaction({ transaction, errorPointer in
-                do {
-                    let groupSnapshot = try transaction.getDocument(groupRef)
-                    guard groupSnapshot.exists else {
-                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
-                        return nil
-                    }
-
-                    let ownerUID = groupSnapshot.data()?["owner_uid"] as? String
-                    if ownerUID != requesterUID {
-                        errorPointer?.pointee = GroupServiceError.onlyOwnerCanRemoveMembers as NSError
-                        return nil
-                    }
-
-                    if ownerUID == memberUID {
-                        errorPointer?.pointee = GroupServiceError.ownerCannotBeRemoved as NSError
-                        return nil
-                    }
-                } catch {
-                    errorPointer?.pointee = error as NSError
-                    return nil
-                }
-
-                transaction.updateData(["members": FieldValue.arrayRemove([memberUID])], forDocument: groupRef)
-                transaction.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
-                return nil
-            }, completion: { _, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            })
+        do {
+            _ = try await functions.httpsCallable("removeGroupMember").call([
+                "groupId": groupID,
+                "memberUid": memberUID
+            ])
+        } catch {
+            throw mapRemoveMemberError(error, requesterUID: requesterUID, memberUID: memberUID)
         }
 
         removeCachedGroup(groupID: groupID, for: memberUID)
@@ -489,6 +459,29 @@ final class GroupService {
                 return GroupServiceError.inviteExpired
             }
             return GroupServiceError.invalidInvite
+        default:
+            return error
+        }
+    }
+
+    private func mapRemoveMemberError(_ error: Error, requesterUID: String, memberUID: String) -> Error {
+        let nsError = error as NSError
+
+        guard nsError.domain == FunctionsErrorDomain,
+              let code = FunctionsErrorCode(rawValue: nsError.code) else {
+            return error
+        }
+
+        switch code {
+        case .notFound:
+            return GroupServiceError.groupNotFound
+        case .permissionDenied:
+            return GroupServiceError.onlyOwnerCanRemoveMembers
+        case .failedPrecondition:
+            if requesterUID == memberUID {
+                return GroupServiceError.ownerCannotBeRemoved
+            }
+            return error
         default:
             return error
         }

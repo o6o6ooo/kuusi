@@ -230,6 +230,54 @@ export const deletePhoto = onCall(async (request) => {
   };
 });
 
+export const removeGroupMember = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  const groupId = normalizeGroupId(request.data?.groupId);
+  const memberUid = normalizeGroupId(request.data?.memberUid);
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  if (!groupId || !memberUid) {
+    throw new HttpsError("invalid-argument", "groupId and memberUid are required");
+  }
+
+  const groupRef = db.collection("groups").doc(groupId);
+  const memberRef = db.collection("users").doc(memberUid);
+
+  await db.runTransaction(async (transaction) => {
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+
+    const groupData = groupSnapshot.data() as GroupData;
+    const ownerUid = groupData.owner_uid;
+
+    if (ownerUid !== uid) {
+      throw new HttpsError("permission-denied", "Only the owner can remove members");
+    }
+
+    if (ownerUid === memberUid) {
+      throw new HttpsError("failed-precondition", "The owner cannot be removed");
+    }
+
+    transaction.update(groupRef, {
+      members: FieldValue.arrayRemove(memberUid)
+    });
+    transaction.set(memberRef, {
+      groups: FieldValue.arrayRemove(groupId)
+    }, { merge: true });
+  });
+
+  return {
+    groupId,
+    memberUid,
+    removed: true
+  };
+});
+
 function normalizeGroupId(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
