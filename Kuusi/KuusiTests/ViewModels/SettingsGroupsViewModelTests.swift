@@ -4,29 +4,29 @@ import Testing
 struct SettingsGroupsViewModelTests {
     @Test
     func parserReadsCustomSchemeInvite() {
-        let groupID = GroupInvitePayloadParser.extractGroupID(from: "kuusi://invite/ABC123")
+        let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: "kuusi://invite/ABC123")
 
-        #expect(groupID == "abc123")
+        #expect(inviteToken == "abc123")
     }
 
     @Test
     func parserReadsInviteFromHttpsURL() {
-        let groupID = GroupInvitePayloadParser.extractGroupID(from: "https://kuusi.app/invite/Group-42")
+        let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: "https://kuusi.app/invite/Group-42")
 
-        #expect(groupID == "group-42")
+        #expect(inviteToken == "group-42")
     }
 
     @Test
     func parserFallsBackToTrimmedLowercasedText() {
-        let groupID = GroupInvitePayloadParser.extractGroupID(from: "  MixedCaseGroup  ")
+        let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: "  MixedCaseGroup  ")
 
-        #expect(groupID == "mixedcasegroup")
+        #expect(inviteToken == "mixedcasegroup")
     }
 
     @Test
     func parserRejectsEmptyPayload() {
-        let groupID = GroupInvitePayloadParser.extractGroupID(from: "   ")
+        let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: "   ")
 
-        #expect(groupID == nil)
+        #expect(inviteToken == nil)
     }
 }

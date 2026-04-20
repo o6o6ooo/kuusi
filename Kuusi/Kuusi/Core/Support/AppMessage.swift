@@ -61,6 +61,7 @@ struct AppMessage: Equatable {
         case groupMemberLimitReached(maxMembers: Int)
         case groupCreated
         case groupDeleted
+        case inviteQRCodeExpired
         case ownerCannotLeave
         case groupUpdated
         case invalidInviteQR
@@ -213,6 +214,8 @@ extension AppMessage.ID {
             return "Group created"
         case .groupDeleted:
             return "Group deleted"
+        case .inviteQRCodeExpired:
+            return "Invite QR has expired"
         case .ownerCannotLeave:
             return "Group owners cannot leave their group"
         case .groupUpdated:

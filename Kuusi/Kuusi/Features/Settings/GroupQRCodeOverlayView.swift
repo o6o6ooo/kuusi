@@ -32,6 +32,10 @@ struct GroupQRCodeOverlayView: View {
                         .appTextLinkStyle()
                 }
                 .buttonStyle(.plain)
+
+                Text("This QR code is valid for 24 hours.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

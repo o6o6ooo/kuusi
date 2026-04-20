@@ -138,9 +138,9 @@ struct GroupsSectionView: View {
             }
 
             Button("QR code", systemImage: "qrcode") {
-                viewModel.selectedGroupID = group.id
-                viewModel.editableGroupName = group.name
-                viewModel.isGroupQRCodeOverlayPresented = true
+                Task {
+                    await viewModel.presentGroupQRCode(for: group)
+                }
             }
         } label: {
             Image(systemName: "ellipsis")

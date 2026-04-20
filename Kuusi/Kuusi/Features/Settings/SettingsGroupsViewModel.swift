@@ -16,25 +16,29 @@ private extension GroupServiceError {
             return .groupMemberLimitReached(maxMembers: maxMembers)
         case .onlyOwnerCanRemoveMembers:
             return .onlyOwnerCanRemoveMembers
+        case .invalidInvite:
+            return .invalidInviteQR
+        case .inviteExpired:
+            return .inviteQRCodeExpired
         }
     }
 }
 
 enum GroupInvitePayloadParser {
-    static func extractGroupID(from payload: String) -> String? {
+    static func extractInviteToken(from payload: String) -> String? {
         let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
         if let url = URL(string: trimmed) {
             if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
-                let groupID = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                return groupID.isEmpty ? nil : groupID.lowercased()
+                let inviteToken = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return inviteToken.isEmpty ? nil : inviteToken.lowercased()
             }
 
             let parts = url.pathComponents.filter { $0 != "/" }
             if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
-                let groupID = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-                return groupID.isEmpty ? nil : groupID.lowercased()
+                let inviteToken = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                return inviteToken.isEmpty ? nil : inviteToken.lowercased()
             }
         }
 
@@ -59,6 +63,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isGroupQRCodeOverlayPresented = false
     @Published var isMemberListPresented = false
     @Published var isJoiningGroup = false
+    @Published private(set) var selectedGroupInvitePayload: String?
     @Published private(set) var removingMemberID: String?
     @Published private(set) var currentPlan: AppPlan = .free
     @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
@@ -97,11 +102,6 @@ final class SettingsGroupsViewModel: ObservableObject {
         currentUserIsSelectedGroupOwner ? "Delete" : "Leave"
     }
 
-    var selectedGroupInvitePayload: String? {
-        guard let selectedGroupID else { return nil }
-        return "kuusi://invite/\(selectedGroupID)"
-    }
-
     let appShareURL = URL(string: "https://apps.apple.com/app/id1234567890")!
 
     func onDisappear() {
@@ -113,6 +113,22 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func updateCurrentPlan(_ plan: AppPlan) {
         currentPlan = plan
+    }
+
+    func presentGroupQRCode(for group: GroupSummary) async {
+        selectedGroupID = group.id
+        editableGroupName = group.name
+
+        do {
+            selectedGroupInvitePayload = try await groupService.createInvitePayload(groupID: group.id)
+            isGroupQRCodeOverlayPresented = true
+        } catch let error as GroupServiceError {
+            selectedGroupInvitePayload = nil
+            setSaveStatus(AppMessage(error.appMessageID, .error))
+        } catch {
+            selectedGroupInvitePayload = nil
+            setSaveStatus(AppMessage(.failedToGenerateQRCode, .error))
+        }
     }
 
     func presentMemberList() async {
@@ -293,15 +309,15 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func joinGroupFromQRCodePayload(_ payload: String) async {
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             setSaveStatus(AppMessage(.pleaseSignInFirst, .error))
             return
         }
-        guard let groupID = GroupInvitePayloadParser.extractGroupID(from: payload) else {
+        guard let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: payload) else {
             setSaveStatus(AppMessage(.invalidInviteQR, .error))
             return
         }
-        guard groups.contains(where: { $0.id == groupID }) || groups.count < currentPlan.maxGroups else {
+        guard groups.count < currentPlan.maxGroups else {
             setSaveStatus(AppMessage(.groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups), .error))
             return
         }
@@ -310,7 +326,8 @@ final class SettingsGroupsViewModel: ObservableObject {
         defer { isJoiningGroup = false }
 
         do {
-            try await groupService.joinGroup(groupID: groupID, uid: uid)
+            try await groupService.joinGroup(inviteToken: inviteToken)
+            await loadGroups()
             setSaveStatus(AppMessage(.joinedGroup, .success))
         } catch let error as GroupServiceError {
             setSaveStatus(AppMessage(error.appMessageID, .error))

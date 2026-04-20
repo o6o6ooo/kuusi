@@ -1,17 +1,28 @@
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, QueryDocumentSnapshot, WriteBatch } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, QueryDocumentSnapshot, Timestamp, WriteBatch } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { randomUUID } from "crypto";
 
 initializeApp();
 
 const db = getFirestore();
 const storage = getStorage();
 const maxBatchWriteCount = 450;
+const maxGroupMembers = 50;
+const inviteLifetimeHours = 24;
+const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 
 type GroupData = {
   owner_uid?: string;
   members?: string[];
+};
+
+type GroupInviteData = {
+  created_at?: Timestamp;
+  created_by?: string;
+  expires_at?: Timestamp;
+  group_id?: string;
 };
 
 type PhotoData = {
@@ -85,6 +96,107 @@ export const deleteCurrentUserData = onCall(async (request) => {
     deletedGroupCount,
     deletedJoinedGroupCount: joinedGroups.length,
     deletedPhotoCount
+  };
+});
+
+export const createGroupInvite = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  const groupId = normalizeGroupId(request.data?.groupId);
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  if (!groupId) {
+    throw new HttpsError("invalid-argument", "groupId is required");
+  }
+
+  const groupSnapshot = await db.collection("groups").doc(groupId).get();
+  if (!groupSnapshot.exists) {
+    throw new HttpsError("not-found", "Group not found");
+  }
+
+  const groupData = groupSnapshot.data() as GroupData;
+  const members = Array.isArray(groupData.members) ? groupData.members : [];
+  if (!members.includes(uid)) {
+    throw new HttpsError("permission-denied", "Only group members can create invite QR codes");
+  }
+
+  const inviteToken = randomUUID().replace(/-/g, "").toLowerCase();
+  const expiresAt = Timestamp.fromMillis(Date.now() + inviteLifetimeMs);
+
+  await db.collection("group_invites").doc(inviteToken).set({
+    created_at: FieldValue.serverTimestamp(),
+    created_by: uid,
+    expires_at: expiresAt,
+    group_id: groupId
+  });
+
+  return {
+    expiresAt: expiresAt.toDate().toISOString(),
+    inviteLifetimeHours,
+    inviteToken
+  };
+});
+
+export const joinGroupInvite = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  const inviteToken = normalizeGroupId(request.data?.inviteToken);
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  if (!inviteToken) {
+    throw new HttpsError("invalid-argument", "inviteToken is required");
+  }
+
+  const inviteRef = db.collection("group_invites").doc(inviteToken);
+  const inviteSnapshot = await inviteRef.get();
+  if (!inviteSnapshot.exists) {
+    throw new HttpsError("invalid-argument", "Invite not found");
+  }
+
+  const inviteData = inviteSnapshot.data() as GroupInviteData;
+  const groupId = normalizeGroupId(inviteData.group_id);
+  const expiresAt = inviteData.expires_at;
+
+  if (!groupId || !expiresAt || typeof expiresAt.toMillis !== "function") {
+    throw new HttpsError("invalid-argument", "Invite is invalid");
+  }
+
+  if (expiresAt.toMillis() <= Date.now()) {
+    await inviteRef.delete();
+    throw new HttpsError("failed-precondition", "Invite has expired");
+  }
+
+  const groupRef = db.collection("groups").doc(groupId);
+  const userRef = db.collection("users").doc(uid);
+
+  await db.runTransaction(async (transaction) => {
+    const groupSnapshot = await transaction.get(groupRef);
+    if (!groupSnapshot.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+
+    const groupData = groupSnapshot.data() as GroupData;
+    const members = Array.isArray(groupData.members) ? groupData.members : [];
+
+    if (!members.includes(uid) && members.length >= maxGroupMembers) {
+      throw new HttpsError("resource-exhausted", "Group member limit reached");
+    }
+
+    transaction.set(userRef, {
+      groups: FieldValue.arrayUnion(groupId)
+    }, { merge: true });
+    transaction.update(groupRef, {
+      members: FieldValue.arrayUnion(uid)
+    });
+  });
+
+  return {
+    groupId,
+    joined: true
   };
 });
 

@@ -8,6 +8,8 @@ enum GroupServiceError: Error {
     case ownerCannotBeRemoved
     case memberLimitReached(maxMembers: Int)
     case onlyOwnerCanRemoveMembers
+    case invalidInvite
+    case inviteExpired
 }
 
 struct GroupMemberPreview: Identifiable {
@@ -28,6 +30,7 @@ struct GroupSummary: Identifiable {
 
 final class GroupService {
     static let maxGroupMembers = 50
+    static let inviteLifetimeHours = 24
 
     private let db = Firestore.firestore()
     private let functions = Functions.functions()
@@ -116,6 +119,26 @@ final class GroupService {
     func updateGroupName(groupID: String, name: String) async throws {
         let ref = db.collection("groups").document(groupID)
         try await setDocument(ref, data: ["name": name], merge: true)
+    }
+
+    func createInvitePayload(groupID: String) async throws -> String {
+        do {
+            let result = try await functions.httpsCallable("createGroupInvite").call([
+                "groupId": groupID
+            ])
+
+            guard
+                let data = result.data as? [String: Any],
+                let inviteToken = data["inviteToken"] as? String,
+                !inviteToken.isEmpty
+            else {
+                throw GroupServiceError.invalidInvite
+            }
+
+            return "kuusi://invite/\(inviteToken)"
+        } catch {
+            throw mapInviteError(error)
+        }
     }
 
     func joinGroup(groupID: String, uid: String) async throws {
@@ -209,6 +232,16 @@ final class GroupService {
         }
 
         removeCachedGroup(groupID: groupID, for: uid)
+    }
+
+    func joinGroup(inviteToken: String) async throws {
+        do {
+            _ = try await functions.httpsCallable("joinGroupInvite").call([
+                "inviteToken": inviteToken
+            ])
+        } catch {
+            throw mapInviteError(error)
+        }
     }
 
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws {
@@ -434,6 +467,31 @@ final class GroupService {
         }
 
         return error
+    }
+
+    private func mapInviteError(_ error: Error) -> Error {
+        let nsError = error as NSError
+
+        guard nsError.domain == FunctionsErrorDomain,
+              let code = FunctionsErrorCode(rawValue: nsError.code) else {
+            return error
+        }
+
+        switch code {
+        case .notFound:
+            return GroupServiceError.groupNotFound
+        case .resourceExhausted:
+            return GroupServiceError.memberLimitReached(maxMembers: Self.maxGroupMembers)
+        case .invalidArgument:
+            return GroupServiceError.invalidInvite
+        case .failedPrecondition:
+            if nsError.localizedDescription.localizedCaseInsensitiveContains("expired") {
+                return GroupServiceError.inviteExpired
+            }
+            return GroupServiceError.invalidInvite
+        default:
+            return error
+        }
     }
 }
 
