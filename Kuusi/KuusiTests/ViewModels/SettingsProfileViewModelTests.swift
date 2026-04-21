@@ -168,10 +168,16 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
         let bgColour: String
     }
 
+    struct CacheAuthorNameCall {
+        let name: String
+        let uid: String
+    }
+
     var fetchedUser: AppUser?
     var fetchError: Error?
     var updateError: Error?
     var updateCalls: [UpdateCall] = []
+    var cacheAuthorNameCalls: [CacheAuthorNameCall] = []
 
     func fetchUser(uid: String) async throws -> AppUser? {
         if let fetchError {
@@ -185,6 +191,10 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
             throw updateError
         }
         updateCalls.append(.init(uid: uid, name: name, icon: icon, bgColour: bgColour))
+    }
+
+    func cacheAuthorName(_ name: String, for uid: String) {
+        cacheAuthorNameCalls.append(.init(name: name, uid: uid))
     }
 }
 
