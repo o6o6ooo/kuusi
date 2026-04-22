@@ -29,8 +29,8 @@ struct PhotoCollectionViewModelTests {
         let winter = makePhoto(id: "photo-b", groupID: "group-b", year: 2023, hashtags: ["winter", "Family"])
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID = [
-            "group-a": [RecentPhotoFetchResult(photos: [spring], hasMore: false, nextCursor: nil)],
-            "group-b": [RecentPhotoFetchResult(photos: [winter], hasMore: false, nextCursor: nil)]
+            "group-a": [RecentPhotoFetchResult(photos: [spring], hasMore: false, nextCursor: nil, favouriteIDs: [])],
+            "group-b": [RecentPhotoFetchResult(photos: [winter], hasMore: false, nextCursor: nil, favouriteIDs: [])]
         ]
         let groupService = GroupServiceSpy()
         groupService.cachedGroupsValue = [
@@ -92,7 +92,7 @@ struct PhotoCollectionViewModelTests {
         let feedService = FeedServiceSpy()
         let expected = [makePhoto(id: "photo-b", groupID: "group-b", year: 2022)]
         feedService.resultsByGroupID["group-b"] = [
-            RecentPhotoFetchResult(photos: expected, hasMore: false, nextCursor: nil)
+            RecentPhotoFetchResult(photos: expected, hasMore: false, nextCursor: nil, favouriteIDs: [])
         ]
         let viewModel = makeViewModel(feedService: feedService)
 
@@ -149,9 +149,10 @@ struct PhotoCollectionViewModelTests {
             RecentPhotoFetchResult(
                 photos: firstBatch,
                 hasMore: true,
-                nextCursor: FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5")
+                nextCursor: FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"),
+                favouriteIDs: ["photo-1", "photo-4"]
             ),
-            RecentPhotoFetchResult(photos: nextBatch, hasMore: false, nextCursor: nil)
+            RecentPhotoFetchResult(photos: nextBatch, hasMore: false, nextCursor: nil, favouriteIDs: ["photo-1", "photo-4"])
         ]
         let groupService = GroupServiceSpy()
         groupService.cachedGroupsValue = [makeGroup(id: "group-a", name: "Family")]
@@ -165,6 +166,8 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.count == 2)
         #expect(feedService.fetchCalls.last?.limit == 6)
         #expect(feedService.fetchCalls.last?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
+        #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
+        #expect(feedService.fetchCalls.last?.favouriteIDs == ["photo-1", "photo-4"])
     }
 
     @Test
@@ -244,6 +247,7 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
         let groupIDs: [String]
         let limit: Int
         let cursor: FeedPageCursor?
+        let favouriteIDs: Set<String>?
     }
 
     var photosByGroupID: [String: [FeedPhoto]] = [:]
@@ -255,11 +259,12 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
         userID: String,
         groupIDs: [String],
         limit: Int,
-        startAfter cursor: FeedPageCursor?
+        startAfter cursor: FeedPageCursor?,
+        favouriteIDs: Set<String>?
     ) async throws -> RecentPhotoFetchResult {
-        fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit, cursor: cursor))
+        fetchCalls.append(.init(userID: userID, groupIDs: groupIDs, limit: limit, cursor: cursor, favouriteIDs: favouriteIDs))
         guard let groupID = groupIDs.first else {
-            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
+            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil, favouriteIDs: favouriteIDs ?? [])
         }
         let index = batchFetchCountByGroupID[groupID, default: 0]
         batchFetchCountByGroupID[groupID] = index + 1
@@ -268,9 +273,9 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
             return results[index]
         }
         if let fallback = photosByGroupID[groupID] {
-            return RecentPhotoFetchResult(photos: fallback, hasMore: false, nextCursor: nil)
+            return RecentPhotoFetchResult(photos: fallback, hasMore: false, nextCursor: nil, favouriteIDs: favouriteIDs ?? [])
         }
-        return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
+        return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil, favouriteIDs: favouriteIDs ?? [])
     }
 }
 

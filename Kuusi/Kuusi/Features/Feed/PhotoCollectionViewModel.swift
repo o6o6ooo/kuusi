@@ -7,7 +7,8 @@ protocol PhotoCollectionFeedServicing {
         userID: String,
         groupIDs: [String],
         limit: Int,
-        startAfter cursor: FeedPageCursor?
+        startAfter cursor: FeedPageCursor?,
+        favouriteIDs: Set<String>?
     ) async throws -> RecentPhotoFetchResult
 }
 
@@ -82,6 +83,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static let photoCacheKeyPrefix = "feed_photos_cache_v1_"
     private var nextCursorByGroupID: [String: FeedPageCursor] = [:]
     private var hasMorePhotosByGroupID: [String: Bool] = [:]
+    private var favouriteIDs: Set<String>?
 
     init(
         feedService: PhotoCollectionFeedServicing,
@@ -261,7 +263,8 @@ final class PhotoCollectionViewModel: ObservableObject {
                 userID: uid,
                 groupIDs: [selectedGroupID],
                 limit: limit,
-                startAfter: cursor
+                startAfter: cursor,
+                favouriteIDs: forceReload ? nil : favouriteIDs
             )
             let mergedPhotos: [FeedPhoto]
             if isLoadMore {
@@ -275,6 +278,7 @@ final class PhotoCollectionViewModel: ObservableObject {
             availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: mergedPhotos)
             nextCursorByGroupID[selectedGroupID] = result.nextCursor
             hasMorePhotosByGroupID[selectedGroupID] = result.hasMore
+            favouriteIDs = result.favouriteIDs
             persistCachedPhotos(for: uid)
             errorMessageID = nil
         } catch {
@@ -289,6 +293,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         availableHashtagsByGroupID = [:]
         nextCursorByGroupID = [:]
         hasMorePhotosByGroupID = [:]
+        favouriteIDs = nil
         errorMessageID = nil
     }
 

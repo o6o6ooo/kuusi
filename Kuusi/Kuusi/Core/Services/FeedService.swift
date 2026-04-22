@@ -16,6 +16,7 @@ struct RecentPhotoFetchResult {
     let photos: [FeedPhoto]
     let hasMore: Bool
     let nextCursor: FeedPageCursor?
+    let favouriteIDs: Set<String>
 }
 
 final class FeedService {
@@ -27,13 +28,18 @@ final class FeedService {
         userID: String,
         groupIDs: [String],
         limit: Int = 15,
-        startAfter cursor: FeedPageCursor? = nil
+        startAfter cursor: FeedPageCursor? = nil,
+        favouriteIDs cachedFavouriteIDs: Set<String>? = nil
     ) async throws -> RecentPhotoFetchResult {
         let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
         guard !visibleGroupIDs.isEmpty else {
-            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil)
+            return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil, favouriteIDs: cachedFavouriteIDs ?? [])
         }
-        let favouriteIDs = try await fetchFavouriteIDs(userID: userID)
+        let favouriteIDs = if let cachedFavouriteIDs {
+            cachedFavouriteIDs
+        } else {
+            try await fetchFavouriteIDs(userID: userID)
+        }
         let orderedFetchLimit = max(limit, 1) + 1
 
         do {
@@ -55,7 +61,8 @@ final class FeedService {
             return RecentPhotoFetchResult(
                 photos: presentedPhotos,
                 hasMore: snapshot.documents.count > limit,
-                nextCursor: Self.makeNextCursor(from: presentedPhotos)
+                nextCursor: Self.makeNextCursor(from: presentedPhotos),
+                favouriteIDs: favouriteIDs
             )
         } catch {
             guard Self.isMissingIndexError(error) else { throw error }
@@ -79,7 +86,8 @@ final class FeedService {
             return RecentPhotoFetchResult(
                 photos: presentedPhotos,
                 hasMore: filteredPhotos.count > limit,
-                nextCursor: Self.makeNextCursor(from: presentedPhotos)
+                nextCursor: Self.makeNextCursor(from: presentedPhotos),
+                favouriteIDs: favouriteIDs
             )
         }
     }
