@@ -95,7 +95,7 @@ struct FeedBottomChromeView: View {
                 .foregroundStyle(chromePrimaryColor)
                 .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                 .lineLimit(1)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 8)
                 .frame(height: 36)
                 .background(selectionFill(isSelected: isSelected))
                 .overlay {
