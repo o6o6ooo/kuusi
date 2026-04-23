@@ -83,6 +83,19 @@ struct SubscriptionView: View {
             storageCard
             subscriptionCard
         }
+        .overlay(alignment: .topLeading) {
+            Group {
+                Text("ui-screen-subscription")
+                    .accessibilityIdentifier("ui-screen-subscription")
+                Text(displaySnapshot.isPremiumActive ? "ui-subscription-premium" : "ui-subscription-free")
+                    .accessibilityIdentifier(displaySnapshot.isPremiumActive ? "ui-subscription-premium" : "ui-subscription-free")
+            }
+            .font(.caption2)
+            .foregroundStyle(.clear)
+            .frame(width: 0, height: 0)
+            .clipped()
+            .allowsHitTesting(false)
+        }
         .onAppear {
             syncDisplaySnapshotFromStore()
         }
@@ -185,6 +198,7 @@ struct SubscriptionView: View {
                             )
                         }
                         .buttonStyle(SubscriptionCardButtonStyle())
+                        .accessibilityIdentifier("subscription-premium-card-button")
                     } else {
                         planCard(
                             title: AppPlan.premium.title,
@@ -215,6 +229,7 @@ struct SubscriptionView: View {
                         .buttonStyle(.plain)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.accentColor)
+                        .accessibilityIdentifier("subscription-restore-purchases-button")
                 }
             }
         }

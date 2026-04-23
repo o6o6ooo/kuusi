@@ -179,4 +179,42 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.alerts.firstMatch.textFields.firstMatch.exists)
     }
+
+    @MainActor
+    func testSignedInLaunchShowsSubscriptionFreeState() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-subscription-free"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Subscription"].exists)
+        XCTAssertTrue(app.staticTexts["Upgrade to premium, cancel anytime."].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsSubscriptionEntryPoints() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["subscription-premium-card-button"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["subscription-restore-purchases-button"].exists)
+        XCTAssertTrue(app.staticTexts["Free"].exists)
+        XCTAssertTrue(app.staticTexts["Premium"].exists)
+    }
 }
