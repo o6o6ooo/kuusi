@@ -84,7 +84,7 @@ struct AppStateTests {
         await appState.unlockApp()
 
         #expect(appState.route == .locked)
-        #expect(appState.toastMessage?.text == "Biometric authentication failed.")
+        #expect(appState.toastMessage?.text == "Biometric authentication failed")
         #expect(biometricService.authenticateCallCount == 1)
     }
 

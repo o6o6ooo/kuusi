@@ -128,6 +128,9 @@ struct PhotoCollectionViewModelTests {
 
     @Test
     func loadMoreIfNeededFetchesNextExpandedBatch() async throws {
+        let userID = "load-more-\(UUID().uuidString)"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
         let feedService = FeedServiceSpy()
         let firstBatch = (0..<6).map {
             makePhoto(
@@ -156,7 +159,7 @@ struct PhotoCollectionViewModelTests {
         ]
         let groupService = GroupServiceSpy()
         groupService.cachedGroupsValue = [makeGroup(id: "group-a", name: "Family")]
-        let viewModel = makeViewModel(feedService: feedService, groupService: groupService)
+        let viewModel = makeViewModel(feedService: feedService, groupService: groupService, userID: userID)
 
         await viewModel.loadInitial(limit: 6)
         viewModel.loadMoreIfNeeded(pageSize: 6)
@@ -168,6 +171,8 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.last?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
         #expect(feedService.fetchCalls.last?.favouriteIDs == ["photo-1", "photo-4"])
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
     }
 
     @Test
@@ -202,7 +207,7 @@ struct PhotoCollectionViewModelTests {
     private func makeViewModel(
         feedService: PhotoCollectionFeedServicing = FeedServiceSpy(),
         groupService: PhotoCollectionGroupServicing = GroupServiceSpy(),
-        userID: String = "test-user"
+        userID: String = UUID().uuidString
     ) -> PhotoCollectionViewModel {
         PhotoCollectionViewModel(
             feedService: feedService,

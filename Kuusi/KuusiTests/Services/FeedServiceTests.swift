@@ -85,14 +85,15 @@ struct FeedServiceTests {
         do {
             try await service.deletePhoto(photo, requesterUID: "owner-2")
             Issue.record("Expected deletePhoto to reject deletes from a different owner.")
+        } catch let error as FeedServiceError {
+            switch error {
+            case .cannotDeleteOthersPhotos:
+                break
+            default:
+                Issue.record("Unexpected FeedServiceError: \(error)")
+            }
         } catch {
-            let nsError = error as NSError
-            if nsError.domain != "FeedService" {
-                Issue.record("Unexpected error domain: \(nsError.domain)")
-            }
-            if nsError.code != 403 {
-                Issue.record("Unexpected error code: \(nsError.code)")
-            }
+            Issue.record("Unexpected error: \(error)")
         }
     }
 

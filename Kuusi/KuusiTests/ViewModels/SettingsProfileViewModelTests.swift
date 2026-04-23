@@ -57,7 +57,7 @@ struct SettingsProfileViewModelTests {
         await viewModel.saveProfile()
 
         #expect(userService.updateCalls.isEmpty)
-        #expect(viewModel.toastMessage?.text == "Name cannot be empty.")
+        #expect(viewModel.toastMessage?.text == "Name cannot be empty")
         if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
@@ -127,7 +127,7 @@ struct SettingsProfileViewModelTests {
         await viewModel.connectGoogleAccount()
 
         #expect(googleService.connectCallCount == 0)
-        #expect(viewModel.toastMessage?.text == "Could not open Google Sign-In.")
+        #expect(viewModel.toastMessage?.text == "Could not open Google Sign-In")
     }
 
     @Test
