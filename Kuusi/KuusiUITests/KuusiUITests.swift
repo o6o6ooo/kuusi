@@ -117,4 +117,66 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["ui-settings-subscription-section"].exists)
         XCTAssertTrue(app.buttons["settings-sign-out-button"].exists)
     }
+
+    @MainActor
+    func testSignedInLaunchShowsGroupsEmptyStateInSettings() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-settings-groups-section"].exists)
+        XCTAssertTrue(app.buttons["groups-create-button"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No groups"].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsGroupCreateMenuActions() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+
+        let createButton = app.buttons["groups-create-button"]
+        XCTAssertTrue(createButton.waitForExistence(timeout: 5))
+        createButton.tap()
+
+        XCTAssertTrue(app.buttons["Create a group"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Join a group"].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchCanOpenCreateGroupPrompt() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+
+        let createButton = app.buttons["groups-create-button"]
+        XCTAssertTrue(createButton.waitForExistence(timeout: 5))
+        createButton.tap()
+
+        let createGroupAction = app.buttons["Create a group"]
+        XCTAssertTrue(createGroupAction.waitForExistence(timeout: 5))
+        createGroupAction.tap()
+
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.alerts.firstMatch.textFields.firstMatch.exists)
+    }
 }
