@@ -2,6 +2,19 @@ import Testing
 @testable import Kuusi
 
 struct UploadOverlayViewTests {
+    private func expectMessageID(_ actual: AppMessage.ID?, matches expected: AppMessage.ID?) {
+        switch (actual, expected) {
+        case (.storageLimitReached?, .storageLimitReached?),
+             (.pleaseSignInFirst?, .pleaseSignInFirst?),
+             (.selectGroup?, .selectGroup?),
+             (.enterValidYear?, .enterValidYear?),
+             (nil, nil):
+            #expect(Bool(true))
+        default:
+            Issue.record("Expected \(String(describing: expected)), got \(String(describing: actual))")
+        }
+    }
+
     @Test
     func parseYearTrimsWhitespaceAndParsesNumber() {
         #expect(UploadOverlayRules.parseYear(from: " 2025 ") == 2025)
@@ -156,7 +169,7 @@ struct UploadOverlayViewTests {
 
     @Test
     func uploadValidationMessagePrioritizesStorageLimitThenSignInThenGroupThenYear() {
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
@@ -164,9 +177,10 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 3072,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
-            ) == .storageLimitReached
+            ),
+            matches: .storageLimitReached
         )
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: nil,
                 selectedGroupID: "group-1",
@@ -174,9 +188,10 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
-            ) == .pleaseSignInFirst
+            ),
+            matches: .pleaseSignInFirst
         )
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: nil,
@@ -184,9 +199,10 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
-            ) == .selectGroup
+            ),
+            matches: .selectGroup
         )
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
@@ -194,13 +210,14 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
-            ) == .enterValidYear
+            ),
+            matches: .enterValidYear
         )
     }
 
     @Test
     func uploadValidationMessageReturnsStorageLimitReachedForProjectedOverflow() {
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
@@ -208,13 +225,14 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 3071,
                 estimatedUploadSizeMB: 2,
                 isPremiumActive: false
-            ) == .storageLimitReached
+            ),
+            matches: .storageLimitReached
         )
     }
 
     @Test
     func uploadValidationMessageReturnsNilWhenUploadCanProceed() {
-        #expect(
+        expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
@@ -222,7 +240,8 @@ struct UploadOverlayViewTests {
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
-            ) == nil
+            ),
+            matches: nil
         )
     }
 
