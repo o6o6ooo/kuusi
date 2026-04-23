@@ -23,8 +23,8 @@ final class KuusiUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(app.tabBars.buttons.count, 4)
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -39,8 +39,8 @@ final class KuusiUITests: XCTestCase {
         app.buttons["Unlock"].tap()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(app.tabBars.buttons.count, 4)
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -49,31 +49,14 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
 
-        let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(tabBar.buttons.count, 4)
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
 
-        let yearsTab = tabBar.buttons.element(boundBy: 1)
-        XCTAssertTrue(yearsTab.waitForExistence(timeout: 5))
-        yearsTab.tap()
-        XCTAssertTrue(app.staticTexts["ui-screen-years"].waitForExistence(timeout: 5))
-
-        let favoritesTab = tabBar.buttons.element(boundBy: 2)
-        XCTAssertTrue(favoritesTab.exists)
-        favoritesTab.tap()
-        XCTAssertTrue(app.staticTexts["ui-screen-favorites"].waitForExistence(timeout: 5))
-
-        let settingsTab = tabBar.buttons.element(boundBy: 3)
-        XCTAssertTrue(settingsTab.exists)
-        settingsTab.tap()
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
         XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings-sign-out-button"].exists)
-
-        let feedTab = tabBar.buttons.element(boundBy: 0)
-        XCTAssertTrue(feedTab.exists)
-        feedTab.tap()
-        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -82,20 +65,11 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
 
-        let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
-
-        let feedTab = tabBar.buttons.element(boundBy: 0)
-        XCTAssertTrue(feedTab.waitForExistence(timeout: 5))
-        feedTab.tap()
-
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["feed-upload-button"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.staticTexts["ui-feed-no-groups"].exists
-            || app.staticTexts["ui-feed-no-photos"].exists
-            || app.buttons["feed-upload-button"].exists
+            || app.buttons["feed-upload-button"].waitForExistence(timeout: 5)
         )
     }
 
@@ -105,13 +79,11 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
 
-        let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
 
-        let settingsTab = tabBar.buttons.element(boundBy: 3)
-        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
-        settingsTab.tap()
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
 
         XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-settings-profile-section"].exists)
