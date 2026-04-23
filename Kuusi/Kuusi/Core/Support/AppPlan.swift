@@ -107,7 +107,7 @@ enum PlanAccessPolicy {
     }
 }
 
-enum PreviewAccess: Equatable {
+enum PreviewAccess {
     case full
     case thumbnailOnly
 }

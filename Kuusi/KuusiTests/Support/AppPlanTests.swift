@@ -38,21 +38,21 @@ struct AppPlanTests {
         let beforeExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 8, minute: 59))!
         let atExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 9))!
 
-        #expect(
+        expectFullAccess(
             PlanAccessPolicy.previewAccess(
                 for: createdAt,
                 isPremiumActive: false,
                 now: beforeExpiry,
                 calendar: calendar
-            ) == .full
+            )
         )
-        #expect(
+        expectThumbnailOnlyAccess(
             PlanAccessPolicy.previewAccess(
                 for: createdAt,
                 isPremiumActive: false,
                 now: atExpiry,
                 calendar: calendar
-            ) == .thumbnailOnly
+            )
         )
     }
 
@@ -62,13 +62,13 @@ struct AppPlanTests {
         let createdAt = calendar.date(from: DateComponents(year: 2021, month: 1, day: 1))!
         let now = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
 
-        #expect(
+        expectFullAccess(
             PlanAccessPolicy.previewAccess(
                 for: createdAt,
                 isPremiumActive: true,
                 now: now,
                 calendar: calendar
-            ) == .full
+            )
         )
     }
 
@@ -78,5 +78,23 @@ struct AppPlanTests {
         #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 3071.99, isPremiumActive: false) == false)
         #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 0.5, isPremiumActive: false) == true)
         #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 1.1, isPremiumActive: false) == false)
+    }
+
+    private func expectFullAccess(_ access: PreviewAccess) {
+        switch access {
+        case .full:
+            break
+        case .thumbnailOnly:
+            Issue.record("Expected full preview access.")
+        }
+    }
+
+    private func expectThumbnailOnlyAccess(_ access: PreviewAccess) {
+        switch access {
+        case .thumbnailOnly:
+            break
+        case .full:
+            Issue.record("Expected thumbnail-only preview access.")
+        }
     }
 }
