@@ -46,6 +46,21 @@ enum GroupInvitePayloadParser {
     }
 }
 
+protocol SettingsGroupsServicing {
+    func createInvitePayload(groupID: String) async throws -> String
+    func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview]
+    func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary
+    func fetchGroups(for uid: String) async throws -> [GroupSummary]
+    func updateGroupName(groupID: String, name: String) async throws
+    func deleteGroup(groupID: String) async throws
+    func leaveGroup(groupID: String, uid: String) async throws
+    func joinGroup(inviteToken: String) async throws
+    func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws
+    func setCachedGroups(_ groups: [GroupSummary], for uid: String)
+}
+
+extension GroupService: SettingsGroupsServicing {}
+
 @MainActor
 final class SettingsGroupsViewModel: ObservableObject {
     @Published var createGroupName = ""
@@ -68,10 +83,26 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published private(set) var currentPlan: AppPlan = .free
     @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
-    private let groupService = GroupService()
+    private let groupService: SettingsGroupsServicing
+    private let currentUserIDProvider: @MainActor () -> String?
     private var clearCreateMessageTask: Task<Void, Never>?
     private var clearSaveMessageTask: Task<Void, Never>?
     private var previewLoadedGroupIDs: Set<String> = []
+
+    init(
+        groupService: SettingsGroupsServicing,
+        currentUserIDProvider: @escaping @MainActor () -> String?
+    ) {
+        self.groupService = groupService
+        self.currentUserIDProvider = currentUserIDProvider
+    }
+
+    convenience init() {
+        self.init(
+            groupService: GroupService(),
+            currentUserIDProvider: { Auth.auth().currentUser?.uid }
+        )
+    }
 
     var selectedGroup: GroupSummary? {
         guard let selectedGroupID else { return nil }
@@ -80,7 +111,7 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     var currentUserIsSelectedGroupOwner: Bool {
         guard
-            let uid = Auth.auth().currentUser?.uid,
+            let uid = currentUserIDProvider(),
             let selectedGroup
         else {
             return false
@@ -144,7 +175,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func createGroup() async {
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard let uid = currentUserIDProvider() else {
             setCreateStatus(AppMessage(.pleaseSignInFirst, .error))
             return
         }
@@ -178,7 +209,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func loadGroups() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserIDProvider() else { return }
         isLoadingGroups = true
         defer { isLoadingGroups = false }
 
@@ -270,7 +301,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     func leaveSelectedGroup() async {
         guard
             let selectedGroupID,
-            let uid = Auth.auth().currentUser?.uid
+            let uid = currentUserIDProvider()
         else {
             return
         }
@@ -309,7 +340,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func joinGroupFromQRCodePayload(_ payload: String) async {
-        guard Auth.auth().currentUser?.uid != nil else {
+        guard currentUserIDProvider() != nil else {
             setSaveStatus(AppMessage(.pleaseSignInFirst, .error))
             return
         }
@@ -339,7 +370,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     func removeMemberFromSelectedGroup(_ member: GroupMemberPreview) async {
         guard
             let selectedGroupID,
-            let requesterUID = Auth.auth().currentUser?.uid
+            let requesterUID = currentUserIDProvider()
         else {
             return
         }
@@ -444,7 +475,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     private func cacheGroupsForCurrentUser() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserIDProvider() else { return }
         groupService.setCachedGroups(groups, for: uid)
     }
 }
