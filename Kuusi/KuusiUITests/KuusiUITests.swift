@@ -74,6 +74,32 @@ final class KuusiUITests: XCTestCase {
     }
 
     @MainActor
+    func testSignedInLaunchShowsFeedNoGroupsState() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-feed-no-groups"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No groups yet"].exists)
+        XCTAssertTrue(app.staticTexts["Create or join a group in Settings to start sharing."].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchHidesFeedActionButtonsWithoutGroups() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-feed-no-groups"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["feed-upload-button"].exists)
+        XCTAssertFalse(app.buttons["feed-favourites-filter-button"].exists)
+        XCTAssertTrue(app.buttons["feed-settings-button"].exists)
+    }
+
+    @MainActor
     func testSignedInLaunchShowsSettingsSections() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
