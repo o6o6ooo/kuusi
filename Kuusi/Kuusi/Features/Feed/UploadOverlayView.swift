@@ -37,6 +37,81 @@ private extension GooglePhotosPickerError {
     }
 }
 
+enum UploadOverlayRules {
+    static func parseYear(from text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Int(trimmed)
+    }
+
+    static func canUpload(
+        selectedImageCount: Int,
+        isUploading: Bool,
+        isImportingGooglePhotos: Bool,
+        isEstimatingUploadSize: Bool,
+        selectedGroupID: String?,
+        yearText: String,
+        effectiveUsageMB: Double,
+        estimatedUploadSizeMB: Double,
+        isPremiumActive: Bool
+    ) -> Bool {
+        selectedImageCount > 0 &&
+        !isUploading &&
+        !isImportingGooglePhotos &&
+        !isEstimatingUploadSize &&
+        selectedGroupID != nil &&
+        parseYear(from: yearText) != nil &&
+        !PlanAccessPolicy.isStorageLimitReached(
+            usageMB: effectiveUsageMB,
+            isPremiumActive: isPremiumActive
+        ) &&
+        PlanAccessPolicy.canUpload(
+            currentUsageMB: effectiveUsageMB,
+            additionalUsageMB: estimatedUploadSizeMB,
+            isPremiumActive: isPremiumActive
+        )
+    }
+
+    static func uploadValidationMessageID(
+        currentUserID: String?,
+        selectedGroupID: String?,
+        yearText: String,
+        effectiveUsageMB: Double,
+        estimatedUploadSizeMB: Double,
+        isPremiumActive: Bool
+    ) -> AppMessage.ID? {
+        if PlanAccessPolicy.isStorageLimitReached(
+            usageMB: effectiveUsageMB,
+            isPremiumActive: isPremiumActive
+        ) {
+            return .storageLimitReached
+        }
+        guard currentUserID != nil else { return .pleaseSignInFirst }
+        guard selectedGroupID != nil else { return .selectGroup }
+        guard parseYear(from: yearText) != nil else { return .enterValidYear }
+        guard PlanAccessPolicy.canUpload(
+            currentUsageMB: effectiveUsageMB,
+            additionalUsageMB: estimatedUploadSizeMB,
+            isPremiumActive: isPremiumActive
+        ) else {
+            return .storageLimitReached
+        }
+        return nil
+    }
+
+    static func normalizedHashtags(from input: String) -> [String] {
+        let separators = CharacterSet(charactersIn: ",\n\t ")
+        return input
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { token -> String in
+                let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
+                return clean.lowercased()
+            }
+    }
+}
+
 struct UploadOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -92,22 +167,19 @@ struct UploadOverlayView: View {
     }
 
     private var parsedYear: Int? {
-        let trimmed = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return Int(trimmed)
+        UploadOverlayRules.parseYear(from: yearText)
     }
 
     private var canUpload: Bool {
-        !selectedImages.isEmpty &&
-        !isUploading &&
-        !isImportingGooglePhotos &&
-        !isEstimatingUploadSize &&
-        selectedGroupID != nil &&
-        parsedYear != nil &&
-        !isStorageLimitReached &&
-        PlanAccessPolicy.canUpload(
-            currentUsageMB: effectiveUsageMB,
-            additionalUsageMB: estimatedUploadSizeMB,
+        UploadOverlayRules.canUpload(
+            selectedImageCount: selectedImages.count,
+            isUploading: isUploading,
+            isImportingGooglePhotos: isImportingGooglePhotos,
+            isEstimatingUploadSize: isEstimatingUploadSize,
+            selectedGroupID: selectedGroupID,
+            yearText: yearText,
+            effectiveUsageMB: effectiveUsageMB,
+            estimatedUploadSizeMB: estimatedUploadSizeMB,
             isPremiumActive: isPremiumActive
         )
     }
@@ -446,15 +518,7 @@ struct UploadOverlayView: View {
     }
 
     private func addHashtagsFromInput() {
-        let separators = CharacterSet(charactersIn: ",\n\t ")
-        let tokens = hashtagInput
-            .components(separatedBy: separators)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .map { token -> String in
-                let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
-                return clean.lowercased()
-            }
+        let tokens = UploadOverlayRules.normalizedHashtags(from: hashtagInput)
 
         for token in tokens where !hashtags.contains(token) {
             hashtags.append(token)
@@ -493,34 +557,21 @@ struct UploadOverlayView: View {
 
     @MainActor
     private func upload() async {
-        guard !isStorageLimitReached else {
-            toastMessage = AppMessage(.storageLimitReached, .error)
-            return
-        }
-
-        guard let uid = Auth.auth().currentUser?.uid else {
-            toastMessage = AppMessage(.pleaseSignInFirst, .error)
-            return
-        }
-
-        guard let groupID = selectedGroupID else {
-            toastMessage = AppMessage(.selectGroup, .error)
-            return
-        }
-
-        guard let year = parsedYear else {
-            toastMessage = AppMessage(.enterValidYear, .error)
-            return
-        }
-
-        if !PlanAccessPolicy.canUpload(
-            currentUsageMB: effectiveUsageMB,
-            additionalUsageMB: estimatedUploadSizeMB,
+        if let messageID = UploadOverlayRules.uploadValidationMessageID(
+            currentUserID: Auth.auth().currentUser?.uid,
+            selectedGroupID: selectedGroupID,
+            yearText: yearText,
+            effectiveUsageMB: effectiveUsageMB,
+            estimatedUploadSizeMB: estimatedUploadSizeMB,
             isPremiumActive: isPremiumActive
         ) {
-            toastMessage = AppMessage(.storageLimitReached, .error)
+            toastMessage = AppMessage(messageID, .error)
             return
         }
+
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let groupID = selectedGroupID else { return }
+        guard let year = parsedYear else { return }
 
         isUploading = true
         defer { isUploading = false }
