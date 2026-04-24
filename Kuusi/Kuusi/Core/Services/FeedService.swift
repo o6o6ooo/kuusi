@@ -20,9 +20,10 @@ struct RecentPhotoFetchResult {
 }
 
 final class FeedService {
+    private static let functionsRegion = "europe-west2"
     private let db = Firestore.firestore()
     private let favouritesField = "favourites"
-    private let functions = Functions.functions()
+    private let functions = Functions.functions(region: FeedService.functionsRegion)
 
     func fetchRecentPhotoBatch(
         userID: String,

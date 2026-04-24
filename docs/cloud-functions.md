@@ -11,6 +11,8 @@ Server-side helpers for destructive actions and notification fan-out.
 
 ## Current functions
 
+Callable functions are deployed in `europe-west2`.
+
 - `deleteGroup`
   - Verifies the caller is signed in and owns the group
   - Deletes group photo files from Storage

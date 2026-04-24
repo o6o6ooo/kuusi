@@ -31,9 +31,10 @@ struct GroupSummary: Identifiable {
 final class GroupService {
     static let maxGroupMembers = 50
     static let inviteLifetimeHours = 24
+    private static let functionsRegion = "europe-west2"
 
     private let db = Firestore.firestore()
-    private let functions = Functions.functions()
+    private let functions = Functions.functions(region: GroupService.functionsRegion)
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard

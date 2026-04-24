@@ -10,8 +10,9 @@ private struct CachedAuthorName: Codable {
 
 @MainActor
 final class UserService {
+    private static let functionsRegion = "europe-west2"
     private let db = Firestore.firestore()
-    private let functions = Functions.functions()
+    private let functions = Functions.functions(region: UserService.functionsRegion)
     private static let defaults = UserDefaults.standard
     private static let authorNameCacheKey = "feed_author_name_cache_v1"
     private static let authorNameTTL: TimeInterval = 7 * 24 * 60 * 60

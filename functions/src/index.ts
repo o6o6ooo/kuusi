@@ -13,6 +13,7 @@ const storage = getStorage();
 const maxBatchWriteCount = 450;
 const maxGroupMembers = 50;
 const maxMessagingBatchSize = 500;
+const callableFunctionRegion = "europe-west2";
 const notificationFunctionRegion = "europe-west2";
 const announcementsTopic = "announcements";
 const inviteLifetimeHours = 24;
@@ -67,7 +68,7 @@ type AdminNotificationData = {
   status?: string;
 };
 
-export const deleteGroup = onCall(async (request) => {
+export const deleteGroup = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   const groupId = normalizeGroupId(request.data?.groupId);
 
@@ -87,7 +88,7 @@ export const deleteGroup = onCall(async (request) => {
   };
 });
 
-export const deleteCurrentUserData = onCall(async (request) => {
+export const deleteCurrentUserData = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -140,7 +141,7 @@ export const deleteCurrentUserData = onCall(async (request) => {
   };
 });
 
-export const createGroupInvite = onCall(async (request) => {
+export const createGroupInvite = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   const groupId = normalizeGroupId(request.data?.groupId);
 
@@ -180,7 +181,7 @@ export const createGroupInvite = onCall(async (request) => {
   };
 });
 
-export const joinGroupInvite = onCall(async (request) => {
+export const joinGroupInvite = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   const inviteToken = normalizeGroupId(request.data?.inviteToken);
 
@@ -241,7 +242,7 @@ export const joinGroupInvite = onCall(async (request) => {
   };
 });
 
-export const deletePhoto = onCall(async (request) => {
+export const deletePhoto = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   const photoId = normalizeGroupId(request.data?.photoId);
 
@@ -271,7 +272,7 @@ export const deletePhoto = onCall(async (request) => {
   };
 });
 
-export const removeGroupMember = onCall(async (request) => {
+export const removeGroupMember = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   const groupId = normalizeGroupId(request.data?.groupId);
   const memberUid = normalizeGroupId(request.data?.memberUid);
