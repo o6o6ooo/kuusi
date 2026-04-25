@@ -129,7 +129,7 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
     }
 
     var body: some View {
-        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
+        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 3
         let totalSpacing = spacing * CGFloat(columnCount - 1)
         let contentWidth = availableWidth - (horizontalPadding * 2)
         let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
