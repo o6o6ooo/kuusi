@@ -31,8 +31,8 @@ Current Firebase usage in the SwiftUI app.
 - `created_at: timestamp`
 
 ### `photos/{photoId}`
-- `photo_url: string`
-- `thumbnail_url: string`
+- `preview_storage_path: string`
+- `thumbnail_storage_path: string`
 - `group_id: string`
 - `posted_by: string`
 - `year: number`

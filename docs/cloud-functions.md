@@ -84,3 +84,16 @@ For one-time admin data fixes, prefer local scripts over new deployed functions.
   - Add `-- --apply` to write changes
   - Requires Firebase Admin credentials, for example:
     - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json npm run backfill:photo-storage-paths`
+
+- `npm run cleanup:legacy-photo-urls`
+  - Run from `functions/`
+  - Reads every `photos` document and removes:
+    - `photo_url`
+    - `thumbnail_url`
+  - Only updates documents that already have both:
+    - `preview_storage_path`
+    - `thumbnail_storage_path`
+  - Defaults to dry-run mode
+  - Add `-- --apply` to delete the legacy URL fields
+  - Requires Firebase Admin credentials, for example:
+    - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json npm run cleanup:legacy-photo-urls`

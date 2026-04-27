@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "backfill:photo-storage-paths": "node scripts/backfill-photo-storage-paths.js",
+    "cleanup:legacy-photo-urls": "node scripts/remove-legacy-photo-urls.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "lint": "tsc --noEmit"

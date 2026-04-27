@@ -7,14 +7,11 @@ import UIKit
 
 nonisolated enum FeedImageSource: Equatable {
     case storagePath(String)
-    case remoteURL(URL)
 
     fileprivate var cacheKey: String {
         switch self {
         case let .storagePath(path):
             return "storage:\(path)"
-        case let .remoteURL(url):
-            return "url:\(url.absoluteString)"
         }
     }
 }
@@ -96,7 +93,6 @@ private actor FeedImageCache {
     static let shared = FeedImageCache()
 
     private let memoryCache = NSCache<NSString, UIImage>()
-    private let session: URLSession
     private let storage = Storage.storage()
     private let fileManager = FileManager.default
     private let cacheDirectoryURL: URL
@@ -105,10 +101,6 @@ private actor FeedImageCache {
     private init() {
         memoryCache.countLimit = 300
         memoryCache.totalCostLimit = 80 * 1024 * 1024
-
-        let configuration = URLSessionConfiguration.default
-        configuration.requestCachePolicy = .returnCacheDataElseLoad
-        session = URLSession(configuration: configuration)
 
         let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -160,10 +152,6 @@ private actor FeedImageCache {
                     continuation.resume(returning: data)
                 }
             }
-        case let .remoteURL(url):
-            let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
-            let (data, _) = try await session.data(for: request)
-            return data
         }
     }
 

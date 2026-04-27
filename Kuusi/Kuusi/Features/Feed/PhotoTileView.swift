@@ -155,51 +155,31 @@ struct PhotoTileView: View {
             if isExpanded {
                 return preferredSource(
                     primaryPath: photo.previewStoragePath,
-                    fallbackURLString: photo.photoURL,
-                    secondaryPath: photo.thumbnailStoragePath,
-                    secondaryURLString: photo.thumbnailURL
+                    secondaryPath: photo.thumbnailStoragePath
                 )
             }
             return preferredSource(
                 primaryPath: photo.thumbnailStoragePath,
-                fallbackURLString: photo.thumbnailURL,
-                secondaryPath: photo.previewStoragePath,
-                secondaryURLString: photo.photoURL
+                secondaryPath: photo.previewStoragePath
             )
         case .thumbnailOnly:
             return preferredSource(
                 primaryPath: photo.thumbnailStoragePath,
-                fallbackURLString: photo.thumbnailURL,
-                secondaryPath: photo.previewStoragePath,
-                secondaryURLString: photo.photoURL
+                secondaryPath: photo.previewStoragePath
             )
         }
     }
 
     private func preferredSource(
         primaryPath: String?,
-        fallbackURLString: String?,
-        secondaryPath: String?,
-        secondaryURLString: String?
+        secondaryPath: String?
     ) -> FeedImageSource? {
         if let primaryPath, !primaryPath.isEmpty {
             return .storagePath(primaryPath)
         }
 
-        if let fallbackURLString,
-           let fallbackURL = URL(string: fallbackURLString),
-           !fallbackURLString.isEmpty {
-            return .remoteURL(fallbackURL)
-        }
-
         if let secondaryPath, !secondaryPath.isEmpty {
             return .storagePath(secondaryPath)
-        }
-
-        if let secondaryURLString,
-           let secondaryURL = URL(string: secondaryURLString),
-           !secondaryURLString.isEmpty {
-            return .remoteURL(secondaryURL)
         }
 
         return nil

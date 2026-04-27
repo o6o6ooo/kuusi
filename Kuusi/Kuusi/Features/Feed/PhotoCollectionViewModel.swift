@@ -22,8 +22,6 @@ extension GroupService: PhotoCollectionGroupServicing {}
 
 private struct CachedFeedPhoto: Codable {
     let id: String
-    let photoURL: String?
-    let thumbnailURL: String?
     let previewStoragePath: String?
     let thumbnailStoragePath: String?
     let groupID: String?
@@ -37,8 +35,6 @@ private struct CachedFeedPhoto: Codable {
 
     init(photo: FeedPhoto) {
         id = photo.id
-        photoURL = photo.photoURL
-        thumbnailURL = photo.thumbnailURL
         previewStoragePath = photo.previewStoragePath
         thumbnailStoragePath = photo.thumbnailStoragePath
         groupID = photo.groupID
@@ -54,8 +50,6 @@ private struct CachedFeedPhoto: Codable {
     func toFeedPhoto() -> FeedPhoto {
         FeedPhoto(
             id: id,
-            photoURL: photoURL,
-            thumbnailURL: thumbnailURL,
             previewStoragePath: previewStoragePath,
             thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,

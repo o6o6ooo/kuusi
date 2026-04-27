@@ -10,8 +10,6 @@ struct FeedPhotoTests {
         let photo = FeedPhoto(
             id: "photo-1",
             data: [
-                "photo_url": "https://example.com/full.jpg",
-                "thumbnail_url": "https://example.com/thumb.jpg",
                 "preview_storage_path": "photos/user-1/full.jpg",
                 "thumbnail_storage_path": "photos/user-1/thumb.jpg",
                 "group_id": "group-a",
@@ -25,8 +23,6 @@ struct FeedPhotoTests {
         )
 
         #expect(photo.id == "photo-1")
-        #expect(photo.photoURL == "https://example.com/full.jpg")
-        #expect(photo.thumbnailURL == "https://example.com/thumb.jpg")
         #expect(photo.previewStoragePath == "photos/user-1/full.jpg")
         #expect(photo.thumbnailStoragePath == "photos/user-1/thumb.jpg")
         #expect(photo.groupID == "group-a")
@@ -43,8 +39,6 @@ struct FeedPhotoTests {
     func initDefaultsOptionalFields() {
         let photo = FeedPhoto(id: "photo-1", data: [:])
 
-        #expect(photo.photoURL == nil)
-        #expect(photo.thumbnailURL == nil)
         #expect(photo.previewStoragePath == nil)
         #expect(photo.thumbnailStoragePath == nil)
         #expect(photo.groupID == nil)
@@ -61,8 +55,6 @@ struct FeedPhotoTests {
     func withFavouriteReturnsUpdatedCopy() {
         let original = FeedPhoto(
             id: "photo-1",
-            photoURL: "https://example.com/full.jpg",
-            thumbnailURL: nil,
             previewStoragePath: "photos/user-1/full.jpg",
             thumbnailStoragePath: nil,
             groupID: "group-a",
@@ -86,8 +78,6 @@ struct FeedPhotoTests {
     func withMetadataReturnsUpdatedCopy() {
         let original = FeedPhoto(
             id: "photo-1",
-            photoURL: "https://example.com/full.jpg",
-            thumbnailURL: nil,
             previewStoragePath: "photos/user-1/full.jpg",
             thumbnailStoragePath: nil,
             groupID: "group-a",
@@ -105,7 +95,6 @@ struct FeedPhotoTests {
         #expect(updated.year == 2025)
         #expect(updated.hashtags == ["winter", "family"])
         #expect(updated.isFavourite == true)
-        #expect(updated.photoURL == original.photoURL)
         #expect(updated.previewStoragePath == original.previewStoragePath)
         #expect(updated.groupID == original.groupID)
     }
@@ -114,8 +103,6 @@ struct FeedPhotoTests {
     func isOwnedMatchesPostedByAgainstCurrentUser() {
         let photo = FeedPhoto(
             id: "photo-1",
-            photoURL: "https://example.com/full.jpg",
-            thumbnailURL: nil,
             previewStoragePath: "photos/user-1/full.jpg",
             thumbnailStoragePath: nil,
             groupID: "group-a",

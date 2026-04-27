@@ -38,8 +38,8 @@ type GroupInviteData = {
 
 type PhotoData = {
   group_id?: string;
-  photo_url?: string;
-  thumbnail_url?: string;
+  preview_storage_path?: string;
+  thumbnail_storage_path?: string;
   posted_by?: string;
   size_mb?: number;
 };
@@ -561,13 +561,12 @@ async function loadFavouriteRemovals(photoIDs: string[]): Promise<Record<string,
 }
 
 async function deleteStorageAssets(
-  photos: Array<{ photo_url?: string; thumbnail_url?: string }>
+  photos: Array<{ preview_storage_path?: string; thumbnail_storage_path?: string }>
 ): Promise<void> {
   const bucket = storage.bucket();
 
   for (const photo of photos) {
-    for (const urlString of [photo.photo_url, photo.thumbnail_url]) {
-      const path = parseStoragePath(urlString);
+    for (const path of [photo.preview_storage_path, photo.thumbnail_storage_path]) {
       if (!path) {
         continue;
       }
@@ -697,30 +696,6 @@ async function sendPushToTopic(topic: string, payload: PushPayload): Promise<str
       }
     }
   });
-}
-
-function parseStoragePath(urlString: string | undefined): string | null {
-  if (!urlString) {
-    return null;
-  }
-
-  if (urlString.startsWith("gs://")) {
-    const withoutScheme = urlString.slice("gs://".length);
-    const slashIndex = withoutScheme.indexOf("/");
-    return slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : null;
-  }
-
-  try {
-    const url = new URL(urlString);
-    const marker = "/o/";
-    const markerIndex = url.pathname.indexOf(marker);
-    if (markerIndex < 0) {
-      return null;
-    }
-    return decodeURIComponent(url.pathname.slice(markerIndex + marker.length));
-  } catch {
-    return null;
-  }
 }
 
 function isObjectNotFoundError(error: unknown): boolean {

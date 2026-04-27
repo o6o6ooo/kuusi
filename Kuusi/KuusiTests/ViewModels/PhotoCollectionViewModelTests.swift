@@ -524,16 +524,14 @@ private func makePhoto(
     year: Int,
     hashtags: [String] = [],
     isFavourite: Bool = false,
-    thumbnailURL: String? = nil,
+    thumbnailStoragePath: String? = nil,
     aspectRatio: Double? = 1.0,
     createdAt: Date? = nil
 ) -> FeedPhoto {
     FeedPhoto(
         id: id,
-        photoURL: "https://example.com/\(id).jpg",
-        thumbnailURL: thumbnailURL,
         previewStoragePath: "photos/user/\(id)_preview.jpg",
-        thumbnailStoragePath: thumbnailURL == nil ? nil : "photos/user/\(id)_thumb.jpg",
+        thumbnailStoragePath: thumbnailStoragePath,
         groupID: groupID,
         postedBy: "user",
         year: year,
