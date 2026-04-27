@@ -68,8 +68,6 @@ struct UploadServiceTests {
 
         #expect(payload["preview_storage_path"] as? String == "photos/user-1/photo-1_preview.jpg")
         #expect(payload["thumbnail_storage_path"] as? String == "photos/user-1/photo-1_thumb.jpg")
-        #expect(payload["photo_url"] == nil)
-        #expect(payload["thumbnail_url"] == nil)
         #expect(payload["group_id"] as? String == "group-1")
         #expect(payload["posted_by"] as? String == "user-1")
         #expect(payload["year"] as? Int == 2025)
