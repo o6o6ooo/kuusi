@@ -48,8 +48,6 @@ struct UploadServiceTests {
 
     @Test
     func makePhotoPayloadMapsPreparedImageFields() {
-        let previewURL = URL(string: "https://example.com/preview.jpg")!
-        let thumbURL = URL(string: "https://example.com/thumb.jpg")!
         let prepared = PreparedImage(
             id: "photo-1",
             previewData: Data([0x01]),
@@ -61,8 +59,6 @@ struct UploadServiceTests {
         let payload = UploadService.makePhotoPayload(
             previewPath: "photos/user-1/photo-1_preview.jpg",
             thumbPath: "photos/user-1/photo-1_thumb.jpg",
-            previewURL: previewURL,
-            thumbURL: thumbURL,
             groupID: "group-1",
             userID: "user-1",
             year: 2025,
@@ -72,8 +68,8 @@ struct UploadServiceTests {
 
         #expect(payload["preview_storage_path"] as? String == "photos/user-1/photo-1_preview.jpg")
         #expect(payload["thumbnail_storage_path"] as? String == "photos/user-1/photo-1_thumb.jpg")
-        #expect(payload["photo_url"] as? String == previewURL.absoluteString)
-        #expect(payload["thumbnail_url"] as? String == thumbURL.absoluteString)
+        #expect(payload["photo_url"] == nil)
+        #expect(payload["thumbnail_url"] == nil)
         #expect(payload["group_id"] as? String == "group-1")
         #expect(payload["posted_by"] as? String == "user-1")
         #expect(payload["year"] as? Int == 2025)

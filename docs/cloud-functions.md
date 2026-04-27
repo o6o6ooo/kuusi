@@ -70,3 +70,17 @@ If `target` is set to anything other than `"all"`, the function marks the docume
 The iOS app now owns device token registration. Deploy the notification functions alongside the client changes so `users/{uid}/devices/{deviceId}` is populated before fan-out is expected to work.
 
 When moving these notification triggers from `us-central1` to `europe-west2`, delete the old `us-central1` copies after the new deployment succeeds so the same Firestore event is not processed twice.
+
+## One-off maintenance scripts
+
+For one-time admin data fixes, prefer local scripts over new deployed functions.
+
+- `npm run backfill:photo-storage-paths`
+  - Run from `functions/`
+  - Reads every `photos` document and derives:
+    - `preview_storage_path` from `photo_url`
+    - `thumbnail_storage_path` from `thumbnail_url`
+  - Defaults to dry-run mode
+  - Add `-- --apply` to write changes
+  - Requires Firebase Admin credentials, for example:
+    - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json npm run backfill:photo-storage-paths`

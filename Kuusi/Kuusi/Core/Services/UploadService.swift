@@ -147,17 +147,14 @@ final class UploadService {
         let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
         let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
 
-        async let previewURLTask = uploadData(prepared.previewData, at: previewPath)
-        async let thumbURLTask = uploadData(prepared.thumbData, at: thumbPath)
+        async let previewUploadTask = uploadData(prepared.previewData, at: previewPath)
+        async let thumbUploadTask = uploadData(prepared.thumbData, at: thumbPath)
 
-        let previewURL = try await previewURLTask
-        let thumbURL = try await thumbURLTask
+        _ = try await (previewUploadTask, thumbUploadTask)
 
         let payload = Self.makePhotoPayload(
             previewPath: previewPath,
             thumbPath: thumbPath,
-            previewURL: previewURL,
-            thumbURL: thumbURL,
             groupID: groupID,
             userID: userID,
             year: year,
@@ -182,7 +179,7 @@ final class UploadService {
         return resized.jpegData(compressionQuality: compression)
     }
 
-    private func uploadData(_ data: Data, at path: String) async throws -> URL {
+    private func uploadData(_ data: Data, at path: String) async throws {
         let ref = storage.reference(withPath: path)
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
@@ -198,20 +195,6 @@ final class UploadService {
                     return
                 }
                 continuation.resume(returning: metadata)
-            }
-        }
-
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
-            ref.downloadURL { url, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let url else {
-                    continuation.resume(throwing: NSError(domain: "Storage", code: -2))
-                    return
-                }
-                continuation.resume(returning: url)
             }
         }
     }
@@ -270,8 +253,6 @@ final class UploadService {
     static func makePhotoPayload(
         previewPath: String,
         thumbPath: String,
-        previewURL: URL,
-        thumbURL: URL,
         groupID: String,
         userID: String,
         year: Int,
@@ -281,8 +262,6 @@ final class UploadService {
         [
             "preview_storage_path": previewPath,
             "thumbnail_storage_path": thumbPath,
-            "photo_url": previewURL.absoluteString,
-            "thumbnail_url": thumbURL.absoluteString,
             "group_id": groupID,
             "posted_by": userID,
             "year": year,
