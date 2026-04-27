@@ -5,7 +5,7 @@ import Foundation
 import SwiftUI
 import UIKit
 
-enum FeedImageSource: Equatable {
+nonisolated enum FeedImageSource: Equatable {
     case storagePath(String)
     case remoteURL(URL)
 
