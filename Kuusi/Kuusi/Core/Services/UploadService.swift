@@ -154,6 +154,8 @@ final class UploadService {
         let thumbURL = try await thumbURLTask
 
         let payload = Self.makePhotoPayload(
+            previewPath: previewPath,
+            thumbPath: thumbPath,
             previewURL: previewURL,
             thumbURL: thumbURL,
             groupID: groupID,
@@ -266,6 +268,8 @@ final class UploadService {
     }
 
     static func makePhotoPayload(
+        previewPath: String,
+        thumbPath: String,
         previewURL: URL,
         thumbURL: URL,
         groupID: String,
@@ -275,6 +279,8 @@ final class UploadService {
         prepared: PreparedImage
     ) -> [String: Any] {
         [
+            "preview_storage_path": previewPath,
+            "thumbnail_storage_path": thumbPath,
             "photo_url": previewURL.absoluteString,
             "thumbnail_url": thumbURL.absoluteString,
             "group_id": groupID,

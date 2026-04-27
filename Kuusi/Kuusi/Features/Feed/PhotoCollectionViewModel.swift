@@ -24,6 +24,8 @@ private struct CachedFeedPhoto: Codable {
     let id: String
     let photoURL: String?
     let thumbnailURL: String?
+    let previewStoragePath: String?
+    let thumbnailStoragePath: String?
     let groupID: String?
     let postedBy: String?
     let year: Int?
@@ -37,6 +39,8 @@ private struct CachedFeedPhoto: Codable {
         id = photo.id
         photoURL = photo.photoURL
         thumbnailURL = photo.thumbnailURL
+        previewStoragePath = photo.previewStoragePath
+        thumbnailStoragePath = photo.thumbnailStoragePath
         groupID = photo.groupID
         postedBy = photo.postedBy
         year = photo.year
@@ -52,6 +56,8 @@ private struct CachedFeedPhoto: Codable {
             id: id,
             photoURL: photoURL,
             thumbnailURL: thumbnailURL,
+            previewStoragePath: previewStoragePath,
+            thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,
             postedBy: postedBy,
             year: year,

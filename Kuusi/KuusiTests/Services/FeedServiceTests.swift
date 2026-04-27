@@ -107,6 +107,8 @@ struct FeedServiceTests {
             id: id,
             photoURL: "https://example.com/\(id).jpg",
             thumbnailURL: "https://example.com/\(id)-thumb.jpg",
+            previewStoragePath: "photos/owner-1/\(id)_preview.jpg",
+            thumbnailStoragePath: "photos/owner-1/\(id)_thumb.jpg",
             groupID: groupID,
             postedBy: postedBy,
             year: 2024,

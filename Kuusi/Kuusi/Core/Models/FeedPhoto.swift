@@ -5,6 +5,8 @@ struct FeedPhoto: Identifiable {
     let id: String
     let photoURL: String?
     let thumbnailURL: String?
+    let previewStoragePath: String?
+    let thumbnailStoragePath: String?
     let groupID: String?
     let postedBy: String?
     let year: Int?
@@ -25,6 +27,8 @@ extension FeedPhoto {
         self.id = id
         self.photoURL = data["photo_url"] as? String
         self.thumbnailURL = data["thumbnail_url"] as? String
+        self.previewStoragePath = data["preview_storage_path"] as? String
+        self.thumbnailStoragePath = data["thumbnail_storage_path"] as? String
         self.groupID = data["group_id"] as? String
         self.postedBy = data["posted_by"] as? String
         self.year = data["year"] as? Int
@@ -50,6 +54,8 @@ extension FeedPhoto {
             id: id,
             photoURL: photoURL,
             thumbnailURL: thumbnailURL,
+            previewStoragePath: previewStoragePath,
+            thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,
             postedBy: postedBy,
             year: year,

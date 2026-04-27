@@ -12,6 +12,8 @@ struct FeedPhotoTests {
             data: [
                 "photo_url": "https://example.com/full.jpg",
                 "thumbnail_url": "https://example.com/thumb.jpg",
+                "preview_storage_path": "photos/user-1/full.jpg",
+                "thumbnail_storage_path": "photos/user-1/thumb.jpg",
                 "group_id": "group-a",
                 "posted_by": "user-1",
                 "year": 2024,
@@ -25,6 +27,8 @@ struct FeedPhotoTests {
         #expect(photo.id == "photo-1")
         #expect(photo.photoURL == "https://example.com/full.jpg")
         #expect(photo.thumbnailURL == "https://example.com/thumb.jpg")
+        #expect(photo.previewStoragePath == "photos/user-1/full.jpg")
+        #expect(photo.thumbnailStoragePath == "photos/user-1/thumb.jpg")
         #expect(photo.groupID == "group-a")
         #expect(photo.postedBy == "user-1")
         #expect(photo.year == 2024)
@@ -41,6 +45,8 @@ struct FeedPhotoTests {
 
         #expect(photo.photoURL == nil)
         #expect(photo.thumbnailURL == nil)
+        #expect(photo.previewStoragePath == nil)
+        #expect(photo.thumbnailStoragePath == nil)
         #expect(photo.groupID == nil)
         #expect(photo.postedBy == nil)
         #expect(photo.year == nil)
@@ -57,6 +63,8 @@ struct FeedPhotoTests {
             id: "photo-1",
             photoURL: "https://example.com/full.jpg",
             thumbnailURL: nil,
+            previewStoragePath: "photos/user-1/full.jpg",
+            thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
             year: 2024,
@@ -80,6 +88,8 @@ struct FeedPhotoTests {
             id: "photo-1",
             photoURL: "https://example.com/full.jpg",
             thumbnailURL: nil,
+            previewStoragePath: "photos/user-1/full.jpg",
+            thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
             year: 2024,
@@ -96,6 +106,7 @@ struct FeedPhotoTests {
         #expect(updated.hashtags == ["winter", "family"])
         #expect(updated.isFavourite == true)
         #expect(updated.photoURL == original.photoURL)
+        #expect(updated.previewStoragePath == original.previewStoragePath)
         #expect(updated.groupID == original.groupID)
     }
 
@@ -105,6 +116,8 @@ struct FeedPhotoTests {
             id: "photo-1",
             photoURL: "https://example.com/full.jpg",
             thumbnailURL: nil,
+            previewStoragePath: "photos/user-1/full.jpg",
+            thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
             year: 2024,

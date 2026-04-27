@@ -532,6 +532,8 @@ private func makePhoto(
         id: id,
         photoURL: "https://example.com/\(id).jpg",
         thumbnailURL: thumbnailURL,
+        previewStoragePath: "photos/user/\(id)_preview.jpg",
+        thumbnailStoragePath: thumbnailURL == nil ? nil : "photos/user/\(id)_thumb.jpg",
         groupID: groupID,
         postedBy: "user",
         year: year,

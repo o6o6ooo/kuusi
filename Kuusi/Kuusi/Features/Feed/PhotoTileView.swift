@@ -62,10 +62,10 @@ struct PhotoTileView: View {
         let ratio = max(displayAspectRatio, 0.35)
         let collapsedHeight = width / ratio
         let expandedHeight = width / ratio
-        let imageURL = URL(string: resolvedImageURLString)
+        let imageSource = resolvedImageSource
 
         VStack(alignment: .leading, spacing: 0) {
-            CachedRemoteImageView(url: imageURL) { image in
+            CachedRemoteImageView(source: imageSource) { image in
                 image
                     .resizable()
                     .scaledToFit()
@@ -149,16 +149,60 @@ struct PhotoTileView: View {
         }
     }
 
-    private var resolvedImageURLString: String {
+    private var resolvedImageSource: FeedImageSource? {
         switch previewAccess {
         case .full:
             if isExpanded {
-                return photo.photoURL ?? photo.thumbnailURL ?? ""
+                return preferredSource(
+                    primaryPath: photo.previewStoragePath,
+                    fallbackURLString: photo.photoURL,
+                    secondaryPath: photo.thumbnailStoragePath,
+                    secondaryURLString: photo.thumbnailURL
+                )
             }
-            return photo.thumbnailURL ?? photo.photoURL ?? ""
+            return preferredSource(
+                primaryPath: photo.thumbnailStoragePath,
+                fallbackURLString: photo.thumbnailURL,
+                secondaryPath: photo.previewStoragePath,
+                secondaryURLString: photo.photoURL
+            )
         case .thumbnailOnly:
-            return photo.thumbnailURL ?? photo.photoURL ?? ""
+            return preferredSource(
+                primaryPath: photo.thumbnailStoragePath,
+                fallbackURLString: photo.thumbnailURL,
+                secondaryPath: photo.previewStoragePath,
+                secondaryURLString: photo.photoURL
+            )
         }
+    }
+
+    private func preferredSource(
+        primaryPath: String?,
+        fallbackURLString: String?,
+        secondaryPath: String?,
+        secondaryURLString: String?
+    ) -> FeedImageSource? {
+        if let primaryPath, !primaryPath.isEmpty {
+            return .storagePath(primaryPath)
+        }
+
+        if let fallbackURLString,
+           let fallbackURL = URL(string: fallbackURLString),
+           !fallbackURLString.isEmpty {
+            return .remoteURL(fallbackURL)
+        }
+
+        if let secondaryPath, !secondaryPath.isEmpty {
+            return .storagePath(secondaryPath)
+        }
+
+        if let secondaryURLString,
+           let secondaryURL = URL(string: secondaryURLString),
+           !secondaryURLString.isEmpty {
+            return .remoteURL(secondaryURL)
+        }
+
+        return nil
     }
 
     @ViewBuilder

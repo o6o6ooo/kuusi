@@ -59,6 +59,8 @@ struct UploadServiceTests {
         )
 
         let payload = UploadService.makePhotoPayload(
+            previewPath: "photos/user-1/photo-1_preview.jpg",
+            thumbPath: "photos/user-1/photo-1_thumb.jpg",
             previewURL: previewURL,
             thumbURL: thumbURL,
             groupID: "group-1",
@@ -68,6 +70,8 @@ struct UploadServiceTests {
             prepared: prepared
         )
 
+        #expect(payload["preview_storage_path"] as? String == "photos/user-1/photo-1_preview.jpg")
+        #expect(payload["thumbnail_storage_path"] as? String == "photos/user-1/photo-1_thumb.jpg")
         #expect(payload["photo_url"] as? String == previewURL.absoluteString)
         #expect(payload["thumbnail_url"] as? String == thumbURL.absoluteString)
         #expect(payload["group_id"] as? String == "group-1")
