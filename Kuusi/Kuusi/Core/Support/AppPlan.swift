@@ -7,7 +7,7 @@ enum AppPlan: String {
     var quotaMB: Double {
         switch self {
         case .free:
-            return 3072.0
+            return 1024.0
         case .premium:
             return 51200.0
         }
@@ -53,7 +53,7 @@ enum AppPlan: String {
         switch self {
         case .free:
             return [
-                "3GB storage",
+                "1GB storage",
                 "2 years photo preview",
                 "Up to 3 groups"
             ]

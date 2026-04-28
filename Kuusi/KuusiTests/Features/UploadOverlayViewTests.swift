@@ -130,7 +130,7 @@ struct UploadOverlayViewTests {
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
                 yearText: "2025",
-                effectiveUsageMB: 3072,
+                effectiveUsageMB: 1024,
                 estimatedUploadSizeMB: 1,
                 isPremiumActive: false
             ) == false
@@ -143,7 +143,7 @@ struct UploadOverlayViewTests {
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
                 yearText: "2025",
-                effectiveUsageMB: 3071,
+                effectiveUsageMB: 1023,
                 estimatedUploadSizeMB: 2,
                 isPremiumActive: false
             ) == false
@@ -174,7 +174,7 @@ struct UploadOverlayViewTests {
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
                 yearText: "2025",
-                effectiveUsageMB: 3072,
+                effectiveUsageMB: 1024,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
             ),
@@ -222,7 +222,7 @@ struct UploadOverlayViewTests {
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
                 yearText: "2025",
-                effectiveUsageMB: 3071,
+                effectiveUsageMB: 1023,
                 estimatedUploadSizeMB: 2,
                 isPremiumActive: false
             ),

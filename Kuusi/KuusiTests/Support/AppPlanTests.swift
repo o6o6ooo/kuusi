@@ -5,13 +5,13 @@ import Testing
 struct AppPlanTests {
     @Test
     func freePlanMatchesExpectedProductShape() {
-        #expect(AppPlan.free.quotaMB == 3072.0)
+        #expect(AppPlan.free.quotaMB == 1024.0)
         #expect(AppPlan.free.maxGroups == 3)
         #expect(AppPlan.free.title == "Free")
         #expect(AppPlan.free.priceLabel == nil)
         #expect(AppPlan.free.productID == nil)
         #expect(AppPlan.free.featureLines == [
-            "3GB storage",
+            "1GB storage",
             "2 years photo preview",
             "Up to 3 groups"
         ])
@@ -74,10 +74,10 @@ struct AppPlanTests {
 
     @Test
     func storageLimitChecksMatchPlanQuota() {
-        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 3072, isPremiumActive: false) == true)
-        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 3071.99, isPremiumActive: false) == false)
-        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 0.5, isPremiumActive: false) == true)
-        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 3071, additionalUsageMB: 1.1, isPremiumActive: false) == false)
+        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 1024, isPremiumActive: false) == true)
+        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 1023.99, isPremiumActive: false) == false)
+        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 1023, additionalUsageMB: 0.5, isPremiumActive: false) == true)
+        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 1023, additionalUsageMB: 1.1, isPremiumActive: false) == false)
     }
 
     private func expectFullAccess(_ access: PreviewAccess) {
