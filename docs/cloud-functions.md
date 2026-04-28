@@ -37,9 +37,11 @@ Callable functions are deployed in `europe-west2`.
   - Removes the `groupId` from the target user's `users/{uid}.groups`
 - `onPhotoCreated`
   - Triggers when `photos/{photoId}` is created in `europe-west2`
+  - Uses the photo's `upload_batch_id` to reserve a `photo_notification_batches/{uploadBatchId}` document
+  - Sends only one notification per upload batch, even when the batch creates multiple photo documents
   - Loads the target group and excludes the uploader from delivery
   - Reads active device tokens from `users/{uid}/devices/{deviceId}`
-  - Sends a push notification announcing the new photo
+  - Sends a push notification announcing the new photo or photo batch
   - Deletes stale tokens when FCM reports them invalid
 - `onAdminNotificationCreated`
   - Triggers when `admin_notifications/{notificationId}` is created in `europe-west2`

@@ -42,6 +42,8 @@ type PhotoData = {
   thumbnail_storage_path?: string;
   posted_by?: string;
   size_mb?: number;
+  upload_batch_id?: string;
+  upload_batch_count?: number;
 };
 
 type DeviceData = {
@@ -333,8 +335,22 @@ export const onPhotoCreated = onDocumentCreated({
   const photoData = snapshot.data() as PhotoData;
   const groupId = normalizeText(photoData.group_id);
   const postedBy = normalizeText(photoData.posted_by);
+  const uploadBatchCount = normalizeBatchCount(photoData.upload_batch_count);
 
   if (!photoId || !groupId || !postedBy) {
+    return;
+  }
+
+  const uploadBatchId = normalizeText(photoData.upload_batch_id) ?? photoId;
+
+  const shouldNotify = await reservePhotoBatchNotification(
+    uploadBatchId,
+    groupId,
+    postedBy,
+    photoId,
+    uploadBatchCount
+  );
+  if (!shouldNotify) {
     return;
   }
 
@@ -353,20 +369,24 @@ export const onPhotoCreated = onDocumentCreated({
   }
 
   const senderName = await loadUserDisplayName(postedBy);
+  const photoCountLabel = uploadBatchCount === 1 ? "a new photo" : `${uploadBatchCount} new photos`;
   const delivery = await sendPushToUserIDs(recipientUIDs, {
     title: groupData.name ? `New photo in ${groupData.name}` : "New photo in Kuusi",
-    body: `${senderName} posted a new photo`,
+    body: `${senderName} posted ${photoCountLabel}`,
     data: {
       type: "photo_posted",
       group_id: groupId,
       photo_id: photoId,
-      posted_by: postedBy
+      posted_by: postedBy,
+      upload_batch_id: uploadBatchId
     }
   });
 
   console.info("Photo notification delivered", {
     groupId,
     photoId,
+    uploadBatchId,
+    uploadBatchCount,
     recipientCount: recipientUIDs.length,
     sentCount: delivery.sentCount,
     failedCount: delivery.failedCount
@@ -443,6 +463,37 @@ function normalizeGroupId(value: unknown): string | null {
 
 function normalizeText(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeBatchCount(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+async function reservePhotoBatchNotification(
+  uploadBatchId: string,
+  groupId: string,
+  postedBy: string,
+  photoId: string,
+  uploadBatchCount: number
+): Promise<boolean> {
+  const notificationRef = db.collection("photo_notification_batches").doc(uploadBatchId);
+
+  return db.runTransaction(async (transaction) => {
+    const existingSnapshot = await transaction.get(notificationRef);
+    if (existingSnapshot.exists) {
+      return false;
+    }
+
+    transaction.create(notificationRef, {
+      created_at: FieldValue.serverTimestamp(),
+      first_photo_id: photoId,
+      group_id: groupId,
+      posted_by: postedBy,
+      photo_count: uploadBatchCount
+    });
+
+    return true;
+  });
 }
 
 async function deleteOwnedGroup(

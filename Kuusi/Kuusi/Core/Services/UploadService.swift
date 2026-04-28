@@ -20,13 +20,17 @@ final class UploadService {
     func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
         let preparedImages = await prepareImagesForUpload(images)
         try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
+        let uploadBatchID = UUID().uuidString
+        let uploadBatchCount = preparedImages.count
 
         let totalUploadedMB = try await uploadPreparedImages(
             preparedImages,
             userID: userID,
             groupID: groupID,
             year: year,
-            hashtags: hashtags
+            hashtags: hashtags,
+            uploadBatchID: uploadBatchID,
+            uploadBatchCount: uploadBatchCount
         )
         try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
     }
@@ -97,7 +101,9 @@ final class UploadService {
         userID: String,
         groupID: String,
         year: Int,
-        hashtags: [String]
+        hashtags: [String],
+        uploadBatchID: String,
+        uploadBatchCount: Int
     ) async throws -> Double {
         var iterator = preparedImages.makeIterator()
 
@@ -110,7 +116,9 @@ final class UploadService {
                         userID: userID,
                         groupID: groupID,
                         year: year,
-                        hashtags: hashtags
+                        hashtags: hashtags,
+                        uploadBatchID: uploadBatchID,
+                        uploadBatchCount: uploadBatchCount
                     )
                 }
             }
@@ -127,7 +135,9 @@ final class UploadService {
                             userID: userID,
                             groupID: groupID,
                             year: year,
-                            hashtags: hashtags
+                            hashtags: hashtags,
+                            uploadBatchID: uploadBatchID,
+                            uploadBatchCount: uploadBatchCount
                         )
                     }
                 }
@@ -142,7 +152,9 @@ final class UploadService {
         userID: String,
         groupID: String,
         year: Int,
-        hashtags: [String]
+        hashtags: [String],
+        uploadBatchID: String,
+        uploadBatchCount: Int
     ) async throws -> Double {
         let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
         let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
@@ -159,7 +171,9 @@ final class UploadService {
             userID: userID,
             year: year,
             hashtags: hashtags,
-            prepared: prepared
+            prepared: prepared,
+            uploadBatchID: uploadBatchID,
+            uploadBatchCount: uploadBatchCount
         )
 
         try await addPhotoDocument(payload)
@@ -257,7 +271,9 @@ final class UploadService {
         userID: String,
         year: Int,
         hashtags: [String],
-        prepared: PreparedImage
+        prepared: PreparedImage,
+        uploadBatchID: String,
+        uploadBatchCount: Int
     ) -> [String: Any] {
         [
             "preview_storage_path": previewPath,
@@ -268,6 +284,8 @@ final class UploadService {
             "hashtags": hashtags,
             "aspect_ratio": prepared.aspectRatio,
             "size_mb": roundedMegabytes(prepared.sizeMB),
+            "upload_batch_id": uploadBatchID,
+            "upload_batch_count": uploadBatchCount,
             "created_at": FieldValue.serverTimestamp()
         ]
     }

@@ -39,7 +39,16 @@ Current Firebase usage in the SwiftUI app.
 - `hashtags: string[]`
 - `aspect_ratio: number`
 - `size_mb: number`
+- `upload_batch_id: string`
+- `upload_batch_count: number`
 - `created_at: timestamp`
+
+### `photo_notification_batches/{uploadBatchId}`
+- `created_at: timestamp`
+- `first_photo_id: string`
+- `group_id: string`
+- `posted_by: string`
+- `photo_count: number`
 
 ### `admin_notifications/{notificationId}`
 - `title: string`
@@ -73,6 +82,7 @@ This is required for queries that filter photos by `group_id` and order the feed
 
 - iOS devices store their current FCM token under `users/{uid}/devices/{deviceId}`
 - iOS devices subscribe to the FCM topic `announcements` after notification permission is granted
-- `photos/{photoId}` creation triggers a Cloud Function that fans out push notifications to the other group members
+- each upload operation stamps every created `photos/{photoId}` document with the same `upload_batch_id`
+- `photos/{photoId}` creation triggers a Cloud Function that reserves `photo_notification_batches/{uploadBatchId}` and sends at most one push notification for that upload batch
 - `admin_notifications/{notificationId}` creation triggers a Cloud Function that sends maintenance or announcement pushes to the `announcements` topic
 - Invalid or expired device tokens are deleted server-side during notification delivery cleanup

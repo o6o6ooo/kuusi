@@ -63,7 +63,9 @@ struct UploadServiceTests {
             userID: "user-1",
             year: 2025,
             hashtags: ["family", "spring"],
-            prepared: prepared
+            prepared: prepared,
+            uploadBatchID: "batch-1",
+            uploadBatchCount: 3
         )
 
         #expect(payload["preview_storage_path"] as? String == "photos/user-1/photo-1_preview.jpg")
@@ -74,6 +76,8 @@ struct UploadServiceTests {
         #expect(payload["hashtags"] as? [String] == ["family", "spring"])
         #expect(payload["aspect_ratio"] as? Double == 1.5)
         #expect(payload["size_mb"] as? Double == 2.35)
+        #expect(payload["upload_batch_id"] as? String == "batch-1")
+        #expect(payload["upload_batch_count"] as? Int == 3)
         #expect(payload["created_at"] != nil)
     }
 }
