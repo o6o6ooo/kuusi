@@ -169,7 +169,7 @@ final class PhotoCollectionViewModel: ObservableObject {
             nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
             hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
             persistCachedPhotos(for: uid)
-            await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
+            await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, shouldPreserveLoadedPhotos: true)
         } catch {
             errorMessageID = .failedToLoadGroups
         }
@@ -224,7 +224,12 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
     }
 
-    private func fetchPhotosForSelectedGroup(forceReload: Bool, limit: Int, isLoadMore: Bool = false) async {
+    private func fetchPhotosForSelectedGroup(
+        forceReload: Bool,
+        limit: Int,
+        isLoadMore: Bool = false,
+        shouldPreserveLoadedPhotos: Bool = false
+    ) async {
         if isLoadMore {
             isLoadingMore = true
         } else {
@@ -270,6 +275,9 @@ final class PhotoCollectionViewModel: ObservableObject {
             if isLoadMore {
                 let existingPhotos = photosByGroupID[selectedGroupID] ?? []
                 mergedPhotos = Self.mergePhotos(existingPhotos, with: result.photos)
+            } else if shouldPreserveLoadedPhotos {
+                let existingPhotos = photosByGroupID[selectedGroupID] ?? []
+                mergedPhotos = Self.mergeFreshPhotos(result.photos, withExistingPhotos: existingPhotos)
             } else {
                 mergedPhotos = result.photos
             }
@@ -381,6 +389,19 @@ final class PhotoCollectionViewModel: ObservableObject {
         var merged = existingPhotos
         var seenIDs = Set(existingPhotos.map(\.id))
         for photo in newPhotos where !seenIDs.contains(photo.id) {
+            merged.append(photo)
+            seenIDs.insert(photo.id)
+        }
+        return merged
+    }
+
+    private static func mergeFreshPhotos(_ freshPhotos: [FeedPhoto], withExistingPhotos existingPhotos: [FeedPhoto]) -> [FeedPhoto] {
+        guard !freshPhotos.isEmpty else { return existingPhotos }
+        guard !existingPhotos.isEmpty else { return freshPhotos }
+
+        var merged = freshPhotos
+        var seenIDs = Set(freshPhotos.map(\.id))
+        for photo in existingPhotos where !seenIDs.contains(photo.id) {
             merged.append(photo)
             seenIDs.insert(photo.id)
         }

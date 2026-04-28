@@ -265,7 +265,6 @@ struct FeedView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .refreshable {
                 await refreshCurrentGroup()
-                await profileViewModel.loadProfile()
             }
         }
     }
@@ -291,7 +290,6 @@ struct FeedView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .refreshable {
             await refreshCurrentGroup()
-            await profileViewModel.loadProfile()
         }
     }
 

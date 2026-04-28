@@ -319,6 +319,52 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func refreshFetchesGroupsAndPreservesLoadedPhotos() async {
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID["group-b"] = [
+            RecentPhotoFetchResult(
+                photos: [makePhoto(id: "photo-new", groupID: "group-b", year: 2026)],
+                hasMore: false,
+                nextCursor: nil,
+                favouriteIDs: []
+            )
+        ]
+
+        let groupService = GroupServiceSpy()
+        groupService.fetchedGroupsValue = [
+            makeGroup(id: "group-a", name: "Family"),
+            makeGroup(id: "group-b", name: "Friends"),
+            makeGroup(id: "group-c", name: "New group")
+        ]
+
+        let viewModel = makeViewModel(
+            feedService: feedService,
+            groupService: groupService,
+            userID: "refresh-preserve-loaded-user"
+        )
+        viewModel.groups = [
+            makeGroup(id: "group-a", name: "Family"),
+            makeGroup(id: "group-b", name: "Friends")
+        ]
+        viewModel.selectedGroupID = "group-b"
+        viewModel.photosByGroupID = [
+            "group-b": [
+                makePhoto(id: "photo-old", groupID: "group-b", year: 2025),
+                makePhoto(id: "photo-new", groupID: "group-b", year: 2024)
+            ]
+        ]
+
+        await viewModel.refresh(limit: 6)
+
+        #expect(viewModel.groups.map(\.id) == ["group-a", "group-b", "group-c"])
+        #expect(viewModel.selectedGroupID == "group-b")
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old"])
+        #expect(feedService.fetchCalls.count == 1)
+        #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
+        #expect(viewModel.errorMessageID == nil)
+    }
+
+    @Test
     func refreshShowsFailedToLoadGroupsWhenGroupFetchFails() async {
         let groupService = GroupServiceSpy()
         groupService.fetchGroupsError = TestError.failed
