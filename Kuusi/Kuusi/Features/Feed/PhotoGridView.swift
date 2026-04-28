@@ -4,6 +4,16 @@ private struct MasonryExpandedKey: LayoutValueKey {
     nonisolated static let defaultValue = false
 }
 
+private struct LoadMoreSentinelKey: PreferenceKey {
+    static var defaultValue: CGFloat {
+        CGFloat.greatestFiniteMagnitude
+    }
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 private struct MasonryGridLayout: Layout {
     struct Cache {
         var width: CGFloat = 0
@@ -104,26 +114,34 @@ private struct MasonryGridLayout: Layout {
 struct PhotoGridView<Tile: View, Footer: View>: View {
     let photos: [FeedPhoto]
     let availableWidth: CGFloat
+    let availableHeight: CGFloat
     let expandedPhotoID: String?
     let onTap: (FeedPhoto) -> Void
+    let onLoadMore: () -> Void
     let tile: (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
     let footer: () -> Footer
 
     private let spacing: CGFloat = 8
     private let horizontalPadding: CGFloat = 12
+    private let loadMorePreloadDistance: CGFloat = 260
+    private let scrollCoordinateSpaceName = "photo-grid-scroll"
 
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
+        availableHeight: CGFloat,
         expandedPhotoID: String? = nil,
         onTap: @escaping (FeedPhoto) -> Void,
+        onLoadMore: @escaping () -> Void,
         @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
         @ViewBuilder footer: @escaping () -> Footer
     ) {
         self.photos = photos
         self.availableWidth = availableWidth
+        self.availableHeight = availableHeight
         self.expandedPhotoID = expandedPhotoID
         self.onTap = onTap
+        self.onLoadMore = onLoadMore
         self.tile = tile
         self.footer = footer
     }
@@ -153,7 +171,23 @@ struct PhotoGridView<Tile: View, Footer: View>: View {
             .padding(.top, 2)
             .padding(.bottom, 8)
 
+            Color.clear
+                .frame(height: 1)
+                .background(
+                    GeometryReader { sentinelProxy in
+                        Color.clear.preference(
+                            key: LoadMoreSentinelKey.self,
+                            value: sentinelProxy.frame(in: .named(scrollCoordinateSpaceName)).minY
+                        )
+                    }
+                )
+
             footer()
+        }
+        .coordinateSpace(name: scrollCoordinateSpaceName)
+        .onPreferenceChange(LoadMoreSentinelKey.self) { sentinelMinY in
+            guard sentinelMinY <= availableHeight + loadMorePreloadDistance else { return }
+            onLoadMore()
         }
     }
 
@@ -166,15 +200,19 @@ extension PhotoGridView where Footer == EmptyView {
     init(
         photos: [FeedPhoto],
         availableWidth: CGFloat,
+        availableHeight: CGFloat,
         expandedPhotoID: String? = nil,
         onTap: @escaping (FeedPhoto) -> Void,
+        onLoadMore: @escaping () -> Void,
         @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
     ) {
         self.init(
             photos: photos,
             availableWidth: availableWidth,
+            availableHeight: availableHeight,
             expandedPhotoID: expandedPhotoID,
             onTap: onTap,
+            onLoadMore: onLoadMore,
             tile: tile,
             footer: { EmptyView() }
         )

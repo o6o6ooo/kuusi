@@ -49,6 +49,10 @@ struct FeedView: View {
         Auth.auth().currentUser?.uid
     }
 
+    private var feedPageSize: Int {
+        UIDevice.current.userInterfaceIdiom == .pad ? 24 : 18
+    }
+
     private var displayedPhotos: [FeedPhoto] {
         currentGroupPhotos.filter { photo in
             let matchesHashtag = selectedHashtag == nil || photo.hashtags.contains {
@@ -96,7 +100,7 @@ struct FeedView: View {
                             onSelectGroup: { groupID in
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                                     selectedHashtag = nil
-                                    photoCollection.selectGroup(groupID, limit: 6)
+                                    photoCollection.selectGroup(groupID, limit: feedPageSize)
                                 }
                             }
                         )
@@ -128,7 +132,7 @@ struct FeedView: View {
             .appFeedBackground()
             .task {
                 if photoCollection.groups.isEmpty {
-                    await photoCollection.loadInitial(limit: 6)
+                    await photoCollection.loadInitial(limit: feedPageSize)
                 }
                 if profileViewModel.name.isEmpty {
                     await profileViewModel.loadProfile()
@@ -212,11 +216,15 @@ struct FeedView: View {
             PhotoGridView(
                 photos: displayedPhotos,
                 availableWidth: proxy.size.width,
+                availableHeight: proxy.size.height,
                 expandedPhotoID: selectedPhotoID,
                 onTap: { photo in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedPhotoID = selectedPhotoID == photo.id ? nil : photo.id
                     }
+                },
+                onLoadMore: {
+                    photoCollection.loadMoreIfNeeded(pageSize: feedPageSize)
                 }
             ) { photo, tileWidth, displayAspectRatio, isExpanded, onTap in
                 PhotoTileView(
@@ -245,10 +253,6 @@ struct FeedView: View {
                     isFavouriting: favouritingPhotoIDs.contains(photo.id),
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
-                .onAppear {
-                    guard photo.id == displayedPhotos.last?.id else { return }
-                    photoCollection.loadMoreIfNeeded(pageSize: 6)
-                }
             } footer: {
                 if photoCollection.isLoadingMore {
                     ProgressView()
@@ -353,7 +357,7 @@ struct FeedView: View {
     @MainActor
     private func refreshCurrentGroup() async {
         selectedHashtag = nil
-        await photoCollection.refresh(limit: 6)
+        await photoCollection.refresh(limit: feedPageSize)
     }
 
     private func deletePhoto(_ photo: FeedPhoto) async {
