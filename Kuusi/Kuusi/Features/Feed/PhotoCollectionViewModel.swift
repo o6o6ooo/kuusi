@@ -147,7 +147,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(cachedGroups.map(\.id)))
         availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
-        nextCursorByGroupID = [:]
+        nextCursorByGroupID = photosByGroupID.compactMapValues(Self.makeNextCursor(from:))
         errorMessageID = nil
         await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
     }
@@ -272,20 +272,28 @@ final class PhotoCollectionViewModel: ObservableObject {
                 favouriteIDs: forceReload ? nil : favouriteIDs
             )
             let mergedPhotos: [FeedPhoto]
+            let nextCursor: FeedPageCursor?
+            let hasMorePhotos: Bool
             if isLoadMore {
                 let existingPhotos = photosByGroupID[selectedGroupID] ?? []
                 mergedPhotos = Self.mergePhotos(existingPhotos, with: result.photos)
+                nextCursor = result.nextCursor
+                hasMorePhotos = result.hasMore
             } else if shouldPreserveLoadedPhotos {
                 let existingPhotos = photosByGroupID[selectedGroupID] ?? []
                 mergedPhotos = Self.mergeFreshPhotos(result.photos, withExistingPhotos: existingPhotos)
+                nextCursor = Self.makeNextCursor(from: mergedPhotos)
+                hasMorePhotos = result.hasMore || mergedPhotos.count > result.photos.count
             } else {
                 mergedPhotos = result.photos
+                nextCursor = result.nextCursor
+                hasMorePhotos = result.hasMore
             }
 
             photosByGroupID[selectedGroupID] = mergedPhotos
             availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: mergedPhotos)
-            nextCursorByGroupID[selectedGroupID] = result.nextCursor
-            hasMorePhotosByGroupID[selectedGroupID] = result.hasMore
+            nextCursorByGroupID[selectedGroupID] = nextCursor
+            hasMorePhotosByGroupID[selectedGroupID] = hasMorePhotos
             favouriteIDs = result.favouriteIDs
             persistCachedPhotos(for: uid)
             errorMessageID = nil
@@ -406,5 +414,10 @@ final class PhotoCollectionViewModel: ObservableObject {
             seenIDs.insert(photo.id)
         }
         return merged
+    }
+
+    private static func makeNextCursor(from photos: [FeedPhoto]) -> FeedPageCursor? {
+        guard let lastPhoto = photos.last, let createdAt = lastPhoto.createdAt else { return nil }
+        return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
     }
 }

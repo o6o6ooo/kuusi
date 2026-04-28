@@ -209,6 +209,56 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func loadMoreAfterRestoringCacheStartsAfterLastCachedPhoto() async throws {
+        let userID = "persisted-cache-load-more-user"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
+        let cachedPhotos = (0..<6).map {
+            makePhoto(
+                id: "photo-\($0)",
+                groupID: "group-a",
+                year: 2024 - $0,
+                createdAt: Date(timeIntervalSince1970: TimeInterval(300 - $0))
+            )
+        }
+        let nextBatch = (6..<12).map {
+            makePhoto(
+                id: "photo-\($0)",
+                groupID: "group-a",
+                year: 2024 - $0,
+                createdAt: Date(timeIntervalSince1970: TimeInterval(300 - $0))
+            )
+        }
+        let firstViewModel = makeViewModel(userID: userID)
+        firstViewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        firstViewModel.selectedGroupID = "group-a"
+        firstViewModel.photosByGroupID = ["group-a": cachedPhotos]
+        firstViewModel.replacePhoto(cachedPhotos[0])
+
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID["group-a"] = [
+            RecentPhotoFetchResult(photos: nextBatch, hasMore: false, nextCursor: nil, favouriteIDs: [])
+        ]
+        let groupService = GroupServiceSpy()
+        groupService.cachedGroupsValue = [makeGroup(id: "group-a", name: "Family")]
+        let secondViewModel = makeViewModel(
+            feedService: feedService,
+            groupService: groupService,
+            userID: userID
+        )
+
+        await secondViewModel.loadInitial(limit: 6)
+        secondViewModel.loadMoreIfNeeded(pageSize: 6)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(feedService.fetchCalls.count == 1)
+        #expect(feedService.fetchCalls.first?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
+        #expect(secondViewModel.currentGroupPhotos.count == 12)
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+    }
+
+    @Test
     func loadInitialShowsFailedToLoadGroupsWhenFetchFailsWithoutCache() async {
         let userID = "initial-groups-failure-\(UUID().uuidString)"
         PhotoCollectionViewModel.clearCachedPhotos(for: userID)
