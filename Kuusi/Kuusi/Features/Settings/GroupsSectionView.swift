@@ -23,8 +23,12 @@ struct GroupsSectionView: View {
                         }
                     }
 
-                    Button("Join a group", systemImage: "photo.badge.magnifyingglass") {
+                    Button("Read QR code to join a group", systemImage: "photo.badge.magnifyingglass") {
                         viewModel.isPhotoPickerPresented = true
+                    }
+
+                    Button("Scan QR code to join a group", systemImage: "qrcode.viewfinder") {
+                        viewModel.isQRCodeScannerPresented = true
                     }
                 } label: {
                     Image(systemName: "plus")

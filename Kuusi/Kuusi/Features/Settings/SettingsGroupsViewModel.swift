@@ -75,6 +75,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isDeletingGroup = false
     @Published var isDeleteConfirmPresented = false
     @Published var isPhotoPickerPresented = false
+    @Published var isQRCodeScannerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
     @Published var isMemberListPresented = false
     @Published var isJoiningGroup = false
@@ -337,6 +338,15 @@ final class SettingsGroupsViewModel: ObservableObject {
             return
         }
         await joinGroupFromQRCodePayload(payload)
+    }
+
+    func handleQRCodeScannerError(_ error: QRCodeScannerError) {
+        switch error {
+        case .cameraAccessDenied:
+            setSaveStatus(AppMessage(.cameraAccessDenied, .error))
+        case .cameraUnavailable:
+            setSaveStatus(AppMessage(.cameraUnavailable, .error))
+        }
     }
 
     func joinGroupFromQRCodePayload(_ payload: String) async {

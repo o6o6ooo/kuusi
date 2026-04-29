@@ -13,6 +13,8 @@ struct AppMessage: Equatable {
         case appleSignInFailed
         case appleTokenUnavailable
         case biometricAuthenticationFailed
+        case cameraAccessDenied
+        case cameraUnavailable
         case couldNotOpenGooglePhotos
         case couldNotOpenGoogleSignIn
         case googleAccountMismatch
@@ -118,6 +120,10 @@ extension AppMessage.ID {
             return "Apple ID token was not available"
         case .biometricAuthenticationFailed:
             return "Biometric authentication failed"
+        case .cameraAccessDenied:
+            return "Allow camera access in Settings to scan QR codes"
+        case .cameraUnavailable:
+            return "Camera is not available"
         case .couldNotOpenGooglePhotos:
             return "Could not open Google Photos"
         case .couldNotOpenGoogleSignIn:

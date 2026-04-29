@@ -87,6 +87,20 @@ struct SettingsView: View {
                         .presentationDragIndicator(.visible)
                 }
             }
+            .sheet(isPresented: $groupsViewModel.isQRCodeScannerPresented) {
+                QRCodeScannerView(
+                    onScan: { payload in
+                        groupsViewModel.isQRCodeScannerPresented = false
+                        Task {
+                            await groupsViewModel.joinGroupFromQRCodePayload(payload)
+                        }
+                    },
+                    onError: { error in
+                        groupsViewModel.isQRCodeScannerPresented = false
+                        groupsViewModel.handleQRCodeScannerError(error)
+                    }
+                )
+            }
             .sheet(isPresented: $groupsViewModel.isMemberListPresented) {
                 GroupMembersOverlayView(
                     members: groupsViewModel.selectedGroupMembers,
