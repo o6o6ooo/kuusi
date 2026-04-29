@@ -61,8 +61,8 @@ struct FeedView: View {
         !subscriptionStore.isPremiumActive
     }
 
-    private var usesPersonalizedAds: Bool {
-        trackingAuthorizationStatus == .authorized
+    private var canLoadFeedAds: Bool {
+        shouldShowFeedAds && trackingAuthorizationStatus != .notDetermined
     }
 
     private var displayedPhotos: [FeedPhoto] {
@@ -274,7 +274,7 @@ struct FeedView: View {
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
             } inlineAd: { width in
-                FeedInlineAdView(width: width, usesPersonalizedAds: usesPersonalizedAds)
+                FeedNativeAdTileView(width: width, canLoadAds: canLoadFeedAds)
             } footer: {
                 if photoCollection.isLoadingMore {
                     ProgressView()
@@ -476,62 +476,5 @@ struct FeedView: View {
         } catch {
             return .failure(FeedEditError(toastMessage: AppMessage(.failedToUpdatePhoto, .error)))
         }
-    }
-}
-
-private struct FeedInlineAdView: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    let width: CGFloat
-    let usesPersonalizedAds: Bool
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            adSurface
-
-            Text("Sponsored")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.92))
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .appFeedGlassCapsule()
-                .padding(8)
-        }
-        .frame(width: width, height: width)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(.white.opacity(colorScheme == .dark ? 0.08 : 0.28), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-        .accessibilityIdentifier("feed-inline-ad")
-    }
-
-    private var adSurface: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(hex: "#23384A").opacity(colorScheme == .dark ? 0.82 : 0.18),
-                    Color(hex: "#5C9BD1").opacity(colorScheme == .dark ? 0.42 : 0.26),
-                    Color(hex: "#F7FAFF").opacity(colorScheme == .dark ? 0.10 : 0.86)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(spacing: 8) {
-                Image(systemName: adSymbolName)
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(AppTheme.accent(for: colorScheme))
-
-                Text("Ad")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.72))
-            }
-        }
-    }
-
-    private var adSymbolName: String {
-        usesPersonalizedAds ? "person.crop.circle.badge.checkmark" : "rectangle.badge.person.crop"
     }
 }

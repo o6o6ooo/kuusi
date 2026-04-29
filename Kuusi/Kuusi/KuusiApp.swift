@@ -6,6 +6,7 @@
 //
 
 import GoogleSignIn
+import GoogleMobileAds
 import SwiftUI
 
 @main
@@ -15,6 +16,10 @@ struct KuusiApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var toastCenter = AppToastCenter()
     @StateObject private var subscriptionStore = SubscriptionStore()
+
+    init() {
+        MobileAds.shared.start()
+    }
 
     var body: some Scene {
         WindowGroup {

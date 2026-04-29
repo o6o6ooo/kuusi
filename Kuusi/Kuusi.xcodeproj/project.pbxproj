@@ -14,6 +14,7 @@
 		8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F42F5B69B200FB36CB /* FirebaseCore */; };
 		8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F62F5B69B200FB36CB /* FirebaseFirestore */; };
 		8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 8F35C1F82F5B69B200FB36CB /* FirebaseStorage */; };
+		8FAF9BE22FA21DAB00A24A76 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 8FAF9BE12FA21DAB00A24A76 /* GoogleMobileAds */; };
 		8FBE54282F86CEC200A1BABB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8FBE53B62F86CADB00A1BABB /* GoogleService-Info.plist */; };
 		8FC94B352F9C312A00C5D8F1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
@@ -81,6 +82,7 @@
 				8F35C1F52F5B69B200FB36CB /* FirebaseCore in Frameworks */,
 				8F198EDB2F910E06001AFA53 /* FirebaseFunctions in Frameworks */,
 				8F35C1F92F5B69B200FB36CB /* FirebaseStorage in Frameworks */,
+				8FAF9BE22FA21DAB00A24A76 /* GoogleMobileAds in Frameworks */,
 				8F198ED92F910E05001AFA53 /* FirebaseMessaging in Frameworks */,
 				8F35C1F32F5B69B200FB36CB /* FirebaseAuth in Frameworks */,
 				8F35C1F72F5B69B200FB36CB /* FirebaseFirestore in Frameworks */,
@@ -163,6 +165,7 @@
 				8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */,
 				8F198ED62F9060E3001AFA53 /* FirebaseAppCheck */,
 				8F198ED82F910E05001AFA53 /* FirebaseMessaging */,
+				8FAF9BE12FA21DAB00A24A76 /* GoogleMobileAds */,
 			);
 			productName = Kuusi;
 			productReference = 8F35C1C52F5B5B2500FB36CB /* Kuusi.app */;
@@ -249,6 +252,7 @@
 			packageReferences = (
 				8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				8FC94B332F9C312A00C5D8F1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				8FAF9BE02FA21DAB00A24A76 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8F35C1C62F5B5B2500FB36CB /* Products */;
@@ -646,6 +650,14 @@
 				minimumVersion = 12.10.0;
 			};
 		};
+		8FAF9BE02FA21DAB00A24A76 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.3.0;
+			};
+		};
 		8FC94B332F9C312A00C5D8F1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -691,6 +703,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8F35C1F12F5B69B200FB36CB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		8FAF9BE12FA21DAB00A24A76 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8FAF9BE02FA21DAB00A24A76 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 		8FC94B342F9C312A00C5D8F1 /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;

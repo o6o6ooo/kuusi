@@ -4,6 +4,10 @@ private struct MasonryExpandedKey: LayoutValueKey {
     nonisolated static let defaultValue = false
 }
 
+private struct MasonryColumnSpanKey: LayoutValueKey {
+    nonisolated static let defaultValue = 1
+}
+
 private struct LoadMoreSentinelKey: PreferenceKey {
     static var defaultValue: CGFloat {
         CGFloat.greatestFiniteMagnitude
@@ -86,6 +90,7 @@ private struct MasonryGridLayout: Layout {
 
         for subview in subviews {
             let isExpanded = subview[MasonryExpandedKey.self]
+            let columnSpan = min(max(subview[MasonryColumnSpanKey.self], 1), columnCount)
 
             if isExpanded {
                 let y = columnHeights.max() ?? 0
@@ -94,6 +99,28 @@ private struct MasonryGridLayout: Layout {
                 frames.append(CGRect(x: 0, y: y, width: fullWidth, height: height))
                 let nextY = y + height + spacing
                 for index in columnHeights.indices {
+                    columnHeights[index] = nextY
+                }
+            } else if columnSpan > 1 {
+                let span = min(columnSpan, columnCount)
+                let spanWidth = columnWidth * CGFloat(span) + spacing * CGFloat(span - 1)
+                var bestStartIndex = 0
+                var bestY = CGFloat.greatestFiniteMagnitude
+
+                for startIndex in 0...(columnCount - span) {
+                    let y = columnHeights[startIndex..<(startIndex + span)].max() ?? 0
+                    if y < bestY {
+                        bestY = y
+                        bestStartIndex = startIndex
+                    }
+                }
+
+                let x = CGFloat(bestStartIndex) * (columnWidth + spacing)
+                let size = subview.sizeThatFits(.init(width: spanWidth, height: nil))
+                let height = size.height
+                frames.append(CGRect(x: x, y: bestY, width: spanWidth, height: height))
+                let nextY = bestY + height + spacing
+                for index in bestStartIndex..<(bestStartIndex + span) {
                     columnHeights[index] = nextY
                 }
             } else {
@@ -175,8 +202,9 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
                     .layoutValue(key: MasonryExpandedKey.self, value: isExpanded)
 
                     if shouldShowInlineAd(afterPhotoAt: index) {
-                        inlineAd(columnWidth)
+                        inlineAd(twoColumnWidth(columnWidth: columnWidth, contentWidth: contentWidth))
                             .layoutValue(key: MasonryExpandedKey.self, value: false)
+                            .layoutValue(key: MasonryColumnSpanKey.self, value: 2)
                     }
                 }
             }
@@ -211,6 +239,10 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
     private func shouldShowInlineAd(afterPhotoAt index: Int) -> Bool {
         guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
         return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
+    }
+
+    private func twoColumnWidth(columnWidth: CGFloat, contentWidth: CGFloat) -> CGFloat {
+        min(columnWidth * 2 + spacing, contentWidth)
     }
 }
 
