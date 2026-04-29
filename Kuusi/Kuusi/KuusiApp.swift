@@ -14,6 +14,7 @@ struct KuusiApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
+    @StateObject private var consentStore = ConsentStore()
     @StateObject private var toastCenter = AppToastCenter()
     @StateObject private var subscriptionStore = SubscriptionStore()
 
@@ -26,6 +27,7 @@ struct KuusiApp: App {
             RootView()
                 .controlSize(.small)
                 .environmentObject(appState)
+                .environmentObject(consentStore)
                 .environmentObject(toastCenter)
                 .environmentObject(subscriptionStore)
                 .onOpenURL { url in

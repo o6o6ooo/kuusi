@@ -16,6 +16,7 @@ private extension FeedServiceError {
 @MainActor
 struct FeedView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var consentStore: ConsentStore
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @StateObject private var photoCollection = PhotoCollectionViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
@@ -62,7 +63,7 @@ struct FeedView: View {
     }
 
     private var canLoadFeedAds: Bool {
-        shouldShowFeedAds && trackingAuthorizationStatus != .notDetermined
+        shouldShowFeedAds && consentStore.canRequestAds
     }
 
     private var displayedPhotos: [FeedPhoto] {
@@ -149,12 +150,19 @@ struct FeedView: View {
                 if profileViewModel.name.isEmpty {
                     await profileViewModel.loadProfile()
                 }
+                await gatherAdConsentIfNeeded()
                 requestTrackingAuthorizationForAdsIfNeeded()
             }
             .onChange(of: scenePhase) { _, _ in
+                Task {
+                    await gatherAdConsentIfNeeded()
+                }
                 requestTrackingAuthorizationForAdsIfNeeded()
             }
             .onChange(of: subscriptionStore.isPremiumActive) { _, _ in
+                Task {
+                    await gatherAdConsentIfNeeded()
+                }
                 requestTrackingAuthorizationForAdsIfNeeded()
             }
             .onChange(of: feedMessage) { _, newValue in
@@ -395,6 +403,11 @@ struct FeedView: View {
                 }
             }
         }
+    }
+
+    private func gatherAdConsentIfNeeded() async {
+        guard shouldShowFeedAds, scenePhase == .active else { return }
+        await consentStore.gatherConsentIfNeeded()
     }
 
     @MainActor

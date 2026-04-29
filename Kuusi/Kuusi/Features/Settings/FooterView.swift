@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct FooterView: View {
+    var showsPrivacyChoices = false
+    let onPrivacyChoices: () -> Void
     let onDeleteAccount: () -> Void
 
     private let faqURL = URL(string: "https://getkuusi.vercel.app/faq")!
@@ -16,25 +18,30 @@ struct FooterView: View {
             }
             .accessibilityIdentifier("settings-delete-account-button")
 
-            VStack(alignment: .leading, spacing: 10) {
-                Link("FAQ", destination: faqURL)
-                    .appSecondaryTextLinkStyle()
-
-                Link("Privacy policy", destination: privacyPolicyURL)
-                    .appSecondaryTextLinkStyle()
-
-                Link("Terms of service", destination: termsOfServiceURL)
-                    .appSecondaryTextLinkStyle()
-
-                HStack(spacing: 4) {
-                    Text("Made with love by")
+            if showsPrivacyChoices {
+                Button(action: onPrivacyChoices) {
+                    Text("Privacy choices")
                         .appSecondaryTextLinkStyle()
-                    Link("Sakura Wallace", destination: authorURL)
-                        .appSecondaryTextLinkStyle()
-                        .foregroundStyle(Color.accentColor)
                 }
+                .accessibilityIdentifier("settings-privacy-choices-button")
             }
-            .padding(.top, 4)
+
+            Link("FAQ", destination: faqURL)
+                .appSecondaryTextLinkStyle()
+
+            Link("Privacy policy", destination: privacyPolicyURL)
+                .appSecondaryTextLinkStyle()
+
+            Link("Terms of service", destination: termsOfServiceURL)
+                .appSecondaryTextLinkStyle()
+
+            HStack(spacing: 4) {
+                Text("Made with love by")
+                    .appSecondaryTextLinkStyle()
+                Link("Sakura Wallace", destination: authorURL)
+                    .appSecondaryTextLinkStyle()
+                    .foregroundStyle(Color.accentColor)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

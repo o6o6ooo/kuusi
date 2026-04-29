@@ -4,12 +4,14 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var consentStore: ConsentStore
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var hasLoaded = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var appAlert: AppAlert?
+    @State private var privacyMessage: AppMessage?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
@@ -27,13 +29,21 @@ struct SettingsView: View {
                     )
                     GroupsSectionView(viewModel: groupsViewModel)
                     SubscriptionView(usageMB: profileViewModel.usageMB)
-                    FooterView {
-                        appAlert = AppAlert(.deleteAccountConfirm) {
+                    FooterView(
+                        showsPrivacyChoices: consentStore.isPrivacyOptionsRequired,
+                        onPrivacyChoices: {
                             Task {
-                                await appState.deleteCurrentUserAccount()
+                                await presentPrivacyChoices()
+                            }
+                        },
+                        onDeleteAccount: {
+                            appAlert = AppAlert(.deleteAccountConfirm) {
+                                Task {
+                                    await appState.deleteCurrentUserAccount()
+                                }
                             }
                         }
-                    }
+                    )
                 }
                 .padding(16)
             }
@@ -151,9 +161,20 @@ struct SettingsView: View {
             .appToastMessage(profileViewModel.toastMessage) {
                 profileViewModel.clearToastMessage()
             }
+            .appToastMessage(privacyMessage) {
+                privacyMessage = nil
+            }
             .appToastMessage(groupsViewModel.createStatusMessage)
             .appToastMessage(groupsViewModel.saveStatusMessage)
             .appToastHost()
+        }
+    }
+
+    private func presentPrivacyChoices() async {
+        do {
+            try await consentStore.presentPrivacyOptions()
+        } catch {
+            privacyMessage = AppMessage(.failedToOpenPrivacyChoices, .error)
         }
     }
 }
