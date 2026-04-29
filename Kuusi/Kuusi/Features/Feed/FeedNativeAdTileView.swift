@@ -164,21 +164,13 @@ private struct NativeAdRepresentable: UIViewRepresentable {
 
         let callToActionButton = UIButton(type: .system)
         callToActionButton.translatesAutoresizingMaskIntoConstraints = false
-        callToActionButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-        callToActionButton.tintColor = .white
-        callToActionButton.backgroundColor = UIColor.white.withAlphaComponent(0.22)
-        callToActionButton.layer.cornerRadius = 14
-        callToActionButton.layer.borderColor = UIColor.white.withAlphaComponent(0.18).cgColor
-        callToActionButton.layer.borderWidth = 1
-        callToActionButton.clipsToBounds = true
+        callToActionButton.titleLabel?.font = .preferredFont(forTextStyle: .caption2)
+        callToActionButton.titleLabel?.adjustsFontForContentSizeCategory = true
+        callToActionButton.tintColor = UIColor(AppTheme.accent(for: colorScheme))
+        callToActionButton.backgroundColor = .clear
         var callToActionConfiguration = UIButton.Configuration.plain()
-        callToActionConfiguration.baseForegroundColor = .white
-        callToActionConfiguration.contentInsets = NSDirectionalEdgeInsets(
-            top: 5,
-            leading: 10,
-            bottom: 5,
-            trailing: 10
-        )
+        callToActionConfiguration.baseForegroundColor = UIColor(AppTheme.accent(for: colorScheme))
+        callToActionConfiguration.contentInsets = .zero
         callToActionButton.configuration = callToActionConfiguration
         callToActionButton.isUserInteractionEnabled = false
         adView.callToActionView = callToActionButton
