@@ -59,7 +59,7 @@ struct FeedNativeAdTileView: View {
     @StateObject private var viewModel = FeedNativeAdViewModel()
 
     private var tileHeight: CGFloat {
-        max(156, width * 0.72)
+        max(164, width * 0.76)
     }
 
     var body: some View {
@@ -177,26 +177,27 @@ private struct NativeAdRepresentable: UIViewRepresentable {
         adView.addSubview(callToActionButton)
 
         NSLayoutConstraint.activate([
-            mediaView.leadingAnchor.constraint(equalTo: adView.leadingAnchor),
-            mediaView.trailingAnchor.constraint(equalTo: adView.trailingAnchor),
-            mediaView.topAnchor.constraint(equalTo: adView.topAnchor),
+            mediaView.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 4),
+            mediaView.trailingAnchor.constraint(equalTo: adView.trailingAnchor, constant: -4),
+            mediaView.topAnchor.constraint(equalTo: adView.topAnchor, constant: 4),
             mediaView.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
-            mediaView.heightAnchor.constraint(equalTo: adView.heightAnchor, multiplier: 0.72),
+            mediaView.heightAnchor.constraint(equalTo: adView.heightAnchor, multiplier: 0.68),
 
-            badgeLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 8),
-            badgeLabel.topAnchor.constraint(equalTo: adView.topAnchor, constant: 8),
+            badgeLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 10),
+            badgeLabel.topAnchor.constraint(equalTo: adView.topAnchor, constant: 10),
 
-            advertiserLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 10),
-            advertiserLabel.trailingAnchor.constraint(lessThanOrEqualTo: adView.trailingAnchor, constant: -10),
-            advertiserLabel.topAnchor.constraint(equalTo: mediaView.bottomAnchor, constant: 8),
+            advertiserLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 12),
+            advertiserLabel.trailingAnchor.constraint(lessThanOrEqualTo: adView.trailingAnchor, constant: -12),
+            advertiserLabel.topAnchor.constraint(equalTo: mediaView.bottomAnchor, constant: 6),
 
-            headlineLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 10),
-            headlineLabel.trailingAnchor.constraint(equalTo: adView.trailingAnchor, constant: -10),
+            headlineLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 12),
+            headlineLabel.trailingAnchor.constraint(equalTo: adView.trailingAnchor, constant: -12),
             headlineLabel.topAnchor.constraint(equalTo: advertiserLabel.bottomAnchor, constant: 2),
             headlineLabel.bottomAnchor.constraint(lessThanOrEqualTo: callToActionButton.topAnchor, constant: -6),
 
-            callToActionButton.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 10),
-            callToActionButton.bottomAnchor.constraint(equalTo: adView.bottomAnchor, constant: -10),
+            callToActionButton.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 12),
+            callToActionButton.trailingAnchor.constraint(lessThanOrEqualTo: adView.trailingAnchor, constant: -12),
+            callToActionButton.bottomAnchor.constraint(equalTo: adView.bottomAnchor, constant: -12),
             callToActionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 24)
         ])
 
