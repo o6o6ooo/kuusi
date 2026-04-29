@@ -58,6 +58,10 @@ struct FeedNativeAdTileView: View {
 
     @StateObject private var viewModel = FeedNativeAdViewModel()
 
+    private var tileHeight: CGFloat {
+        max(156, width * 0.72)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             if let nativeAd = viewModel.nativeAd {
@@ -69,7 +73,7 @@ struct FeedNativeAdTileView: View {
                     .allowsHitTesting(false)
             }
         }
-        .frame(width: width, height: width)
+        .frame(width: width, height: tileHeight)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -184,7 +188,8 @@ private struct NativeAdRepresentable: UIViewRepresentable {
             mediaView.leadingAnchor.constraint(equalTo: adView.leadingAnchor),
             mediaView.trailingAnchor.constraint(equalTo: adView.trailingAnchor),
             mediaView.topAnchor.constraint(equalTo: adView.topAnchor),
-            mediaView.heightAnchor.constraint(equalTo: adView.heightAnchor, multiplier: 0.58),
+            mediaView.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            mediaView.heightAnchor.constraint(equalTo: adView.heightAnchor, multiplier: 0.72),
 
             badgeLabel.leadingAnchor.constraint(equalTo: adView.leadingAnchor, constant: 8),
             badgeLabel.topAnchor.constraint(equalTo: adView.topAnchor, constant: 8),
