@@ -99,3 +99,21 @@ For one-time admin data fixes, prefer local scripts over new deployed functions.
   - Add `-- --apply` to delete the legacy URL fields
   - Requires Firebase Admin credentials, for example:
     - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json npm run cleanup:legacy-photo-urls`
+
+- `npm run cleanup:orphaned-data`
+  - Run from `functions/`
+  - This is a local maintenance script, not a deployed Cloud Function
+  - Reads Firestore and Storage to find:
+    - `photos` documents whose `group_id` no longer exists
+    - Storage files no longer referenced by `photos` documents
+    - `users.favourites` entries whose photo ID no longer exists
+    - `users.groups` entries whose group ID no longer exists
+    - expired or invalid `group_invites`
+    - `photo_notification_batches` documents whose `created_at` is at least 7 days old
+  - Defaults to dry-run mode
+  - Add `-- --apply` to delete orphaned data and remove stale references
+  - Requires Firebase Admin credentials, for example:
+    - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json npm run cleanup:orphaned-data`
+  - Reads the default Storage bucket from `Kuusi/GoogleService-Info.plist`
+  - To override it, set `FIREBASE_STORAGE_BUCKET` or pass `-- --bucket your-project.firebasestorage.app`
+  - If the project cannot be detected automatically, set `GOOGLE_CLOUD_PROJECT` or pass `-- --project your-project`
