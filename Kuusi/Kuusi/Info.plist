@@ -37,6 +37,8 @@
 	<string>Use Face ID or Touch ID to unlock Kuusi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow access to your photos so you can upload them to Kuusi.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Allow tracking to show personalized ads in Kuusi.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

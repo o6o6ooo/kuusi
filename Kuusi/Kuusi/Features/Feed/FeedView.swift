@@ -1,3 +1,4 @@
+import AppTrackingTransparency
 import FirebaseAuth
 import SwiftUI
 
@@ -14,6 +15,7 @@ private extension FeedServiceError {
 
 @MainActor
 struct FeedView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @StateObject private var photoCollection = PhotoCollectionViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
@@ -31,6 +33,8 @@ struct FeedView: View {
     @State private var appAlert: AppAlert?
     @State private var editingPhoto: FeedPhoto?
     @State private var clearFeedMessageTask: Task<Void, Never>?
+    @State private var trackingAuthorizationStatus = ATTrackingManager.trackingAuthorizationStatus
+    @State private var hasStartedTrackingAuthorizationRequest = false
 
     private let feedService = FeedService()
     private var currentGroupPhotos: [FeedPhoto] {
@@ -51,6 +55,14 @@ struct FeedView: View {
 
     private var feedPageSize: Int {
         UIDevice.current.userInterfaceIdiom == .pad ? 24 : 18
+    }
+
+    private var shouldShowFeedAds: Bool {
+        !subscriptionStore.isPremiumActive
+    }
+
+    private var usesPersonalizedAds: Bool {
+        trackingAuthorizationStatus == .authorized
     }
 
     private var displayedPhotos: [FeedPhoto] {
@@ -137,6 +149,13 @@ struct FeedView: View {
                 if profileViewModel.name.isEmpty {
                     await profileViewModel.loadProfile()
                 }
+                requestTrackingAuthorizationForAdsIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, _ in
+                requestTrackingAuthorizationForAdsIfNeeded()
+            }
+            .onChange(of: subscriptionStore.isPremiumActive) { _, _ in
+                requestTrackingAuthorizationForAdsIfNeeded()
             }
             .onChange(of: feedMessage) { _, newValue in
                 scheduleFeedMessageAutoClear(for: newValue)
@@ -218,6 +237,7 @@ struct FeedView: View {
                 availableWidth: proxy.size.width,
                 availableHeight: proxy.size.height,
                 expandedPhotoID: selectedPhotoID,
+                showsInlineAds: shouldShowFeedAds,
                 onTap: { photo in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedPhotoID = selectedPhotoID == photo.id ? nil : photo.id
@@ -253,6 +273,8 @@ struct FeedView: View {
                     isFavouriting: favouritingPhotoIDs.contains(photo.id),
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
+            } inlineAd: { width in
+                FeedInlineAdView(width: width, usesPersonalizedAds: usesPersonalizedAds)
             } footer: {
                 if photoCollection.isLoadingMore {
                     ProgressView()
@@ -352,6 +374,29 @@ struct FeedView: View {
         .padding(.vertical, 28)
     }
 
+    private func requestTrackingAuthorizationForAdsIfNeeded() {
+        trackingAuthorizationStatus = ATTrackingManager.trackingAuthorizationStatus
+
+        guard shouldShowFeedAds,
+              scenePhase == .active,
+              trackingAuthorizationStatus == .notDetermined,
+              !hasStartedTrackingAuthorizationRequest else {
+            return
+        }
+
+        hasStartedTrackingAuthorizationRequest = true
+
+        Task { @MainActor in
+            trackingAuthorizationStatus = await withCheckedContinuation { (
+                continuation: CheckedContinuation<ATTrackingManager.AuthorizationStatus, Never>
+            ) in
+                ATTrackingManager.requestTrackingAuthorization { status in
+                    continuation.resume(returning: status)
+                }
+            }
+        }
+    }
+
     @MainActor
     private func refreshCurrentGroup() async {
         selectedHashtag = nil
@@ -431,5 +476,62 @@ struct FeedView: View {
         } catch {
             return .failure(FeedEditError(toastMessage: AppMessage(.failedToUpdatePhoto, .error)))
         }
+    }
+}
+
+private struct FeedInlineAdView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let width: CGFloat
+    let usesPersonalizedAds: Bool
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            adSurface
+
+            Text("Sponsored")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.92))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .appFeedGlassCapsule()
+                .padding(8)
+        }
+        .frame(width: width, height: width)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(.white.opacity(colorScheme == .dark ? 0.08 : 0.28), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .accessibilityIdentifier("feed-inline-ad")
+    }
+
+    private var adSurface: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(hex: "#23384A").opacity(colorScheme == .dark ? 0.82 : 0.18),
+                    Color(hex: "#5C9BD1").opacity(colorScheme == .dark ? 0.42 : 0.26),
+                    Color(hex: "#F7FAFF").opacity(colorScheme == .dark ? 0.10 : 0.86)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(spacing: 8) {
+                Image(systemName: adSymbolName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(AppTheme.accent(for: colorScheme))
+
+                Text("Ad")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(AppTheme.primaryText(for: colorScheme).opacity(0.72))
+            }
+        }
+    }
+
+    private var adSymbolName: String {
+        usesPersonalizedAds ? "person.crop.circle.badge.checkmark" : "rectangle.badge.person.crop"
     }
 }
