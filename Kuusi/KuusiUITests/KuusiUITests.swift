@@ -153,7 +153,8 @@ final class KuusiUITests: XCTestCase {
         createButton.tap()
 
         XCTAssertTrue(app.buttons["Create a group"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Join a group"].exists)
+        XCTAssertTrue(app.buttons["Read QR code to join a group"].exists)
+        XCTAssertTrue(app.buttons["Scan QR code to join a group"].exists)
     }
 
     @MainActor
