@@ -97,6 +97,33 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
+    func handleSelectedQRCodePhotoDataMapsMissingQRCode() async {
+        let viewModel = makeViewModel()
+
+        await viewModel.handleSelectedQRCodePhotoData(Data())
+
+        #expect(viewModel.saveStatusMessage?.id == .qrCodeNotFoundInImage)
+    }
+
+    @Test
+    func handleQRCodeScannerErrorMapsCameraAccessDenied() {
+        let viewModel = makeViewModel()
+
+        viewModel.handleQRCodeScannerError(.cameraAccessDenied)
+
+        #expect(viewModel.saveStatusMessage?.id == .cameraAccessDenied)
+    }
+
+    @Test
+    func handleQRCodeScannerErrorMapsCameraUnavailable() {
+        let viewModel = makeViewModel()
+
+        viewModel.handleQRCodeScannerError(.cameraUnavailable)
+
+        #expect(viewModel.saveStatusMessage?.id == .cameraUnavailable)
+    }
+
+    @Test
     func removeMemberFromSelectedGroupMapsPermissionError() async {
         let groupService = SettingsGroupsServiceSpy()
         groupService.removeMemberError = GroupServiceError.onlyOwnerCanRemoveMembers
