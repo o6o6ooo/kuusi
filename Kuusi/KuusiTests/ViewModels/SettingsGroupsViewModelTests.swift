@@ -59,6 +59,27 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
+    func createGroupAppendsSelectedGroupCachesAndShowsSuccess() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.createGroupName = "Family"
+
+        await viewModel.createGroup()
+
+        #expect(groupService.createdGroups.count == 1)
+        #expect(groupService.createdGroups.first?.groupName == "Family")
+        #expect(groupService.createdGroups.first?.ownerUID == "user-1")
+        #expect(viewModel.groups.map(\.id) == ["created-group"])
+        #expect(viewModel.selectedGroupID == "created-group")
+        #expect(viewModel.editableGroupName == "Family")
+        #expect(viewModel.createGroupName.isEmpty)
+        #expect(viewModel.createStatusMessage?.id == .groupCreated)
+        #expect(groupService.cachedGroupsAssignments.last?.uid == "user-1")
+        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["created-group"])
+        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "created-group" && $0.limit == 3 })
+    }
+
+    @Test
     func saveGroupNameMapsGroupServiceError() async {
         let groupService = SettingsGroupsServiceSpy()
         groupService.updateGroupNameError = GroupServiceError.groupNotFound
@@ -86,6 +107,30 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
+    func leaveSelectedGroupRemovesCurrentGroupSelectsNextAndShowsSuccess() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [
+            makeGroup(id: "group-1", name: "Family"),
+            makeGroup(id: "group-2", name: "Friends")
+        ]
+        viewModel.selectedGroupID = "group-1"
+        viewModel.editableGroupName = "Family"
+
+        await viewModel.leaveSelectedGroup()
+
+        #expect(groupService.leaveGroupCalls.count == 1)
+        #expect(groupService.leaveGroupCalls.first?.groupID == "group-1")
+        #expect(groupService.leaveGroupCalls.first?.uid == "user-1")
+        #expect(viewModel.groups.map(\.id) == ["group-2"])
+        #expect(viewModel.selectedGroupID == "group-2")
+        #expect(viewModel.editableGroupName == "Friends")
+        #expect(viewModel.saveStatusMessage?.id == .leftGroup)
+        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-2"])
+        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-2" && $0.limit == 3 })
+    }
+
+    @Test
     func joinGroupFromQRCodePayloadMapsInviteExpiredError() async {
         let groupService = SettingsGroupsServiceSpy()
         groupService.joinGroupError = GroupServiceError.inviteExpired
@@ -94,6 +139,26 @@ struct SettingsGroupsViewModelTests {
         await viewModel.joinGroupFromQRCodePayload("kuusi://invite/ABC123")
 
         #expect(viewModel.saveStatusMessage?.id == .inviteQRCodeExpired)
+    }
+
+    @Test
+    func joinGroupFromQRCodePayloadReloadsGroupsAndShowsSuccess() async {
+        let groupService = SettingsGroupsServiceSpy()
+        groupService.fetchedGroups = [
+            makeGroup(id: "group-1", name: "Family"),
+            makeGroup(id: "group-2", name: "Friends")
+        ]
+        let viewModel = makeViewModel(groupService: groupService)
+
+        await viewModel.joinGroupFromQRCodePayload("kuusi://invite/ABC123")
+
+        #expect(groupService.joinGroupInviteTokens == ["abc123"])
+        #expect(viewModel.groups.map(\.id) == ["group-1", "group-2"])
+        #expect(viewModel.selectedGroupID == "group-1")
+        #expect(viewModel.editableGroupName == "Family")
+        #expect(viewModel.saveStatusMessage?.id == .joinedGroup)
+        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-1", "group-2"])
+        #expect(groupService.loadMemberPreviewsCalls.count == 2)
     }
 
     @Test
@@ -146,6 +211,61 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.saveStatusMessage?.id == .onlyOwnerCanRemoveMembers)
     }
 
+    @Test
+    func deleteSelectedGroupRemovesCurrentGroupSelectsNextAndShowsSuccess() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [
+            makeGroup(id: "group-1", name: "Family"),
+            makeGroup(id: "group-2", name: "Friends")
+        ]
+        viewModel.selectedGroupID = "group-1"
+        viewModel.editableGroupName = "Family"
+
+        await viewModel.deleteSelectedGroup()
+
+        #expect(groupService.deletedGroupIDs == ["group-1"])
+        #expect(viewModel.groups.map(\.id) == ["group-2"])
+        #expect(viewModel.selectedGroupID == "group-2")
+        #expect(viewModel.editableGroupName == "Friends")
+        #expect(viewModel.saveStatusMessage?.id == .groupDeleted)
+        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-2"])
+        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-2" && $0.limit == 3 })
+    }
+
+    @Test
+    func removeMemberFromSelectedGroupUpdatesMembersCachesAndShowsSuccess() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let targetMember = GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false)
+        let remainingMember = GroupMemberPreview(id: "member-2", name: "Noah", icon: "🌿", bgColour: "#eee", isOwner: false)
+        groupService.memberPreviewsByGroupID["group-1"] = [targetMember, remainingMember]
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [
+            GroupSummary(
+                id: "group-1",
+                name: "Family",
+                ownerUID: "owner",
+                members: [targetMember, remainingMember],
+                totalMemberCount: 2
+            )
+        ]
+        viewModel.selectedGroupID = "group-1"
+        await viewModel.presentMemberList()
+
+        await viewModel.removeMemberFromSelectedGroup(targetMember)
+
+        #expect(groupService.removeMemberCalls.count == 1)
+        #expect(groupService.removeMemberCalls.first?.groupID == "group-1")
+        #expect(groupService.removeMemberCalls.first?.memberUID == "member-1")
+        #expect(groupService.removeMemberCalls.first?.requesterUID == "user-1")
+        #expect(viewModel.selectedGroupMembers.map(\.id) == ["member-2"])
+        #expect(viewModel.groups.first?.members.map(\.id) == ["member-2"])
+        #expect(viewModel.groups.first?.totalMemberCount == 1)
+        #expect(viewModel.saveStatusMessage?.id == .memberRemoved)
+        #expect(groupService.cachedGroupsAssignments.last?.groups.first?.totalMemberCount == 1)
+        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-1" && $0.limit == 3 })
+    }
+
     private func makeViewModel(
         groupService: SettingsGroupsServicing = SettingsGroupsServiceSpy(),
         currentUserID: String? = "user-1"
@@ -172,6 +292,14 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var joinGroupError: Error?
     var removeMemberError: Error?
     var fetchedGroups: [GroupSummary] = []
+    var createdGroups: [(groupName: String, ownerUID: String)] = []
+    var loadMemberPreviewsCalls: [(groupID: String, limit: Int?)] = []
+    var deletedGroupIDs: [String] = []
+    var leaveGroupCalls: [(groupID: String, uid: String)] = []
+    var joinGroupInviteTokens: [String] = []
+    var removeMemberCalls: [(groupID: String, memberUID: String, requesterUID: String)] = []
+    var cachedGroupsAssignments: [(uid: String, groups: [GroupSummary])] = []
+    var memberPreviewsByGroupID: [String: [GroupMemberPreview]] = [:]
 
     func createInvitePayload(groupID: String) async throws -> String {
         if let createInvitePayloadError { throw createInvitePayloadError }
@@ -180,11 +308,13 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
 
     func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview] {
         if let loadMemberPreviewsError { throw loadMemberPreviewsError }
-        return []
+        loadMemberPreviewsCalls.append((groupID, limit))
+        return memberPreviewsByGroupID[groupID] ?? []
     }
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         if let createGroupError { throw createGroupError }
+        createdGroups.append((groupName, ownerUID))
         return GroupSummary(id: "created-group", name: groupName, ownerUID: ownerUID, members: [], totalMemberCount: 1)
     }
 
@@ -199,19 +329,29 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
 
     func deleteGroup(groupID: String) async throws {
         if let deleteGroupError { throw deleteGroupError }
+        deletedGroupIDs.append(groupID)
     }
 
     func leaveGroup(groupID: String, uid: String) async throws {
         if let leaveGroupError { throw leaveGroupError }
+        leaveGroupCalls.append((groupID, uid))
     }
 
     func joinGroup(inviteToken: String) async throws {
         if let joinGroupError { throw joinGroupError }
+        joinGroupInviteTokens.append(inviteToken)
     }
 
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws {
         if let removeMemberError { throw removeMemberError }
+        removeMemberCalls.append((groupID, memberUID, requesterUID))
+        if var previews = memberPreviewsByGroupID[groupID] {
+            previews.removeAll { $0.id == memberUID }
+            memberPreviewsByGroupID[groupID] = previews
+        }
     }
 
-    func setCachedGroups(_ groups: [GroupSummary], for uid: String) {}
+    func setCachedGroups(_ groups: [GroupSummary], for uid: String) {
+        cachedGroupsAssignments.append((uid, groups))
+    }
 }
