@@ -2,6 +2,35 @@ import AppTrackingTransparency
 import FirebaseAuth
 import SwiftUI
 
+enum FeedAdRules {
+    static func shouldShowFeedAds(isPremiumActive: Bool) -> Bool {
+        !isPremiumActive
+    }
+
+    static func canLoadFeedAds(isPremiumActive: Bool, canRequestAds: Bool) -> Bool {
+        shouldShowFeedAds(isPremiumActive: isPremiumActive) && canRequestAds
+    }
+
+    static func shouldRequestTrackingAuthorization(
+        isPremiumActive: Bool,
+        scenePhase: ScenePhase,
+        trackingAuthorizationStatus: ATTrackingManager.AuthorizationStatus,
+        hasStartedTrackingAuthorizationRequest: Bool
+    ) -> Bool {
+        shouldShowFeedAds(isPremiumActive: isPremiumActive)
+        && scenePhase == .active
+        && trackingAuthorizationStatus == .notDetermined
+        && !hasStartedTrackingAuthorizationRequest
+    }
+
+    static func shouldGatherConsent(
+        isPremiumActive: Bool,
+        scenePhase: ScenePhase
+    ) -> Bool {
+        shouldShowFeedAds(isPremiumActive: isPremiumActive) && scenePhase == .active
+    }
+}
+
 private extension FeedServiceError {
     var appMessageID: AppMessage.ID {
         switch self {
@@ -59,11 +88,14 @@ struct FeedView: View {
     }
 
     private var shouldShowFeedAds: Bool {
-        !subscriptionStore.isPremiumActive
+        FeedAdRules.shouldShowFeedAds(isPremiumActive: subscriptionStore.isPremiumActive)
     }
 
     private var canLoadFeedAds: Bool {
-        shouldShowFeedAds && consentStore.canRequestAds
+        FeedAdRules.canLoadFeedAds(
+            isPremiumActive: subscriptionStore.isPremiumActive,
+            canRequestAds: consentStore.canRequestAds
+        )
     }
 
     private var displayedPhotos: [FeedPhoto] {
@@ -385,10 +417,12 @@ struct FeedView: View {
     private func requestTrackingAuthorizationForAdsIfNeeded() {
         trackingAuthorizationStatus = ATTrackingManager.trackingAuthorizationStatus
 
-        guard shouldShowFeedAds,
-              scenePhase == .active,
-              trackingAuthorizationStatus == .notDetermined,
-              !hasStartedTrackingAuthorizationRequest else {
+        guard FeedAdRules.shouldRequestTrackingAuthorization(
+            isPremiumActive: subscriptionStore.isPremiumActive,
+            scenePhase: scenePhase,
+            trackingAuthorizationStatus: trackingAuthorizationStatus,
+            hasStartedTrackingAuthorizationRequest: hasStartedTrackingAuthorizationRequest
+        ) else {
             return
         }
 
@@ -406,7 +440,10 @@ struct FeedView: View {
     }
 
     private func gatherAdConsentIfNeeded() async {
-        guard shouldShowFeedAds, scenePhase == .active else { return }
+        guard FeedAdRules.shouldGatherConsent(
+            isPremiumActive: subscriptionStore.isPremiumActive,
+            scenePhase: scenePhase
+        ) else { return }
         await consentStore.gatherConsentIfNeeded()
     }
 

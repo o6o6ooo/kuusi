@@ -3,6 +3,15 @@ import Foundation
 import UIKit
 import UserMessagingPlatform
 
+enum ConsentStoreRules {
+    static func shouldStartGatheringConsent(
+        isGatheringConsent: Bool,
+        hasGatheredConsentThisSession: Bool
+    ) -> Bool {
+        !isGatheringConsent && !hasGatheredConsentThisSession
+    }
+}
+
 @MainActor
 final class ConsentStore: ObservableObject {
     @Published private(set) var canRequestAds = ConsentInformation.shared.canRequestAds
@@ -14,7 +23,10 @@ final class ConsentStore: ObservableObject {
     private var hasGatheredConsentThisSession = false
 
     func gatherConsentIfNeeded() async {
-        guard !isGatheringConsent, !hasGatheredConsentThisSession else {
+        guard ConsentStoreRules.shouldStartGatheringConsent(
+            isGatheringConsent: isGatheringConsent,
+            hasGatheredConsentThisSession: hasGatheredConsentThisSession
+        ) else {
             refreshState()
             return
         }
