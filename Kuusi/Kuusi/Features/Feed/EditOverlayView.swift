@@ -9,22 +9,25 @@ struct EditOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let photo: FeedPhoto
-    let onSave: @MainActor (_ year: Int, _ hashtags: [String]) async -> Result<Void, FeedEditError>
+    let onSave: @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>
 
     @State private var yearText: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
     @State private var isYearPickerPresented = false
     @State private var yearSelection = Calendar.current.component(.year, from: Date())
+    @State private var isCreatedAtPickerPresented = false
+    @State private var createdAtSelection: Date
     @State private var toastMessage: AppMessage?
     @State private var isSaving = false
     @State private var clearToastTask: Task<Void, Never>?
 
-    init(photo: FeedPhoto, onSave: @escaping @MainActor (_ year: Int, _ hashtags: [String]) async -> Result<Void, FeedEditError>) {
+    init(photo: FeedPhoto, onSave: @escaping @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>) {
         self.photo = photo
         self.onSave = onSave
         _yearText = State(initialValue: photo.year.map(String.init) ?? "")
         _hashtags = State(initialValue: photo.hashtags)
+        _createdAtSelection = State(initialValue: photo.createdAt ?? Date())
     }
 
     private var surfaceBackground: Color {
@@ -40,6 +43,9 @@ struct EditOverlayView: View {
     }
     private var selectedYearLabel: String {
         parsedYear.map(String.init) ?? "year"
+    }
+    private var selectedCreatedAtLabel: String {
+        Self.createdAtFormatter.string(from: createdAtSelection)
     }
 
     var body: some View {
@@ -58,6 +64,9 @@ struct EditOverlayView: View {
 
                 VStack(spacing: 12) {
                     yearField
+                    #if DEBUG
+                    createdAtField
+                    #endif
                     hashtagsField
                 }
 
@@ -108,6 +117,13 @@ struct EditOverlayView: View {
                 .presentationDetents([.height(300)])
                 .presentationDragIndicator(.visible)
             }
+            #if DEBUG
+            .sheet(isPresented: $isCreatedAtPickerPresented) {
+                PhotoCreatedAtPickerSheet(selectedDate: $createdAtSelection)
+                    .presentationDetents([.height(520)])
+                    .presentationDragIndicator(.visible)
+            }
+            #endif
         }
     }
 
@@ -167,6 +183,29 @@ struct EditOverlayView: View {
             }
     }
 
+    #if DEBUG
+    private var createdAtField: some View {
+        Button {
+            isCreatedAtPickerPresented = true
+        } label: {
+            liftedField {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("created at")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(selectedCreatedAtLabel)
+                        .foregroundStyle(primaryText)
+                }
+                Spacer()
+                Image(systemName: "calendar")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    #endif
+
     private func addHashtagsFromInput() {
         let separators = CharacterSet(charactersIn: ",\n\t ")
         let tokens = hashtagInput
@@ -195,7 +234,11 @@ struct EditOverlayView: View {
         isSaving = true
         defer { isSaving = false }
 
-        switch await onSave(year, hashtags) {
+        switch await onSave(FeedPhotoMetadataUpdate(
+            year: year,
+            hashtags: hashtags,
+            createdAt: createdAtForSave
+        )) {
         case .success:
             dismiss()
         case .failure(let error):
@@ -212,4 +255,42 @@ struct EditOverlayView: View {
             clear: { toastMessage = nil }
         )
     }
+
+    private var createdAtForSave: Date? {
+        #if DEBUG
+        createdAtSelection
+        #else
+        nil
+        #endif
+    }
+
+    private static let createdAtFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
 }
+
+#if DEBUG
+private struct PhotoCreatedAtPickerSheet: View {
+    @Binding var selectedDate: Date
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                DatePicker(
+                    "Created at",
+                    selection: $selectedDate,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+            }
+            .padding(16)
+            .navigationTitle("Created at")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+#endif

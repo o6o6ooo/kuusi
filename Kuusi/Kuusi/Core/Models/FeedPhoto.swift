@@ -15,6 +15,12 @@ struct FeedPhoto: Identifiable {
     let createdAt: Date?
 }
 
+struct FeedPhotoMetadataUpdate {
+    let year: Int
+    let hashtags: [String]
+    let createdAt: Date?
+}
+
 extension FeedPhoto {
     func isOwned(by userID: String?) -> Bool {
         guard let userID, let postedBy else { return false }
@@ -45,19 +51,38 @@ extension FeedPhoto {
         return copy
     }
 
-    func withMetadata(year: Int, hashtags: [String]) -> FeedPhoto {
+    func withMetadata(_ update: FeedPhotoMetadataUpdate) -> FeedPhoto {
         FeedPhoto(
             id: id,
             previewStoragePath: previewStoragePath,
             thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,
             postedBy: postedBy,
-            year: year,
-            hashtags: hashtags,
+            year: update.year,
+            hashtags: update.hashtags,
             isFavourite: isFavourite,
             sizeMB: sizeMB,
             aspectRatio: aspectRatio,
-            createdAt: createdAt
+            createdAt: update.createdAt ?? createdAt
         )
+    }
+
+    func withMetadata(year: Int, hashtags: [String]) -> FeedPhoto {
+        withMetadata(FeedPhotoMetadataUpdate(year: year, hashtags: hashtags, createdAt: nil))
+    }
+}
+
+extension FeedPhotoMetadataUpdate {
+    func firestorePayload() -> [String: Any] {
+        var payload: [String: Any] = [
+            "year": year,
+            "hashtags": hashtags
+        ]
+
+        if let createdAt {
+            payload["created_at"] = Timestamp(date: createdAt)
+        }
+
+        return payload
     }
 }

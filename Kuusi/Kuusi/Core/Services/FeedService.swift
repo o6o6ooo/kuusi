@@ -134,12 +134,9 @@ final class FeedService {
         }
     }
 
-    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID _: String, year: Int, hashtags: [String]) async throws {
+    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID _: String, update: FeedPhotoMetadataUpdate) async throws {
         let ref = db.collection("photos").document(photo.id)
-        let payload: [String: Any] = [
-            "year": year,
-            "hashtags": hashtags
-        ]
+        let payload = update.firestorePayload()
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             ref.setData(payload, merge: true) { error in

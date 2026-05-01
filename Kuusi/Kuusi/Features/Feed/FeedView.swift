@@ -223,10 +223,10 @@ struct FeedView: View {
                     .presentationDragIndicator(.visible)
             }
             .sheet(item: $editingPhoto) { photo in
-                EditOverlayView(photo: photo) { year, hashtags in
-                    await savePhotoEdits(photo: photo, year: year, hashtags: hashtags)
+                EditOverlayView(photo: photo) { update in
+                    await savePhotoEdits(photo: photo, update: update)
                 }
-                .presentationDetents([.height(330)])
+                .presentationDetents([.height(editOverlayHeight)])
                 .presentationDragIndicator(.visible)
             }
             .onChange(of: displayedPhotos.map(\.id)) { _, ids in
@@ -511,7 +511,15 @@ struct FeedView: View {
         )
     }
 
-    private func savePhotoEdits(photo: FeedPhoto, year: Int, hashtags: [String]) async -> Result<Void, FeedEditError> {
+    private var editOverlayHeight: CGFloat {
+        #if DEBUG
+        405
+        #else
+        330
+        #endif
+    }
+
+    private func savePhotoEdits(photo: FeedPhoto, update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError> {
         guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(toastMessage: AppMessage(.photoAlreadyBeingUpdated, .error))) }
         guard let uid = currentUserID else {
             return .failure(FeedEditError(toastMessage: AppMessage(.pleaseSignInFirst, .error)))
@@ -521,8 +529,8 @@ struct FeedView: View {
         defer { editingPhotoIDs.remove(photo.id) }
 
         do {
-            try await feedService.updatePhotoMetadata(photo, requesterUID: uid, year: year, hashtags: hashtags)
-            let updated = photo.withMetadata(year: year, hashtags: hashtags)
+            try await feedService.updatePhotoMetadata(photo, requesterUID: uid, update: update)
+            let updated = photo.withMetadata(update)
             photoCollection.replacePhoto(updated)
             feedMessage = AppMessage(.photoUpdated, .success)
             editingPhoto = nil

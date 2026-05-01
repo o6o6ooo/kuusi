@@ -191,6 +191,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
 
         cachedPhotos[index] = updatedPhoto
+        cachedPhotos.sort(by: Self.photosAreOrderedBefore)
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
         persistCachedPhotosIfPossible()
@@ -419,5 +420,14 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static func makeNextCursor(from photos: [FeedPhoto]) -> FeedPageCursor? {
         guard let lastPhoto = photos.last, let createdAt = lastPhoto.createdAt else { return nil }
         return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
+    }
+
+    private static func photosAreOrderedBefore(_ lhs: FeedPhoto, _ rhs: FeedPhoto) -> Bool {
+        let lhsCreatedAt = lhs.createdAt ?? .distantPast
+        let rhsCreatedAt = rhs.createdAt ?? .distantPast
+        if lhsCreatedAt != rhsCreatedAt {
+            return lhsCreatedAt > rhsCreatedAt
+        }
+        return lhs.id > rhs.id
     }
 }
