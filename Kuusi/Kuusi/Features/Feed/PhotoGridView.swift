@@ -144,10 +144,11 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
     let availableHeight: CGFloat
     let expandedPhotoID: String?
     let showsInlineAds: Bool
+    let hiddenInlineAdPhotoIDs: Set<String>
     let onTap: (FeedPhoto) -> Void
     let onLoadMore: () -> Void
     let tile: (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
-    let inlineAd: (CGFloat) -> InlineAd
+    let inlineAd: (FeedPhoto, CGFloat) -> InlineAd
     let footer: () -> Footer
 
     private let spacing: CGFloat = 8
@@ -163,10 +164,11 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
         availableHeight: CGFloat,
         expandedPhotoID: String? = nil,
         showsInlineAds: Bool = false,
+        hiddenInlineAdPhotoIDs: Set<String> = [],
         onTap: @escaping (FeedPhoto) -> Void,
         onLoadMore: @escaping () -> Void,
         @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
-        @ViewBuilder inlineAd: @escaping (CGFloat) -> InlineAd,
+        @ViewBuilder inlineAd: @escaping (FeedPhoto, CGFloat) -> InlineAd,
         @ViewBuilder footer: @escaping () -> Footer
     ) {
         self.photos = photos
@@ -174,6 +176,7 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
         self.availableHeight = availableHeight
         self.expandedPhotoID = expandedPhotoID
         self.showsInlineAds = showsInlineAds
+        self.hiddenInlineAdPhotoIDs = hiddenInlineAdPhotoIDs
         self.onTap = onTap
         self.onLoadMore = onLoadMore
         self.tile = tile
@@ -202,7 +205,7 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
                     .layoutValue(key: MasonryExpandedKey.self, value: isExpanded)
 
                     if shouldShowInlineAd(afterPhotoAt: index) {
-                        inlineAd(twoColumnWidth(columnWidth: columnWidth, contentWidth: contentWidth))
+                        inlineAd(photo, twoColumnWidth(columnWidth: columnWidth, contentWidth: contentWidth))
                             .layoutValue(key: MasonryExpandedKey.self, value: false)
                             .layoutValue(key: MasonryColumnSpanKey.self, value: 2)
                     }
@@ -238,6 +241,7 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
 
     private func shouldShowInlineAd(afterPhotoAt index: Int) -> Bool {
         guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
+        guard !hiddenInlineAdPhotoIDs.contains(photos[index].id) else { return false }
         return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
     }
 
@@ -253,6 +257,7 @@ extension PhotoGridView where InlineAd == EmptyView {
         availableHeight: CGFloat,
         expandedPhotoID: String? = nil,
         showsInlineAds: Bool = false,
+        hiddenInlineAdPhotoIDs: Set<String> = [],
         onTap: @escaping (FeedPhoto) -> Void,
         onLoadMore: @escaping () -> Void,
         @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
@@ -264,10 +269,11 @@ extension PhotoGridView where InlineAd == EmptyView {
             availableHeight: availableHeight,
             expandedPhotoID: expandedPhotoID,
             showsInlineAds: showsInlineAds,
+            hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs,
             onTap: onTap,
             onLoadMore: onLoadMore,
             tile: tile,
-            inlineAd: { _ in EmptyView() },
+            inlineAd: { _, _ in EmptyView() },
             footer: footer
         )
     }
@@ -293,7 +299,7 @@ extension PhotoGridView where InlineAd == EmptyView, Footer == EmptyView {
             onTap: onTap,
             onLoadMore: onLoadMore,
             tile: tile,
-            inlineAd: { _ in EmptyView() },
+            inlineAd: { _, _ in EmptyView() },
             footer: { EmptyView() }
         )
     }

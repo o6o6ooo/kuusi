@@ -6,15 +6,21 @@ import UIKit
 @MainActor
 private final class FeedNativeAdViewModel: NSObject, ObservableObject {
     @Published private(set) var nativeAd: NativeAd?
+    @Published private(set) var hasFailedToLoad = false
 
     private var adLoader: AdLoader?
     private var isLoading = false
+    private var loadTimeoutTask: Task<Void, Never>?
 
     func loadIfNeeded(canLoadAds: Bool) {
-        guard canLoadAds, nativeAd == nil, !isLoading else { return }
-        guard let rootViewController = UIApplication.topViewController() else { return }
+        guard canLoadAds, nativeAd == nil, !isLoading, !hasFailedToLoad else { return }
+        guard let rootViewController = UIApplication.topViewController() else {
+            markLoadFailed()
+            return
+        }
 
         isLoading = true
+        startLoadTimeout()
 
         let mediaOptions = NativeAdMediaAdLoaderOptions()
         mediaOptions.mediaAspectRatio = .square
@@ -29,15 +35,37 @@ private final class FeedNativeAdViewModel: NSObject, ObservableObject {
         self.adLoader = adLoader
         adLoader.load(Request())
     }
+
+    private func finishLoading() {
+        isLoading = false
+        loadTimeoutTask?.cancel()
+        loadTimeoutTask = nil
+    }
+
+    private func markLoadFailed() {
+        finishLoading()
+        hasFailedToLoad = true
+    }
+
+    private func startLoadTimeout() {
+        loadTimeoutTask?.cancel()
+        loadTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            await MainActor.run {
+                guard let self, self.nativeAd == nil, self.isLoading else { return }
+                self.markLoadFailed()
+            }
+        }
+    }
 }
 
 extension FeedNativeAdViewModel: AdLoaderDelegate {
     func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
-        isLoading = false
+        markLoadFailed()
     }
 
     func adLoaderDidFinishLoading(_ adLoader: AdLoader) {
-        isLoading = false
+        finishLoading()
     }
 }
 
@@ -55,6 +83,7 @@ struct FeedNativeAdTileView: View {
 
     let width: CGFloat
     let canLoadAds: Bool
+    let onFailedToLoad: () -> Void
 
     @StateObject private var viewModel = FeedNativeAdViewModel()
 
@@ -83,6 +112,10 @@ struct FeedNativeAdTileView: View {
         .accessibilityIdentifier("feed-inline-ad")
         .task(id: canLoadAds) {
             viewModel.loadIfNeeded(canLoadAds: canLoadAds)
+        }
+        .onChange(of: viewModel.hasFailedToLoad) { _, hasFailedToLoad in
+            guard hasFailedToLoad else { return }
+            onFailedToLoad()
         }
     }
 }

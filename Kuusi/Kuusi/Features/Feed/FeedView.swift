@@ -65,6 +65,7 @@ struct FeedView: View {
     @State private var clearFeedMessageTask: Task<Void, Never>?
     @State private var trackingAuthorizationStatus = ATTrackingManager.trackingAuthorizationStatus
     @State private var hasStartedTrackingAuthorizationRequest = false
+    @State private var hiddenInlineAdPhotoIDs: Set<String> = []
 
     private let feedService = FeedService()
     private var currentGroupPhotos: [FeedPhoto] {
@@ -145,6 +146,7 @@ struct FeedView: View {
                             onSelectGroup: { groupID in
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                                     selectedHashtag = nil
+                                    hiddenInlineAdPhotoIDs.removeAll()
                                     photoCollection.selectGroup(groupID, limit: feedPageSize)
                                 }
                             }
@@ -277,7 +279,8 @@ struct FeedView: View {
                 availableWidth: proxy.size.width,
                 availableHeight: proxy.size.height,
                 expandedPhotoID: selectedPhotoID,
-                showsInlineAds: shouldShowFeedAds,
+                showsInlineAds: canLoadFeedAds,
+                hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs,
                 onTap: { photo in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedPhotoID = selectedPhotoID == photo.id ? nil : photo.id
@@ -313,8 +316,10 @@ struct FeedView: View {
                     isFavouriting: favouritingPhotoIDs.contains(photo.id),
                     isEditing: editingPhotoIDs.contains(photo.id)
                 )
-            } inlineAd: { width in
-                FeedNativeAdTileView(width: width, canLoadAds: canLoadFeedAds)
+            } inlineAd: { photo, width in
+                FeedNativeAdTileView(width: width, canLoadAds: canLoadFeedAds) {
+                    hiddenInlineAdPhotoIDs.insert(photo.id)
+                }
             } footer: {
                 if photoCollection.isLoadingMore {
                     ProgressView()
@@ -450,6 +455,7 @@ struct FeedView: View {
     @MainActor
     private func refreshCurrentGroup() async {
         selectedHashtag = nil
+        hiddenInlineAdPhotoIDs.removeAll()
         await photoCollection.refresh(limit: feedPageSize)
     }
 
