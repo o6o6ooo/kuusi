@@ -113,6 +113,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $groupsViewModel.isMemberListPresented) {
                 GroupMembersOverlayView(
+                    groupName: groupsViewModel.selectedGroup?.name ?? groupsViewModel.editableGroupName,
                     members: groupsViewModel.selectedGroupMembers,
                     currentUserIsOwner: groupsViewModel.currentUserIsSelectedGroupOwner,
                     removingMemberID: groupsViewModel.removingMemberID,

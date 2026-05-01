@@ -4,6 +4,7 @@ struct GroupMembersOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var appAlert: AppAlert?
 
+    let groupName: String
     let members: [GroupMemberPreview]
     let currentUserIsOwner: Bool
     let removingMemberID: String?
@@ -17,6 +18,10 @@ struct GroupMembersOverlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    Text(groupName)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(primaryText)
+
                     ForEach(members) { member in
                         HStack(spacing: 12) {
                             ZStack(alignment: .topTrailing) {
@@ -66,7 +71,7 @@ struct GroupMembersOverlayView: View {
                         }
                     }
                 }
-                .padding(16)
+                .padding(20)
             }
             .background(cardBackground)
             .appOverlayTheme()
