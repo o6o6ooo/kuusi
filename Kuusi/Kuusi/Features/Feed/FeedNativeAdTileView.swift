@@ -87,8 +87,13 @@ struct FeedNativeAdTileView: View {
 
     @StateObject private var viewModel = FeedNativeAdViewModel()
 
+    private var safeWidth: CGFloat {
+        guard width.isFinite else { return 0 }
+        return max(width, 0)
+    }
+
     private var tileHeight: CGFloat {
-        max(164, width * 0.76)
+        max(164, safeWidth * 0.76)
     }
 
     var body: some View {
@@ -102,7 +107,7 @@ struct FeedNativeAdTileView: View {
                     .allowsHitTesting(false)
             }
         }
-        .frame(width: width, height: tileHeight)
+        .frame(width: safeWidth, height: tileHeight)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)

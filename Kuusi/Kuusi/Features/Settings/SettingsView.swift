@@ -122,7 +122,7 @@ struct SettingsView: View {
                         }
                     }
                 )
-                    .presentationDetents([.height(280)])
+                    .presentationDetents([.height(280), .medium, .large])
                     .presentationDragIndicator(.visible)
             }
             .onChange(of: groupsViewModel.isDeleteConfirmPresented) { _, isPresented in
