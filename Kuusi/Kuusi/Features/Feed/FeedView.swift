@@ -249,12 +249,12 @@ struct FeedView: View {
         if photoCollection.groups.isEmpty {
             emptyFeedState(
                 in: proxy,
-                title: "No groups yet",
+                title: String(localized: "feed.empty.no_groups.title"),
                 systemImage: "person.3",
-                description: "Create or join a group in Settings to start sharing."
+                description: String(localized: "feed.empty.no_groups.description")
             )
         } else if photoCollection.isLoading {
-            ProgressView("Loading feed...")
+            ProgressView("feed.loading")
                 .font(.headline.weight(.semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding(.top, 116)
@@ -262,9 +262,9 @@ struct FeedView: View {
         } else if currentGroupPhotos.isEmpty {
             emptyFeedState(
                 in: proxy,
-                title: "No photos yet",
+                title: String(localized: "feed.empty.no_photos.title"),
                 systemImage: "photo",
-                description: "Plus button to upload photos."
+                description: String(localized: "feed.empty.no_photos.description")
             )
         } else if displayedPhotos.isEmpty {
             emptyFeedState(
@@ -362,28 +362,28 @@ struct FeedView: View {
 
     private var feedSubtitle: String {
         if isFavouritesFilterEnabled, let selectedHashtag {
-            return "Favourites in #\(selectedHashtag)"
+            return String(format: String(localized: "feed.subtitle.favourites_in_hashtag"), selectedHashtag)
         }
         if isFavouritesFilterEnabled {
-            return "Favourites"
+            return String(localized: "feed.subtitle.favourites")
         }
         if let selectedHashtag {
             return "#\(selectedHashtag)"
         }
-        return "\(currentGroupPhotos.count) photos"
+        return String(format: String(localized: "feed.subtitle.photo_count"), currentGroupPhotos.count)
     }
 
     private var emptyStateTitle: String {
         if isFavouritesFilterEnabled && selectedHashtag != nil {
-            return "No favourite photos for this hashtag"
+            return String(localized: "feed.empty.no_favourites_for_hashtag.title")
         }
         if isFavouritesFilterEnabled {
-            return "No favourite photos yet"
+            return String(localized: "feed.empty.no_favourites.title")
         }
         if selectedHashtag != nil {
-            return "No photos for this hashtag"
+            return String(localized: "feed.empty.no_photos_for_hashtag.title")
         }
-        return "No photos yet"
+        return String(localized: "feed.empty.no_photos.title")
     }
 
     private var emptyStateSymbol: String {
@@ -398,15 +398,15 @@ struct FeedView: View {
 
     private var emptyStateDescription: String {
         if isFavouritesFilterEnabled && selectedHashtag != nil {
-            return "Try another hashtag or turn off the favourites filter."
+            return String(localized: "feed.empty.no_favourites_for_hashtag.description")
         }
         if isFavouritesFilterEnabled {
-            return "Mark photos with the heart button to keep them close."
+            return String(localized: "feed.empty.no_favourites.description")
         }
         if selectedHashtag != nil {
-            return "Try another hashtag or clear the filter."
+            return String(localized: "feed.empty.no_photos_for_hashtag.description")
         }
-        return "Use the plus button to upload the first photo."
+        return String(localized: "feed.empty.no_photos.description")
     }
 
     private func glassUnavailableView(title: String, systemImage: String, description: String) -> some View {

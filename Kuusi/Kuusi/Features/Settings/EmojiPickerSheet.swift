@@ -46,10 +46,10 @@ struct EmojiPickerSheet: View {
                 }
                 .padding(16)
             }
-            .navigationTitle("Choose Icon")
+            .navigationTitle("profile.icon_picker.title")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
+                    Button("common.close") {
                         dismiss()
                     }
                 }

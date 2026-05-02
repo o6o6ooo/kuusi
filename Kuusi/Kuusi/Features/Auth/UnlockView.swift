@@ -8,13 +8,13 @@ struct UnlockView: View {
             Spacer()
             Image(systemName: "faceid")
                 .font(.system(size: 56))
-            Text("Unlock Kuusi")
+            Text("auth.unlock.title")
                 .font(.title2.weight(.bold))
                 .accessibilityIdentifier("unlock-title")
-            Text("Use Face ID or Touch ID")
+            Text("auth.unlock.subtitle")
                 .foregroundStyle(.secondary)
 
-            Button("Unlock") {
+            Button("auth.unlock.button") {
                 Task {
                     await appState.unlockApp()
                 }

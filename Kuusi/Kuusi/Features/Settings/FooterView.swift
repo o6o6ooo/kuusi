@@ -13,30 +13,30 @@ struct FooterView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: onDeleteAccount) {
-                Text("Delete account")
+                Text("settings.footer.delete_account")
                     .appErrorTextLinkStyle()
             }
             .accessibilityIdentifier("settings-delete-account-button")
 
             if showsPrivacyChoices {
                 Button(action: onPrivacyChoices) {
-                    Text("Privacy choices")
+                    Text("settings.footer.privacy_choices")
                         .appSecondaryTextLinkStyle()
                 }
                 .accessibilityIdentifier("settings-privacy-choices-button")
             }
 
-            Link("FAQ", destination: faqURL)
+            Link("settings.footer.faq", destination: faqURL)
                 .appSecondaryTextLinkStyle()
 
-            Link("Privacy policy", destination: privacyPolicyURL)
+            Link("settings.footer.privacy_policy", destination: privacyPolicyURL)
                 .appSecondaryTextLinkStyle()
 
-            Link("Terms of service", destination: termsOfServiceURL)
+            Link("settings.footer.terms_of_service", destination: termsOfServiceURL)
                 .appSecondaryTextLinkStyle()
 
             HStack(spacing: 4) {
-                Text("Made with love by")
+                Text("settings.footer.made_by")
                     .appSecondaryTextLinkStyle()
                 Link("Sakura Wallace", destination: authorURL)
                     .appSecondaryTextLinkStyle()

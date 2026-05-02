@@ -15,7 +15,7 @@ struct BackgroundColorPickerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                Text("Choose Background")
+                Text("profile.background_picker.title")
                     .font(.title3.weight(.bold))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -50,7 +50,7 @@ struct BackgroundColorPickerSheet: View {
             .appOverlayTheme()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
+                    Button("common.close") {
                         dismiss()
                     }
                 }

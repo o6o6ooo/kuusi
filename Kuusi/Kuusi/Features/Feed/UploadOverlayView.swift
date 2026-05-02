@@ -154,8 +154,8 @@ struct UploadOverlayView: View {
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
     private var selectedGroupName: String {
-        guard let selectedGroupID else { return "group" }
-        return groups.first(where: { $0.id == selectedGroupID })?.name ?? "group"
+        guard let selectedGroupID else { return String(localized: "upload.group_placeholder") }
+        return groups.first(where: { $0.id == selectedGroupID })?.name ?? String(localized: "upload.group_placeholder")
     }
 
     private var yearOptions: [Int] {
@@ -163,7 +163,7 @@ struct UploadOverlayView: View {
     }
 
     private var selectedYearLabel: String {
-        parsedYear.map(String.init) ?? "year"
+        parsedYear.map(String.init) ?? String(localized: "upload.year_placeholder")
     }
 
     private var parsedYear: Int? {
@@ -239,7 +239,7 @@ struct UploadOverlayView: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Importing photos from Google Photos...")
+                            Text("upload.importing_google_photos")
                                 .font(.footnote.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
@@ -249,7 +249,7 @@ struct UploadOverlayView: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Checking storage...")
+                            Text("upload.checking_storage")
                                 .font(.footnote.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
@@ -265,7 +265,7 @@ struct UploadOverlayView: View {
                                     .tint(.white)
                                     .frame(minWidth: 54)
                             } else {
-                                Text("Upload")
+                                Text("upload.button")
                             }
                         }
                         .frame(minWidth: 96)
@@ -330,7 +330,7 @@ struct UploadOverlayView: View {
                     matching: .images
                 ) {
                     importRow(
-                        title: "Import from photo library",
+                        title: String(localized: "upload.import_photo_library"),
                         systemImage: "photo.on.rectangle"
                     )
                 }
@@ -341,7 +341,7 @@ struct UploadOverlayView: View {
                     Task { await importFromGooglePhotos() }
                 } label: {
                     importRow(
-                        title: "Import from Google Photos",
+                        title: String(localized: "upload.import_google_photos"),
                         systemImage: "globe",
                         showsProgress: isImportingGooglePhotos
                     )
@@ -442,7 +442,7 @@ struct UploadOverlayView: View {
     private var groupPicker: some View {
         Menu {
             if groups.isEmpty {
-                Text("No groups")
+                Text("groups.empty")
             } else {
                 ForEach(groups) { group in
                     Button(group.name) {
@@ -481,7 +481,7 @@ struct UploadOverlayView: View {
     }
 
     private var hashtagsField: some View {
-        TextField("hashtags", text: $hashtagInput)
+        TextField("photo.hashtags.placeholder", text: $hashtagInput)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled(true)
             .padding(.horizontal, 16)

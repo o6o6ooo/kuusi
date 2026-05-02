@@ -54,11 +54,11 @@ struct GroupsSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
-                Text("Groups")
+                Text("groups.title")
                     .font(.title3.weight(.bold))
 
                 Menu {
-                    Button("Create a group", systemImage: "plus") {
+                    Button("groups.create", systemImage: "plus") {
                         pendingCreateGroupName = ""
                         appAlert = AppAlert(.createGroupPrompt, text: $pendingCreateGroupName) {
                             viewModel.createGroupName = pendingCreateGroupName
@@ -66,11 +66,11 @@ struct GroupsSectionView: View {
                         }
                     }
 
-                    Button("Read QR code to join a group", systemImage: "photo.badge.magnifyingglass") {
+                    Button("groups.join_from_photo", systemImage: "photo.badge.magnifyingglass") {
                         viewModel.isPhotoPickerPresented = true
                     }
 
-                    Button("Scan QR code to join a group", systemImage: "qrcode.viewfinder") {
+                    Button("groups.scan_qr", systemImage: "qrcode.viewfinder") {
                         viewModel.isQRCodeScannerPresented = true
                     }
                 } label: {
@@ -87,7 +87,7 @@ struct GroupsSectionView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if viewModel.groups.isEmpty {
-                Text("No groups")
+                Text("groups.empty")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -168,7 +168,7 @@ struct GroupsSectionView: View {
 
     private func groupMenu(for group: GroupSummary) -> some View {
         Menu {
-            Button("Edit group", systemImage: "pencil") {
+            Button("groups.menu.edit", systemImage: "pencil") {
                 viewModel.selectedGroupID = group.id
                 viewModel.editableGroupName = group.name
                 pendingRenameGroupName = group.name
@@ -184,7 +184,7 @@ struct GroupsSectionView: View {
                 viewModel.isDeleteConfirmPresented = true
             }
 
-            Button("QR code", systemImage: "qrcode") {
+            Button("groups.menu.qr_code", systemImage: "qrcode") {
                 Task {
                     await viewModel.presentGroupQRCode(for: group)
                 }
@@ -199,8 +199,8 @@ struct GroupsSectionView: View {
     }
 
     private func destructiveLabel(for group: GroupSummary) -> String {
-        guard let uid = Auth.auth().currentUser?.uid else { return "Leave group" }
-        return group.ownerUID == uid ? "Delete group" : "Leave group"
+        guard let uid = Auth.auth().currentUser?.uid else { return String(localized: "groups.menu.leave") }
+        return group.ownerUID == uid ? String(localized: "groups.menu.delete") : String(localized: "groups.menu.leave")
     }
 
     private func destructiveSymbol(for group: GroupSummary) -> String {
@@ -211,7 +211,7 @@ struct GroupsSectionView: View {
     private var groupActionLinks: some View {
         VStack(alignment: .leading, spacing: 10) {
             ShareLink(item: viewModel.appShareURL) {
-                Text("Tell your friends about this app?")
+                Text("groups.share_app")
                     .appSecondaryTextLinkStyle()
             }
             .buttonStyle(.plain)

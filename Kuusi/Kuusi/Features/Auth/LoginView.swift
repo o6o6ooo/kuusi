@@ -17,7 +17,7 @@ struct LoginView: View {
             Text("Kuusi")
                 .font(.title.weight(.bold))
                 .accessibilityIdentifier("login-title")
-            Text("Share photos with your loved ones")
+            Text("auth.login.subtitle")
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 8)
                 .accessibilityIdentifier("login-subtitle")
@@ -56,7 +56,7 @@ struct LoginView: View {
 #if DEBUG
             if !appState.debugAccounts.isEmpty {
                 HStack(spacing: 10) {
-                    Picker("Dev user", selection: Binding(
+                    Picker("auth.login.dev_user_picker", selection: Binding(
                         get: { appState.selectedDebugAccountID ?? "" },
                         set: { appState.selectedDebugAccountID = $0 }
                     )) {
@@ -68,7 +68,7 @@ struct LoginView: View {
                     .labelsHidden()
                     .controlSize(.small)
 
-                    Button("Dev: sign in") {
+                    Button("auth.login.dev_sign_in") {
                         Task {
                             await appState.debugEnterMainTabs(selectedAccountID: appState.selectedDebugAccountID)
                         }
@@ -79,7 +79,7 @@ struct LoginView: View {
                 }
                 .padding(.horizontal, 24)
             } else {
-                Button("Dev: sign in") {
+                Button("auth.login.dev_sign_in") {
                     Task {
                         await appState.debugEnterMainTabs()
                     }

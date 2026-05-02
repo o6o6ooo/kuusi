@@ -13,7 +13,7 @@ struct ProfileView: View {
         VStack(spacing: 18) {
             VStack(spacing: 14) {
                 Menu {
-                    Button("Edit name", systemImage: "pencil") {
+                    Button("profile.menu.edit_name", systemImage: "pencil") {
                         pendingName = viewModel.name
                         appAlert = AppAlert(.editNamePrompt, text: $pendingName) {
                             let updatedName = pendingName
@@ -27,11 +27,11 @@ struct ProfileView: View {
                         }
                     }
 
-                    Button("Edit icon", systemImage: "face.smiling") {
+                    Button("profile.menu.edit_icon", systemImage: "face.smiling") {
                         isEmojiPickerPresented = true
                     }
 
-                    Button("Edit background", systemImage: "paintpalette") {
+                    Button("profile.menu.edit_background", systemImage: "paintpalette") {
                         isBackgroundPickerPresented = true
                     }
                 } label: {
@@ -53,7 +53,7 @@ struct ProfileView: View {
                     .lineLimit(2)
 
                 Button(action: onSignOut) {
-                    Text("Sign out")
+                    Text("profile.sign_out")
                         .appTextLinkStyle()
                 }
                 .accessibilityIdentifier("settings-sign-out-button")
@@ -95,16 +95,16 @@ struct ProfileView: View {
 
     private var googlePhotosSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Google Photos")
+            Text("profile.google_photos.title")
                 .font(.title3.weight(.bold))
 
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.isGoogleLinked ? "Connected as \(viewModel.googleLinkedEmail)" : "Not connected")
+                    Text(viewModel.isGoogleLinked ? String(format: String(localized: "profile.google_photos.connected_as"), viewModel.googleLinkedEmail) : String(localized: "profile.google_photos.not_connected"))
                         .font(.subheadline.weight(.semibold))
 
                     if !viewModel.isGoogleLinked {
-                        Text("Connect to your Google account to import photos from Google Photos.")
+                        Text("profile.google_photos.connect_description")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -116,7 +116,7 @@ struct ProfileView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else if viewModel.isGoogleLinked {
-                    Button("Disconnect") {
+                    Button("profile.google_photos.disconnect") {
                         Task {
                             await viewModel.disconnectGoogleAccount()
                         }
@@ -124,7 +124,7 @@ struct ProfileView: View {
                     .buttonStyle(.appPrimaryCapsule)
                     .controlSize(.small)
                 } else {
-                    Button("Connect") {
+                    Button("profile.google_photos.connect") {
                         Task {
                             await viewModel.connectGoogleAccount()
                         }

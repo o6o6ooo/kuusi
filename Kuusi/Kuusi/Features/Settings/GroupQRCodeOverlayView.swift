@@ -28,12 +28,12 @@ struct GroupQRCodeOverlayView: View {
                 }
 
                 ShareLink(item: payload) {
-                    Text("Share QR code")
+                    Text("groups.qr.share")
                         .appTextLinkStyle()
                 }
                 .buttonStyle(.plain)
 
-                Text("This QR code is valid for 24 hours.")
+                Text("groups.qr.valid_for_24_hours")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

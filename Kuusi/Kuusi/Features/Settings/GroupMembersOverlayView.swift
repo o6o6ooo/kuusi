@@ -66,7 +66,7 @@ struct GroupMembersOverlayView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(removingMemberID != nil)
-                                .accessibilityLabel("Remove \(member.name)")
+                                .accessibilityLabel(String(format: String(localized: "groups.members.remove_accessibility"), member.name))
                             }
                         }
                     }

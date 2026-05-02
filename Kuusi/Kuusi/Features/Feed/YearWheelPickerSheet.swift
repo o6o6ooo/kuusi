@@ -9,7 +9,7 @@ struct YearWheelPickerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Year", selection: $selectedYear) {
+                Picker("feed.year_picker.title", selection: $selectedYear) {
                     ForEach(years, id: \.self) { year in
                         Text(String(year))
                             .tag(year)
@@ -18,11 +18,11 @@ struct YearWheelPickerSheet: View {
                 .pickerStyle(.wheel)
                 .labelsHidden()
             }
-            .navigationTitle("Year")
+            .navigationTitle("feed.year_picker.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button("common.done") {
                         dismiss()
                     }
                 }

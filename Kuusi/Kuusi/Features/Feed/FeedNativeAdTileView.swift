@@ -148,7 +148,7 @@ private struct FeedNativeAdPlaceholderView: View {
 
 private struct SponsoredBadgeView: View {
     var body: some View {
-        Text("Sponsored")
+        Text("feed.ad.sponsored")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.white.opacity(0.92))
             .padding(.horizontal, 9)

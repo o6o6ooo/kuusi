@@ -53,17 +53,17 @@ enum AppPlan: String {
         switch self {
         case .free:
             return [
-                "1GB storage",
-                "2-year previews",
-                "Up to 3 groups",
-                "Ads included"
+                String(localized: "plan.free.feature.storage"),
+                String(localized: "plan.free.feature.previews"),
+                String(localized: "plan.free.feature.groups"),
+                String(localized: "plan.free.feature.ads")
             ]
         case .premium:
             return [
-                "50GB storage",
-                "Full previews",
-                "Up to 10 groups",
-                "No ads"
+                String(localized: "plan.premium.feature.storage"),
+                String(localized: "plan.premium.feature.previews"),
+                String(localized: "plan.premium.feature.groups"),
+                String(localized: "plan.premium.feature.ads")
             ]
         }
     }

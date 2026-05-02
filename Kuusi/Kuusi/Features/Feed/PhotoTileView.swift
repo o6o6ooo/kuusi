@@ -109,14 +109,14 @@ struct PhotoTileView: View {
             Button {
                 onEdit()
             } label: {
-                Label("Edit", systemImage: "pencil")
+                Label("photo.menu.edit", systemImage: "pencil")
             }
 
             Button {
                 onToggleFavourite()
             } label: {
                 Label(
-                    photo.isFavourite ? "Remove from favourites" : "Add to favourites",
+                    photo.isFavourite ? String(localized: "photo.menu.remove_from_favourites") : String(localized: "photo.menu.add_to_favourites"),
                     systemImage: photo.isFavourite ? "heart.slash" : "heart"
                 )
             }
@@ -125,7 +125,7 @@ struct PhotoTileView: View {
                 Button(role: .destructive) {
                     onDelete()
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                Label("photo.menu.delete", systemImage: "trash")
                 }
             }
         }
@@ -201,7 +201,7 @@ struct PhotoTileView: View {
     private var expandedMetaOverlay: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(photo.year.map(String.init) ?? "Shared memory")
+                Text(photo.year.map(String.init) ?? String(localized: "photo.shared_memory"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(yearOverlayColor)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)

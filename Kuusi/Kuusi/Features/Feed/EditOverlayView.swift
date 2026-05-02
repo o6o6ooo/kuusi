@@ -42,7 +42,7 @@ struct EditOverlayView: View {
         Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines))
     }
     private var selectedYearLabel: String {
-        parsedYear.map(String.init) ?? "year"
+        parsedYear.map(String.init) ?? String(localized: "upload.year_placeholder")
     }
     private var selectedCreatedAtLabel: String {
         Self.createdAtFormatter.string(from: createdAtSelection)
@@ -53,7 +53,7 @@ struct EditOverlayView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Spacer()
-                    Button("Save") {
+                    Button("common.save") {
                         Task {
                             await save()
                         }
@@ -168,7 +168,7 @@ struct EditOverlayView: View {
 
     private var hashtagsField: some View {
         liftedField {
-            TextField("hashtags", text: $hashtagInput)
+            TextField("photo.hashtags.placeholder", text: $hashtagInput)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .foregroundStyle(primaryText)
@@ -190,7 +190,7 @@ struct EditOverlayView: View {
         } label: {
             liftedField {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("created at")
+                    Text("photo.created_at.label")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(selectedCreatedAtLabel)
@@ -280,7 +280,7 @@ private struct PhotoCreatedAtPickerSheet: View {
         NavigationStack {
             VStack(spacing: 18) {
                 DatePicker(
-                    "Created at",
+                    String(localized: "photo.created_at.title"),
                     selection: $selectedDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
@@ -288,7 +288,7 @@ private struct PhotoCreatedAtPickerSheet: View {
                 .labelsHidden()
             }
             .padding(16)
-            .navigationTitle("Created at")
+            .navigationTitle("photo.created_at.title")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

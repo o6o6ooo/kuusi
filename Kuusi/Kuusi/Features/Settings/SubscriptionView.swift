@@ -42,7 +42,7 @@ struct SubscriptionView: View {
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
     private var premiumRenewalText: String? {
         guard let renewalDate = displaySnapshot.renewalDate else { return nil }
-        let label = displaySnapshot.willAutoRenew ? "Renews on" : "Expires on"
+        let label = displaySnapshot.willAutoRenew ? String(localized: "subscription.renews_on") : String(localized: "subscription.expires_on")
         return "\(label) \(formatDate(renewalDate))"
     }
     private var usageRatio: Double {
@@ -181,7 +181,7 @@ struct SubscriptionView: View {
 
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Your storage")
+            Text("subscription.storage.title")
                 .font(.title3.weight(.bold))
 
             HStack {
@@ -206,7 +206,7 @@ struct SubscriptionView: View {
             .frame(height: storageBarHeight)
 
             if isStorageLimitReached {
-                Text("You've reached your storage limit.")
+                Text("subscription.storage.limit_reached")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(.secondary)
             }
@@ -215,10 +215,10 @@ struct SubscriptionView: View {
 
     private var subscriptionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Subscription")
+            Text("subscription.title")
                 .font(.title3.weight(.bold))
 
-            Text("Upgrade to premium, cancel anytime.")
+            Text("subscription.description")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
 
@@ -226,7 +226,7 @@ struct SubscriptionView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Updating subscription...")
+                    Text("subscription.updating")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -265,7 +265,7 @@ struct SubscriptionView: View {
                             title: AppPlan.premium.title,
                             features: AppPlan.premium.featureLines,
                             footerText: premiumRenewalText,
-                            footerActionTitle: displaySnapshot.willAutoRenew ? "Cancel subscription" : "Continue subscription",
+                            footerActionTitle: displaySnapshot.willAutoRenew ? String(localized: "subscription.cancel") : String(localized: "subscription.continue"),
                             isSelected: true,
                             action: {
                                 Task {
@@ -279,10 +279,10 @@ struct SubscriptionView: View {
 
             if currentPlan == .free {
                 HStack(spacing: 6) {
-                    Text("Already got premium?")
+                    Text("subscription.already_got_premium")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Button("Restore purchases.") {
+                    Button("subscription.restore_purchases") {
                         Task {
                             await restorePurchases()
                         }
