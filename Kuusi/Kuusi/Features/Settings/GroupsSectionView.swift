@@ -3,10 +3,53 @@ import SwiftUI
 
 struct GroupsSectionView: View {
     @ObservedObject var viewModel: SettingsGroupsViewModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var appAlert: AppAlert?
     @State private var pendingCreateGroupName = ""
     @State private var pendingRenameGroupName = ""
+
+    private var groupCardWidth: CGFloat {
+        168 + groupCardWidthIncrement
+    }
+
+    private var groupCardHeight: CGFloat {
+        120 + groupCardHeightIncrement
+    }
+
+    private var groupCardWidthIncrement: CGFloat {
+        switch dynamicTypeSize {
+        case .accessibility1:
+            return 20
+        case .accessibility2:
+            return 36
+        case .accessibility3:
+            return 52
+        case .accessibility4:
+            return 68
+        case .accessibility5:
+            return 84
+        default:
+            return 0
+        }
+    }
+
+    private var groupCardHeightIncrement: CGFloat {
+        switch dynamicTypeSize {
+        case .accessibility1:
+            return 16
+        case .accessibility2:
+            return 28
+        case .accessibility3:
+            return 40
+        case .accessibility4:
+            return 52
+        case .accessibility5:
+            return 64
+        default:
+            return 0
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -86,7 +129,7 @@ struct GroupsSectionView: View {
             .offset(y: -6)
         }
         .padding(16)
-        .frame(width: 168, height: 120, alignment: .topLeading)
+        .frame(width: groupCardWidth, height: groupCardHeight, alignment: .topLeading)
         .appCardSurface(cornerRadius: 22, shadowRadius: 7, shadowOpacityMultiplier: 0.55)
     }
 
