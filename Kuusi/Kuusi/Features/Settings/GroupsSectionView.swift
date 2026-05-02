@@ -65,14 +65,17 @@ struct GroupsSectionView: View {
                             Task { await viewModel.createGroup() }
                         }
                     }
+                    .accessibilityIdentifier("groups-create-menu-action")
 
                     Button("groups.join_from_photo", systemImage: "photo.badge.magnifyingglass") {
                         viewModel.isPhotoPickerPresented = true
                     }
+                    .accessibilityIdentifier("groups-join-from-photo-menu-action")
 
                     Button("groups.scan_qr", systemImage: "qrcode.viewfinder") {
                         viewModel.isQRCodeScannerPresented = true
                     }
+                    .accessibilityIdentifier("groups-scan-qr-menu-action")
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .regular))
@@ -90,6 +93,7 @@ struct GroupsSectionView: View {
                 Text("groups.empty")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("groups-empty-state")
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 14) {

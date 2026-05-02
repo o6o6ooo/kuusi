@@ -57,7 +57,7 @@ struct SettingsProfileViewModelTests {
         await viewModel.saveProfile()
 
         #expect(userService.updateCalls.isEmpty)
-        #expect(viewModel.toastMessage?.text == "Name cannot be empty")
+        #expect(viewModel.toastMessage?.id == .nameCannotBeEmpty)
         if case .error = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
@@ -80,7 +80,7 @@ struct SettingsProfileViewModelTests {
         #expect(userService.updateCalls.first?.name == "Sakura")
         #expect(userService.updateCalls.first?.icon == "")
         #expect(userService.updateCalls.first?.bgColour == "#abcdef")
-        #expect(viewModel.toastMessage?.text == "Profile updated")
+        #expect(viewModel.toastMessage?.id == .profileUpdated)
         if case .success = viewModel.toastMessage?.tone {
             #expect(Bool(true))
         } else {
@@ -127,7 +127,7 @@ struct SettingsProfileViewModelTests {
         await viewModel.connectGoogleAccount()
 
         #expect(googleService.connectCallCount == 0)
-        #expect(viewModel.toastMessage?.text == "Could not open Google Sign-In")
+        #expect(viewModel.toastMessage?.id == .couldNotOpenGoogleSignIn)
     }
 
     @Test
@@ -142,7 +142,7 @@ struct SettingsProfileViewModelTests {
         #expect(googleService.disconnectCallCount == 1)
         #expect(viewModel.googleLinkedEmail.isEmpty)
         #expect(viewModel.isGoogleLinked == false)
-        #expect(viewModel.toastMessage?.text == "Google account disconnected")
+        #expect(viewModel.toastMessage?.id == .googleAccountDisconnected)
     }
 
     private func makeViewModel(

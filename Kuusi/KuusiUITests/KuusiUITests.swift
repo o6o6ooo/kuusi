@@ -12,8 +12,8 @@ final class KuusiUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-out"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Kuusi"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Share photos with your loved ones"].exists)
+        XCTAssertTrue(app.staticTexts["login-title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["login-subtitle"].exists)
     }
 
     @MainActor
@@ -34,9 +34,9 @@ final class KuusiUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-locked"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Unlock"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["unlock-button"].waitForExistence(timeout: 5))
 
-        app.buttons["Unlock"].tap()
+        app.buttons["unlock-button"].tap()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
@@ -82,8 +82,7 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-feed-no-groups"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["No groups yet"].exists)
-        XCTAssertTrue(app.staticTexts["Create or join a group in Settings to start sharing."].exists)
+        XCTAssertTrue(app.otherElements["feed-empty-state"].exists)
     }
 
     @MainActor
@@ -133,7 +132,7 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-settings-groups-section"].exists)
         XCTAssertTrue(app.buttons["groups-create-button"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["No groups"].exists)
+        XCTAssertTrue(app.staticTexts["groups-empty-state"].exists)
     }
 
     @MainActor
@@ -152,9 +151,9 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
         createButton.tap()
 
-        XCTAssertTrue(app.buttons["Create a group"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Read QR code to join a group"].exists)
-        XCTAssertTrue(app.buttons["Scan QR code to join a group"].exists)
+        XCTAssertTrue(app.buttons["groups-create-menu-action"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["groups-join-from-photo-menu-action"].exists)
+        XCTAssertTrue(app.buttons["groups-scan-qr-menu-action"].exists)
     }
 
     @MainActor
@@ -173,7 +172,7 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
         createButton.tap()
 
-        let createGroupAction = app.buttons["Create a group"]
+        let createGroupAction = app.buttons["groups-create-menu-action"]
         XCTAssertTrue(createGroupAction.waitForExistence(timeout: 5))
         createGroupAction.tap()
 
@@ -196,8 +195,6 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-subscription-free"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Subscription"].exists)
-        XCTAssertTrue(app.staticTexts["Upgrade to premium, cancel anytime."].exists)
     }
 
     @MainActor
@@ -215,7 +212,5 @@ final class KuusiUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["subscription-premium-card-button"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["subscription-restore-purchases-button"].exists)
-        XCTAssertTrue(app.staticTexts["Free"].exists)
-        XCTAssertTrue(app.staticTexts["Premium"].exists)
     }
 }

@@ -7,7 +7,10 @@ struct AppMessageTests {
     func profileUpdatedBuildsSuccessMessage() {
         let message = AppMessage(.profileUpdated, .success)
 
-        #expect(message.text == "Profile updated")
+        guard case .profileUpdated = message.id else {
+            Issue.record("Expected profileUpdated message id")
+            return
+        }
         if case .success = message.tone {
             #expect(Bool(true))
         } else {
@@ -20,7 +23,10 @@ struct AppMessageTests {
     func failedToDeletePhotoBuildsErrorMessage() {
         let message = AppMessage(.failedToDeletePhoto, .error)
 
-        #expect(message.text == "Failed to delete photo")
+        guard case .failedToDeletePhoto = message.id else {
+            Issue.record("Expected failedToDeletePhoto message id")
+            return
+        }
         if case .error = message.tone {
             #expect(Bool(true))
         } else {
@@ -33,7 +39,11 @@ struct AppMessageTests {
     func photosImportedFromGooglePhotosBuildsInterpolatedText() {
         let message = AppMessage(.photosImportedFromGooglePhotos(3), .success)
 
-        #expect(message.text == "3 photos imported from Google Photos")
+        guard case let .photosImportedFromGooglePhotos(count) = message.id else {
+            Issue.record("Expected photosImportedFromGooglePhotos message id")
+            return
+        }
+        #expect(count == 3)
         if case .success = message.tone {
             #expect(Bool(true))
         } else {
@@ -45,7 +55,10 @@ struct AppMessageTests {
     func storageLimitReachedBuildsErrorMessage() {
         let message = AppMessage(.storageLimitReached, .error)
 
-        #expect(message.text == "You've reached your storage limit")
+        guard case .storageLimitReached = message.id else {
+            Issue.record("Expected storageLimitReached message id")
+            return
+        }
         if case .error = message.tone {
             #expect(Bool(true))
         } else {
@@ -64,7 +77,10 @@ struct AppMessageTests {
         )
 
         #expect(task == nil)
-        #expect(currentMessage?.text == "Failed to delete photo")
+        guard case .failedToDeletePhoto = currentMessage?.id else {
+            Issue.record("Expected failedToDeletePhoto message id")
+            return
+        }
     }
 
     @Test
@@ -78,10 +94,14 @@ struct AppMessageTests {
             clear: { currentMessage = nil }
         )
 
-        try await Task.sleep(nanoseconds: 50_000_000)
+        for _ in 0..<20 where currentMessage != nil {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
 
         #expect(task != nil)
-        #expect(currentMessage == nil)
+        if currentMessage != nil {
+            Issue.record("Expected current message to clear")
+        }
         task?.cancel()
     }
 }

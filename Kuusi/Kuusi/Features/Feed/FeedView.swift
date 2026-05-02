@@ -415,6 +415,7 @@ struct FeedView: View {
             systemImage: systemImage,
             description: Text(description)
         )
+        .accessibilityIdentifier("feed-empty-state")
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
     }
