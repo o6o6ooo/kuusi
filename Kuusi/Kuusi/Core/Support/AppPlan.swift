@@ -53,17 +53,17 @@ enum AppPlan: String {
         switch self {
         case .free:
             return [
-							  "Ads included",
                 "1GB storage",
-                "2 years photo preview",
-                "Up to 3 groups"
+                "2-year previews",
+                "Up to 3 groups",
+                "Ads included"
             ]
         case .premium:
             return [
-							"No ads",
                 "50GB storage",
-                "Unlimited photo preview",
-                "Up to 10 groups"
+                "Full previews",
+                "Up to 10 groups",
+                "No ads"
             ]
         }
     }

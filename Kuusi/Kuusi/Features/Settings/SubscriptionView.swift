@@ -31,6 +31,7 @@ private struct SubscriptionCardButtonStyle: ButtonStyle {
 struct SubscriptionView: View {
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let usageMB: Double
 
@@ -59,10 +60,70 @@ struct SubscriptionView: View {
     }
     private var storageBarHeight: CGFloat { 10 }
     private var planCardWidth: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+        planCardBaseWidth + planCardWidthIncrement
     }
     private var planCardHeight: CGFloat {
+        planCardBaseHeight + planCardHeightIncrement
+    }
+    private var planCardBaseWidth: CGFloat {
         UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+    }
+    private var planCardBaseHeight: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+    }
+    private var planCardWidthIncrement: CGFloat {
+        switch dynamicTypeSize {
+        case .xSmall, .small, .medium, .large:
+            return 0
+        case .xLarge:
+            return 20
+        case .xxLarge:
+            return 36
+        case .xxxLarge:
+            return 52
+        case .accessibility1:
+            return 84
+        case .accessibility2:
+            return 140
+        case .accessibility3:
+            return 200
+        case .accessibility4:
+            return 260
+        case .accessibility5:
+            return 340
+        @unknown default:
+            return 36
+        }
+    }
+    private var planCardHeightIncrement: CGFloat {
+        switch dynamicTypeSize {
+        case .xSmall:
+            return 8
+				case .small:
+						return 16
+        case .medium:
+            return 24
+				case .large:
+						return 32
+        case .xLarge:
+            return 46
+        case .xxLarge:
+            return 64
+        case .xxxLarge:
+            return 80
+        case .accessibility1:
+            return 116
+        case .accessibility2:
+            return 160
+        case .accessibility3:
+            return 212
+        case .accessibility4:
+            return 264
+        case .accessibility5:
+            return 312
+        @unknown default:
+            return 52
+        }
     }
     @State private var billingMessage: AppMessage?
     @State private var clearBillingMessageTask: Task<Void, Never>?
@@ -370,6 +431,9 @@ struct SubscriptionView: View {
                 ForEach(features, id: \.self) { feature in
                     Text("•  \(feature)")
                         .font(.body.weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
+                        .allowsTightening(true)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -378,6 +442,8 @@ struct SubscriptionView: View {
                 if let footerText {
                     Text(footerText)
                         .font(.callout.weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
                         .foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
                 }
 
@@ -385,6 +451,8 @@ struct SubscriptionView: View {
                     Button(footerActionTitle, action: action)
                         .buttonStyle(.plain)
                         .font(.callout.weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
                         .foregroundStyle(Color.accentColor)
                 }
             }

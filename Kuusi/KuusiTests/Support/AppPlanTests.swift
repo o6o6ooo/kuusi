@@ -12,7 +12,7 @@ struct AppPlanTests {
         #expect(AppPlan.free.productID == nil)
         #expect(AppPlan.free.featureLines == [
             "1GB storage",
-            "2 years photo preview",
+            "2-year access",
             "Up to 3 groups",
             "Ads included"
         ])
@@ -27,7 +27,7 @@ struct AppPlanTests {
         #expect(AppPlan.premium.productID == "com.swallace.kuusi.premium.annual")
         #expect(AppPlan.premium.featureLines == [
             "50GB storage",
-            "All photo preview",
+            "Full previews",
             "Up to 10 groups",
             "No ads"
         ])
