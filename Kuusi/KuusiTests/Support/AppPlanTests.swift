@@ -13,7 +13,8 @@ struct AppPlanTests {
         #expect(AppPlan.free.featureLines == [
             "1GB storage",
             "2 years photo preview",
-            "Up to 3 groups"
+            "Up to 3 groups",
+            "Ads included"
         ])
     }
 
@@ -27,7 +28,8 @@ struct AppPlanTests {
         #expect(AppPlan.premium.featureLines == [
             "50GB storage",
             "All photo preview",
-            "Up to 10 groups"
+            "Up to 10 groups",
+            "No ads"
         ])
     }
 
