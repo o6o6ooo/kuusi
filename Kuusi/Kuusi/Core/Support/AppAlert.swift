@@ -58,17 +58,17 @@ private extension AppAlert.ID {
     var title: String {
         switch self {
         case .deletePhotoConfirm:
-            return "Delete photo?"
+            return String(localized: "alert.delete_photo.title")
         case .deleteAccountConfirm:
-            return "Delete account?"
+            return String(localized: "alert.delete_account.title")
         case .removeGroupMemberConfirm:
-            return "Remove member?"
+            return String(localized: "alert.remove_member.title")
         case .createGroupPrompt:
-            return "Create Group"
+            return String(localized: "alert.create_group.title")
         case .editGroupPrompt:
-            return "Edit Group"
+            return String(localized: "alert.edit_group.title")
         case .editNamePrompt:
-            return "Edit Name"
+            return String(localized: "alert.edit_name.title")
         case let .destructiveGroupConfirm(title, _, _):
             return title
         }
@@ -77,17 +77,17 @@ private extension AppAlert.ID {
     var message: String {
         switch self {
         case .deletePhotoConfirm:
-            return "This will permanently delete the photo."
+            return String(localized: "alert.delete_photo.message")
         case .deleteAccountConfirm:
-            return "This will permanently delete your account, your photos, and any groups you created."
+            return String(localized: "alert.delete_account.message")
         case let .removeGroupMemberConfirm(memberName):
-            return "This will remove \(memberName) from the group."
+            return String(format: String(localized: "alert.remove_member.message"), memberName)
         case .createGroupPrompt:
-            return "Enter a name for the new group."
+            return String(localized: "alert.create_group.message")
         case .editGroupPrompt:
-            return "Enter a new group name."
+            return String(localized: "alert.edit_group.message")
         case .editNamePrompt:
-            return "Enter your display name."
+            return String(localized: "alert.edit_name.message")
         case let .destructiveGroupConfirm(_, message, _):
             return message
         }
@@ -96,24 +96,24 @@ private extension AppAlert.ID {
     var confirmButtonTitle: String {
         switch self {
         case .deletePhotoConfirm:
-            return "Delete"
+            return String(localized: "alert.delete_photo.confirm")
         case .deleteAccountConfirm:
-            return "Delete account"
+            return String(localized: "alert.delete_account.confirm")
         case .removeGroupMemberConfirm:
-            return "Remove"
+            return String(localized: "alert.remove_member.confirm")
         case .createGroupPrompt:
-            return "Create"
+            return String(localized: "alert.create_group.confirm")
         case .editGroupPrompt:
-            return "Save"
+            return String(localized: "common.save")
         case .editNamePrompt:
-            return "OK"
+            return String(localized: "common.ok")
         case let .destructiveGroupConfirm(_, _, confirmButtonTitle):
             return confirmButtonTitle
         }
     }
 
     var cancelButtonTitle: String {
-        "Cancel"
+        String(localized: "common.cancel")
     }
 
     var confirmButtonRole: ButtonRole? {
@@ -128,9 +128,9 @@ private extension AppAlert.ID {
     var textFieldTitle: String? {
         switch self {
         case .createGroupPrompt, .editGroupPrompt:
-            return "Group name"
+            return String(localized: "alert.group_name.placeholder")
         case .editNamePrompt:
-            return "Name"
+            return String(localized: "alert.name.placeholder")
         case .deletePhotoConfirm, .deleteAccountConfirm, .removeGroupMemberConfirm, .destructiveGroupConfirm:
             return nil
         }

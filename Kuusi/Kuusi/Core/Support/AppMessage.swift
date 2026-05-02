@@ -116,179 +116,179 @@ extension AppMessage.ID {
     var text: String {
         switch self {
         case .appleSignInFailed:
-            return "Apple Sign-In failed"
+            return String(localized: "message.apple_sign_in_failed")
         case .appleTokenUnavailable:
-            return "Apple ID token was not available"
+            return String(localized: "message.apple_token_unavailable")
         case .biometricAuthenticationFailed:
-            return "Biometric authentication failed"
+            return String(localized: "message.biometric_authentication_failed")
         case .cameraAccessDenied:
-            return "Allow camera access in Settings to scan QR codes"
+            return String(localized: "message.camera_access_denied")
         case .cameraUnavailable:
-            return "Camera is not available"
+            return String(localized: "message.camera_unavailable")
         case .couldNotOpenGooglePhotos:
-            return "Could not open Google Photos"
+            return String(localized: "message.could_not_open_google_photos")
         case .couldNotOpenGoogleSignIn:
-            return "Could not open Google Sign-In"
+            return String(localized: "message.could_not_open_google_sign_in")
         case .googleAccountMismatch:
-            return "This Google account does not match the linked account"
+            return String(localized: "message.google_account_mismatch")
         case .googlePhotosPickerReturnedInvalidLink:
-            return "Google Photos did not return a valid picker link"
+            return String(localized: "message.google_photos_picker_returned_invalid_link")
         case .googlePhotosPickerTimedOut:
-            return "Google Photos selection took too long"
+            return String(localized: "message.google_photos_picker_timed_out")
         case .googlePhotosRequestFailed:
-            return "Google Photos request failed"
+            return String(localized: "message.google_photos_request_failed")
         case .googleSignInNotConfigured:
-            return "Google Sign-In is not configured yet"
+            return String(localized: "message.google_sign_in_not_configured")
         case .googleSignInReturnedIncompleteAccount:
-            return "Google Sign-In did not return a valid email address"
+            return String(localized: "message.google_sign_in_returned_incomplete_account")
         case .googleSignInReturnedInvalidToken:
-            return "Google Sign-In did not return a valid token"
+            return String(localized: "message.google_sign_in_returned_invalid_token")
         case .noLinkedGoogleAccount:
-            return "Connect a Google account in Settings first"
+            return String(localized: "message.no_linked_google_account")
         case .noPhotosSelectedFromGooglePhotos:
-            return "No photos were selected from Google Photos"
+            return String(localized: "message.no_photos_selected_from_google_photos")
         case .failedToGenerateQRCode:
-            return "Failed to generate QR code"
+            return String(localized: "message.failed_to_generate_qr_code")
         case .cannotDeleteOthersPhotos:
-            return "You can only delete your own photos"
+            return String(localized: "message.cannot_delete_others_photos")
         case .cannotEditOthersPhotos:
-            return "You can only edit your own photos"
+            return String(localized: "message.cannot_edit_others_photos")
         case .debugEmailPasswordProviderDisabled:
-            return "Enable Email/Password provider in Firebase Authentication for debug login"
+            return String(localized: "message.debug_email_password_provider_disabled")
         case .debugInvalidCredentials:
-            return "Debug user credentials are invalid, check email/password"
+            return String(localized: "message.debug_invalid_credentials")
         case .debugSignInFailed:
-            return "Debug sign-in failed"
+            return String(localized: "message.debug_sign_in_failed")
         case .enterValidYear:
-            return "Enter a valid year"
+            return String(localized: "message.enter_valid_year")
         case .failedToLoadImage:
-            return "Failed to load image"
+            return String(localized: "message.failed_to_load_image")
         case .failedToLoadGroupMembers:
-            return "Failed to load group members"
+            return String(localized: "message.failed_to_load_group_members")
         case .failedToLoadGroups:
-            return "Failed to load groups"
+            return String(localized: "message.failed_to_load_groups")
         case .failedToLoadProfile:
-            return "Failed to load profile"
+            return String(localized: "message.failed_to_load_profile")
         case .failedToConnectGoogleAccount:
-            return "Failed to connect Google account"
+            return String(localized: "message.failed_to_connect_google_account")
         case .failedToCreateGroup:
-            return "Failed to create group"
+            return String(localized: "message.failed_to_create_group")
         case .failedToDeleteGroup:
-            return "Failed to delete group"
+            return String(localized: "message.failed_to_delete_group")
         case .failedToDeleteAccount:
-            return "Failed to delete account"
+            return String(localized: "message.failed_to_delete_account")
         case .failedToDeletePhoto:
-            return "Failed to delete photo"
+            return String(localized: "message.failed_to_delete_photo")
         case .failedToRemoveMember:
-            return "Failed to remove member"
+            return String(localized: "message.failed_to_remove_member")
         case .failedToDisconnectGoogleAccount:
-            return "Failed to disconnect Google account"
+            return String(localized: "message.failed_to_disconnect_google_account")
         case .failedToImportFromGooglePhotos:
-            return "Failed to import from Google Photos"
+            return String(localized: "message.failed_to_import_from_google_photos")
         case .failedToLoadFeed:
-            return "Failed to load photos"
+            return String(localized: "message.failed_to_load_feed")
         case .failedToJoinGroup:
-            return "Failed to join group"
+            return String(localized: "message.failed_to_join_group")
         case .failedToLeaveGroup:
-            return "Failed to leave group"
+            return String(localized: "message.failed_to_leave_group")
         case .failedToOpenManageSubscriptions:
-            return "Could not open subscription management"
+            return String(localized: "message.failed_to_open_manage_subscriptions")
         case .failedToOpenPrivacyChoices:
-            return "Could not open privacy choices"
+            return String(localized: "message.failed_to_open_privacy_choices")
         case .failedToRestorePurchases:
-            return "Failed to restore purchases"
+            return String(localized: "message.failed_to_restore_purchases")
         case .failedToSetUpAccount:
-            return "Failed to set up account"
+            return String(localized: "message.failed_to_set_up_account")
         case .failedToSaveProfile:
-            return "Failed to save profile"
+            return String(localized: "message.failed_to_save_profile")
         case .failedToSignOut:
-            return "Failed to sign out"
+            return String(localized: "message.failed_to_sign_out")
         case .failedToUpdateGroup:
-            return "Failed to update group"
+            return String(localized: "message.failed_to_update_group")
         case .failedToUpdatePhoto:
-            return "Failed to update photo"
+            return String(localized: "message.failed_to_update_photo")
         case .failedToUpdateFavourite:
-            return "Failed to update favourite"
+            return String(localized: "message.failed_to_update_favourite")
         case .fillInGroupName:
-            return "Fill in group name"
+            return String(localized: "message.fill_in_group_name")
         case .googleAccountConnected:
-            return "Google account connected"
+            return String(localized: "message.google_account_connected")
         case .googleAccountDisconnected:
-            return "Google account disconnected"
+            return String(localized: "message.google_account_disconnected")
         case .groupNotFound:
-            return "Group not found"
+            return String(localized: "message.group_not_found")
         case let .groupMemberLimitReached(maxMembers):
-            return "This group is full. Up to \(maxMembers) members are supported"
+            return String(format: String(localized: "message.group_member_limit_reached"), maxMembers)
         case .groupCreated:
-            return "Group created"
+            return String(localized: "message.group_created")
         case .groupDeleted:
-            return "Group deleted"
+            return String(localized: "message.group_deleted")
         case .inviteQRCodeExpired:
-            return "Invite QR has expired"
+            return String(localized: "message.invite_qr_code_expired")
         case .ownerCannotLeave:
-            return "Group owners cannot leave their group"
+            return String(localized: "message.owner_cannot_leave")
         case .groupUpdated:
-            return "Group updated"
+            return String(localized: "message.group_updated")
         case .invalidInviteQR:
-            return "Invalid invite QR"
+            return String(localized: "message.invalid_invite_qr")
         case .joinedGroup:
-            return "Joined group"
+            return String(localized: "message.joined_group")
         case .leftGroup:
-            return "Left group"
+            return String(localized: "message.left_group")
         case .memberRemoved:
-            return "Member removed"
+            return String(localized: "message.member_removed")
         case .nameCannotBeEmpty:
-            return "Name cannot be empty"
+            return String(localized: "message.name_cannot_be_empty")
         case .noActivePurchasesFound:
-            return "No active purchases found"
+            return String(localized: "message.no_active_purchases_found")
         case .onlyOwnerCanRemoveMembers:
-            return "Only the group owner can remove members"
+            return String(localized: "message.only_owner_can_remove_members")
         case .ownerCannotBeRemoved:
-            return "Group owners cannot be removed"
+            return String(localized: "message.owner_cannot_be_removed")
         case .photoAlreadyBeingUpdated:
-            return "Photo is already being updated"
+            return String(localized: "message.photo_already_being_updated")
         case .photoDeleted:
-            return "Photo deleted"
+            return String(localized: "message.photo_deleted")
         case .photoUpdated:
-            return "Photo updated"
+            return String(localized: "message.photo_updated")
         case let .photosImportedFromGooglePhotos(count):
-            return "\(count) photos imported from Google Photos"
+            return String(format: String(localized: "message.photos_imported_from_google_photos"), count)
         case .pleaseSignInFirst:
-            return "Please sign in first"
+            return String(localized: "message.please_sign_in_first")
         case .purchaseCouldNotBeVerified:
-            return "Purchase could not be verified"
+            return String(localized: "message.purchase_could_not_be_verified")
         case .purchaseFailed:
-            return "Purchase failed"
+            return String(localized: "message.purchase_failed")
         case .purchasePendingApproval:
-            return "Purchase is pending approval"
+            return String(localized: "message.purchase_pending_approval")
         case .premiumUnlocked:
-            return "Premium unlocked"
+            return String(localized: "message.premium_unlocked")
         case .profileUpdated:
-            return "Profile updated"
+            return String(localized: "message.profile_updated")
         case .purchasesRestored:
-            return "Purchases restored"
+            return String(localized: "message.purchases_restored")
         case .qrCodeNotFoundInImage:
-            return "QR code was not found in the image"
+            return String(localized: "message.qr_code_not_found_in_image")
         case .recentLoginRequired:
-            return "Please sign in again before deleting your account"
+            return String(localized: "message.recent_login_required")
         case .removedFromFavourites:
-            return "Removed from favourites"
+            return String(localized: "message.removed_from_favourites")
         case .addedToFavourites:
-            return "Added to favourites"
+            return String(localized: "message.added_to_favourites")
         case .selectGroup:
-            return "Select a group"
+            return String(localized: "message.select_group")
         case .subscriptionCancelled:
-            return "Automatic renewal cancelled"
+            return String(localized: "message.subscription_cancelled")
         case .subscriptionResumed:
-            return "Subscription resumed"
+            return String(localized: "message.subscription_resumed")
         case .subscriptionUnavailable:
-            return "Premium subscription is not available right now"
+            return String(localized: "message.subscription_unavailable")
         case .storageLimitReached:
-            return "You've reached your storage limit"
+            return String(localized: "message.storage_limit_reached")
         case .uploadCompleted:
-            return "Upload completed"
+            return String(localized: "message.upload_completed")
         case let .groupLimitReached(title, maxGroups):
-            return "\(title) supports up to \(maxGroups) groups"
+            return String(format: String(localized: "message.group_limit_reached"), title, maxGroups)
         }
     }
 }

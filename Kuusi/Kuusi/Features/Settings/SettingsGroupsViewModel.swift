@@ -121,17 +121,17 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     var destructiveActionTitle: String {
-        currentUserIsSelectedGroupOwner ? "Delete group?" : "Leave group?"
+        currentUserIsSelectedGroupOwner ? String(localized: "alert.delete_group.title") : String(localized: "alert.leave_group.title")
     }
 
     var destructiveActionMessage: String {
         currentUserIsSelectedGroupOwner
-            ? "This will remove the group for all members and permanently delete all photos in it."
-            : "You will be removed from this group."
+            ? String(localized: "alert.delete_group.message")
+            : String(localized: "alert.leave_group.message")
     }
 
     var destructiveActionButtonTitle: String {
-        currentUserIsSelectedGroupOwner ? "Delete" : "Leave"
+        currentUserIsSelectedGroupOwner ? String(localized: "alert.delete_group.confirm") : String(localized: "alert.leave_group.confirm")
     }
 
     let appShareURL = URL(string: "https://apps.apple.com/app/id1234567890")!
