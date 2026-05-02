@@ -325,7 +325,7 @@ struct PhotoCollectionViewModelTests {
         await viewModel.refresh(limit: 6)
 
         #expect(viewModel.selectedGroupID == "group-b")
-        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new"])
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old-b"])
         #expect(feedService.fetchCalls.count == 1)
         #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)

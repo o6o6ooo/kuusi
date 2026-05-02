@@ -12,7 +12,7 @@ struct AppPlanTests {
         #expect(AppPlan.free.productID == nil)
         #expect(AppPlan.free.featureLines == [
             "1GB storage",
-            "2-year access",
+            "2-year previews",
             "Up to 3 groups",
             "Ads included"
         ])

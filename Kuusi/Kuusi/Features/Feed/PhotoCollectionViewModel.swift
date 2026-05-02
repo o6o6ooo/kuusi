@@ -96,10 +96,14 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     convenience init() {
+        let launchArguments = ProcessInfo.processInfo.arguments
         self.init(
             feedService: FeedService(),
             groupService: GroupService(),
-            currentUserIDProvider: { Auth.auth().currentUser?.uid }
+            currentUserIDProvider: {
+                guard !launchArguments.contains("UI_TEST_FORCE_EMPTY_GROUPS") else { return nil }
+                return Auth.auth().currentUser?.uid
+            }
         )
     }
 

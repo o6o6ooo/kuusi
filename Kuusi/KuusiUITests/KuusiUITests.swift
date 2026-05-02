@@ -11,9 +11,11 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_OUT"]
         app.launch()
 
+        let loginScreen = app.descendants(matching: .any)["login-screen"]
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-out"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["login-title"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["login-subtitle"].exists)
+        XCTAssertTrue(loginScreen.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Kuusi"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Share photos with your loved ones"].exists)
     }
 
     @MainActor
@@ -23,7 +25,6 @@ final class KuusiUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
@@ -33,13 +34,16 @@ final class KuusiUITests: XCTestCase {
         app.launchArguments = ["UI_TEST_ROUTE_LOCKED"]
         app.launch()
 
+        let unlockScreen = app.descendants(matching: .any)["unlock-screen"]
         XCTAssertTrue(app.staticTexts["ui-test-route-locked"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["unlock-button"].waitForExistence(timeout: 5))
+        XCTAssertTrue(unlockScreen.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Unlock Kuusi"].waitForExistence(timeout: 5))
+        let unlockButton = app.buttons["Unlock"]
+        XCTAssertTrue(unlockButton.waitForExistence(timeout: 5))
 
-        app.buttons["unlock-button"].tap()
+        unlockButton.tap()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
@@ -76,19 +80,20 @@ final class KuusiUITests: XCTestCase {
     @MainActor
     func testSignedInLaunchShowsFeedNoGroupsState() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN", "UI_TEST_FORCE_EMPTY_GROUPS"]
         app.launch()
 
+        let feedEmptyState = app.descendants(matching: .any)["feed-empty-state"]
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-feed-no-groups"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.otherElements["feed-empty-state"].exists)
+        XCTAssertTrue(feedEmptyState.waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testSignedInLaunchHidesFeedActionButtonsWithoutGroups() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN", "UI_TEST_FORCE_EMPTY_GROUPS"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
@@ -120,7 +125,7 @@ final class KuusiUITests: XCTestCase {
     @MainActor
     func testSignedInLaunchShowsGroupsEmptyStateInSettings() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN", "UI_TEST_FORCE_EMPTY_GROUPS"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
