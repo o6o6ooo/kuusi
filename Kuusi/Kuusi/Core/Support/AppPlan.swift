@@ -62,7 +62,7 @@ enum AppPlan: String {
             return [
 							"No ads",
                 "50GB storage",
-                "All photo preview",
+                "Unlimited photo preview",
                 "Up to 10 groups"
             ]
         }
