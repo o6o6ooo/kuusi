@@ -73,6 +73,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isPhotoPickerPresented = false
     @Published var isQRCodeScannerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
+    @Published var isPreparingGroupQRCode = false
     @Published var isMemberListPresented = false
     @Published var isJoiningGroup = false
     @Published private(set) var selectedGroupInvitePayload: String?
@@ -181,6 +182,8 @@ final class SettingsGroupsViewModel: ObservableObject {
     func presentGroupQRCode(for group: GroupSummary) async {
         selectedGroupID = group.id
         editableGroupName = group.name
+        isPreparingGroupQRCode = true
+        defer { isPreparingGroupQRCode = false }
 
         do {
             selectedGroupInvitePayload = try await groupService.createInvitePayload(groupID: group.id)

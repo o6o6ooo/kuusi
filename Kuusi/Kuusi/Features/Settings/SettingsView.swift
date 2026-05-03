@@ -16,6 +16,16 @@ struct SettingsView: View {
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
 
+    private var groupLoadingMessageKey: LocalizedStringKey? {
+        if groupsViewModel.isPreparingGroupQRCode {
+            return "groups.loading.qr_code"
+        }
+        if groupsViewModel.isJoiningGroup {
+            return "groups.loading.joining"
+        }
+        return nil
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -65,6 +75,11 @@ struct SettingsView: View {
                 .frame(width: 0, height: 0)
                 .clipped()
                 .allowsHitTesting(false)
+            }
+            .overlay {
+                if let messageKey = groupLoadingMessageKey {
+                    SettingsLoadingOverlay(messageKey: messageKey)
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .task {
@@ -179,5 +194,29 @@ struct SettingsView: View {
         } catch {
             privacyMessage = AppMessage(.failedToOpenPrivacyChoices, .error)
         }
+    }
+}
+
+private struct SettingsLoadingOverlay: View {
+    let messageKey: LocalizedStringKey
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.16)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+
+                Text(messageKey)
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 18)
+            .appCardSurface(cornerRadius: 18, shadowRadius: 10, shadowOpacityMultiplier: 0.8)
+        }
+        .transition(.opacity)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -493,6 +493,38 @@
         }
       }
     },
+    "groups.loading.joining" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joining group..."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループに参加中..."
+          }
+        }
+      }
+    },
+    "groups.loading.qr_code" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing QR code..."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QRコードを準備中..."
+          }
+        }
+      }
+    },
     "groups.members.remove_accessibility" : {
       "localizations" : {
         "en" : {
