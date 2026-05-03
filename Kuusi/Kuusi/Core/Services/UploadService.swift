@@ -17,13 +17,13 @@ final class UploadService {
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
 
-    func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws {
+    func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws -> [FeedPhoto] {
         let preparedImages = await prepareImagesForUpload(images)
         try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
         let uploadBatchID = UUID().uuidString
         let uploadBatchCount = preparedImages.count
 
-        let totalUploadedMB = try await uploadPreparedImages(
+        let result = try await uploadPreparedImages(
             preparedImages,
             userID: userID,
             groupID: groupID,
@@ -32,7 +32,8 @@ final class UploadService {
             uploadBatchID: uploadBatchID,
             uploadBatchCount: uploadBatchCount
         )
-        try await updateUserUsage(uid: userID, totalMB: totalUploadedMB)
+        try await updateUserUsage(uid: userID, totalMB: result.totalUploadedMB)
+        return result.photos
     }
 
     func estimatedUploadSizeMB(for images: [UIImage]) async throws -> Double {
@@ -104,10 +105,10 @@ final class UploadService {
         hashtags: [String],
         uploadBatchID: String,
         uploadBatchCount: Int
-    ) async throws -> Double {
+    ) async throws -> UploadResult {
         var iterator = preparedImages.makeIterator()
 
-        return try await withThrowingTaskGroup(of: Double.self) { group in
+        return try await withThrowingTaskGroup(of: UploadedPhoto.self) { group in
             for _ in 0..<min(maxConcurrentImageUploads, preparedImages.count) {
                 guard let prepared = iterator.next() else { break }
                 group.addTask { [self] in
@@ -124,9 +125,11 @@ final class UploadService {
             }
 
             var totalUploadedMB = 0.0
+            var photos: [FeedPhoto] = []
 
-            while let uploadedMB = try await group.next() {
-                totalUploadedMB += uploadedMB
+            while let uploaded = try await group.next() {
+                totalUploadedMB += uploaded.sizeMB
+                photos.append(uploaded.photo)
 
                 if let prepared = iterator.next() {
                     group.addTask { [self] in
@@ -143,7 +146,8 @@ final class UploadService {
                 }
             }
 
-            return totalUploadedMB
+            photos.sort { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            return UploadResult(photos: photos, totalUploadedMB: totalUploadedMB)
         }
     }
 
@@ -155,9 +159,10 @@ final class UploadService {
         hashtags: [String],
         uploadBatchID: String,
         uploadBatchCount: Int
-    ) async throws -> Double {
+    ) async throws -> UploadedPhoto {
         let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
         let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
+        let createdAt = Date()
 
         async let previewUploadTask = uploadData(prepared.previewData, at: previewPath)
         async let thumbUploadTask = uploadData(prepared.thumbData, at: thumbPath)
@@ -176,8 +181,23 @@ final class UploadService {
             uploadBatchCount: uploadBatchCount
         )
 
-        try await addPhotoDocument(payload)
-        return prepared.sizeMB
+        let documentID = try await addPhotoDocument(payload)
+        return UploadedPhoto(
+            photo: FeedPhoto(
+                id: documentID,
+                previewStoragePath: previewPath,
+                thumbnailStoragePath: thumbPath,
+                groupID: groupID,
+                postedBy: userID,
+                year: year,
+                hashtags: hashtags,
+                isFavourite: false,
+                sizeMB: Self.roundedMegabytes(prepared.sizeMB),
+                aspectRatio: prepared.aspectRatio,
+                createdAt: createdAt
+            ),
+            sizeMB: prepared.sizeMB
+        )
     }
 
     private func resizedJPEGData(from image: UIImage, maxDimension: CGFloat, compression: CGFloat) -> Data? {
@@ -213,9 +233,10 @@ final class UploadService {
         }
     }
 
-    private func addPhotoDocument(_ data: [String: Any]) async throws {
+    private func addPhotoDocument(_ data: [String: Any]) async throws -> String {
+        let ref = db.collection("photos").document()
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.collection("photos").addDocument(data: data) { error in
+            ref.setData(data) { error in
                 if let error {
                     continuation.resume(throwing: error)
                     return
@@ -223,6 +244,7 @@ final class UploadService {
                 continuation.resume(returning: ())
             }
         }
+        return ref.documentID
     }
 
     private func updateUserUsage(uid: String, totalMB: Double) async throws {
@@ -289,6 +311,16 @@ final class UploadService {
             "created_at": FieldValue.serverTimestamp()
         ]
     }
+}
+
+private struct UploadResult: Sendable {
+    let photos: [FeedPhoto]
+    let totalUploadedMB: Double
+}
+
+private struct UploadedPhoto: Sendable {
+    let photo: FeedPhoto
+    let sizeMB: Double
 }
 
 struct PreparedImage: Sendable {

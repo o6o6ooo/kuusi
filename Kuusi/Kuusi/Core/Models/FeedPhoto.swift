@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct FeedPhoto: Identifiable {
+struct FeedPhoto: Identifiable, Sendable {
     let id: String
     let previewStoragePath: String?
     let thumbnailStoragePath: String?
@@ -15,7 +15,7 @@ struct FeedPhoto: Identifiable {
     let createdAt: Date?
 }
 
-struct FeedPhotoMetadataUpdate {
+struct FeedPhotoMetadataUpdate: Sendable {
     let year: Int
     let hashtags: [String]
     let createdAt: Date?

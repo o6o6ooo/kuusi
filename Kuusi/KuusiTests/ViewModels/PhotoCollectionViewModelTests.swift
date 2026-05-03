@@ -102,6 +102,37 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func prependUploadedPhotosAddsPhotosToGroupCache() {
+        let viewModel = makeViewModel(userID: "prepend-upload-user")
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+        viewModel.photosByGroupID = [
+            "group-a": [
+                makePhoto(
+                    id: "photo-old",
+                    groupID: "group-a",
+                    year: 2024,
+                    hashtags: ["old"],
+                    createdAt: Date(timeIntervalSince1970: 100)
+                )
+            ]
+        ]
+
+        viewModel.prependUploadedPhotos([
+            makePhoto(
+                id: "photo-new",
+                groupID: "group-a",
+                year: 2026,
+                hashtags: ["new"],
+                createdAt: Date(timeIntervalSince1970: 200)
+            )
+        ])
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old"])
+        #expect(viewModel.currentGroupAvailableHashtags == ["new", "old"])
+    }
+
+    @Test
     func selectGroupLoadsPhotosWhenMissingFromCache() async throws {
         let feedService = FeedServiceSpy()
         let expected = [makePhoto(id: "photo-b", groupID: "group-b", year: 2022)]

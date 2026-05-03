@@ -182,6 +182,22 @@ final class PhotoCollectionViewModel: ObservableObject {
         persistCachedPhotosIfPossible()
     }
 
+    func prependUploadedPhotos(_ uploadedPhotos: [FeedPhoto]) {
+        guard !uploadedPhotos.isEmpty else { return }
+
+        for groupID in Set(uploadedPhotos.compactMap(\.groupID)) {
+            let newPhotos = uploadedPhotos.filter { $0.groupID == groupID }
+            let existingPhotos = photosByGroupID[groupID] ?? []
+            photosByGroupID[groupID] = Self.mergeFreshPhotos(newPhotos, withExistingPhotos: existingPhotos)
+                .sorted(by: Self.photosAreOrderedBefore)
+            availableHashtagsByGroupID[groupID] = Self.makeAvailableHashtags(from: photosByGroupID[groupID] ?? [])
+            nextCursorByGroupID[groupID] = Self.makeNextCursor(from: photosByGroupID[groupID] ?? [])
+            hasMorePhotosByGroupID[groupID] = hasMorePhotosByGroupID[groupID] ?? false
+        }
+
+        persistCachedPhotosIfPossible()
+    }
+
     func removePhoto(id: String) {
         guard let selectedGroupID else { return }
         guard var cachedPhotos = photosByGroupID[selectedGroupID] else { return }

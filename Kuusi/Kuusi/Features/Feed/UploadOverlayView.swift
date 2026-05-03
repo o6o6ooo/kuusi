@@ -139,10 +139,12 @@ struct UploadOverlayView: View {
     private let googlePhotosPickerService = GooglePhotosPickerService()
     let currentUsageMB: Double
     let isPremiumActive: Bool
+    let onUploadCompleted: ([FeedPhoto]) -> Void
 
-    init(currentUsageMB: Double, isPremiumActive: Bool) {
+    init(currentUsageMB: Double, isPremiumActive: Bool, onUploadCompleted: @escaping ([FeedPhoto]) -> Void = { _ in }) {
         self.currentUsageMB = currentUsageMB
         self.isPremiumActive = isPremiumActive
+        self.onUploadCompleted = onUploadCompleted
         _effectiveUsageMB = State(initialValue: currentUsageMB)
     }
 
@@ -577,13 +579,14 @@ struct UploadOverlayView: View {
         defer { isUploading = false }
 
         do {
-            try await uploadService.upload(
+            let uploadedPhotos = try await uploadService.upload(
                 images: selectedImages,
                 userID: uid,
                 groupID: groupID,
                 year: year,
                 hashtags: hashtags
             )
+            onUploadCompleted(uploadedPhotos)
             selectedImages = []
             pickerItems = []
             hashtagInput = ""

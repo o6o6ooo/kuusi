@@ -225,7 +225,16 @@ struct FeedView: View {
             .sheet(isPresented: $isUploadOverlayPresented) {
                 UploadOverlayView(
                     currentUsageMB: profileViewModel.usageMB,
-                    isPremiumActive: subscriptionStore.isPremiumActive
+                    isPremiumActive: subscriptionStore.isPremiumActive,
+                    onUploadCompleted: { uploadedPhotos in
+                        photoCollection.prependUploadedPhotos(uploadedPhotos)
+                        if let uploadedGroupID = uploadedPhotos.first?.groupID {
+                            selectedHashtag = nil
+                            hiddenInlineAdPhotoIDs.removeAll()
+                            groupStore.selectedGroupID = uploadedGroupID
+                            photoCollection.selectedGroupID = uploadedGroupID
+                        }
+                    }
                 )
                     .presentationDetents([.fraction(0.60)])
                     .presentationDragIndicator(.visible)
