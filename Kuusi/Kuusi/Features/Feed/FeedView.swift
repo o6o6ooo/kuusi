@@ -93,6 +93,10 @@ struct FeedView: View {
         UIDevice.current.userInterfaceIdiom == .pad ? 24 : 18
     }
 
+    private var uploadOverlayDetents: Set<PresentationDetent> {
+        UIDevice.current.userInterfaceIdiom == .pad ? [.fraction(0.80)] : [.fraction(0.60)]
+    }
+
     private var shouldShowFeedAds: Bool {
         FeedAdRules.shouldShowFeedAds(isPremiumActive: subscriptionStore.isPremiumActive)
     }
@@ -236,7 +240,7 @@ struct FeedView: View {
                         }
                     }
                 )
-                    .presentationDetents([.fraction(0.60)])
+                    .presentationDetents(uploadOverlayDetents)
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isSettingsPresented, onDismiss: {
