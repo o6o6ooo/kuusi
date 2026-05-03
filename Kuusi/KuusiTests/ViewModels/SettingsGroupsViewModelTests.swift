@@ -142,23 +142,40 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
-    func joinGroupFromQRCodePayloadReloadsGroupsAndShowsSuccess() async {
+    func joinGroupFromQRCodePayloadAddsJoinedGroupAndShowsSuccess() async {
         let groupService = SettingsGroupsServiceSpy()
-        groupService.fetchedGroups = [
-            makeGroup(id: "group-1", name: "Family"),
-            makeGroup(id: "group-2", name: "Friends")
-        ]
+        groupService.joinGroupResult = JoinGroupResult(
+            group: makeGroup(id: "group-2", name: "Friends"),
+            didJoin: true
+        )
         let viewModel = makeViewModel(groupService: groupService)
 
         await viewModel.joinGroupFromQRCodePayload("kuusi://invite/ABC123")
 
         #expect(groupService.joinGroupInviteTokens == ["abc123"])
-        #expect(viewModel.groups.map(\.id) == ["group-1", "group-2"])
-        #expect(viewModel.selectedGroupID == "group-1")
-        #expect(viewModel.editableGroupName == "Family")
+        #expect(viewModel.groups.map(\.id) == ["group-2"])
+        #expect(viewModel.selectedGroupID == "group-2")
+        #expect(viewModel.editableGroupName == "Friends")
         #expect(viewModel.saveStatusMessage?.id == .joinedGroup)
-        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-1", "group-2"])
-        #expect(groupService.loadMemberPreviewsCalls.count == 2)
+        #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-2"])
+        #expect(groupService.loadMemberPreviewsCalls.count == 1)
+        #expect(groupService.loadMemberPreviewsCalls.first?.groupID == "group-2")
+    }
+
+    @Test
+    func joinGroupFromQRCodePayloadShowsAlreadyJoinedMessage() async {
+        let groupService = SettingsGroupsServiceSpy()
+        groupService.joinGroupResult = JoinGroupResult(
+            group: makeGroup(id: "group-2", name: "Friends"),
+            didJoin: false
+        )
+        let viewModel = makeViewModel(groupService: groupService)
+
+        await viewModel.joinGroupFromQRCodePayload("kuusi://invite/ABC123")
+
+        #expect(viewModel.groups.map(\.id) == ["group-2"])
+        #expect(viewModel.selectedGroupID == "group-2")
+        #expect(viewModel.saveStatusMessage?.id == .alreadyJoinedGroup)
     }
 
     @Test
@@ -267,14 +284,15 @@ struct SettingsGroupsViewModelTests {
     }
 
     private func makeViewModel(
-        groupService: SettingsGroupsServicing = SettingsGroupsServiceSpy(),
+        groupService: SettingsGroupsServicing? = nil,
         currentUserID: String? = "user-1"
     ) -> SettingsGroupsViewModel {
+        let groupService = groupService ?? SettingsGroupsServiceSpy()
         let groupStore = GroupStore(
             groupService: groupService,
             currentUserIDProvider: { currentUserID }
         )
-        SettingsGroupsViewModel(
+        return SettingsGroupsViewModel(
             groupService: groupService,
             groupStore: groupStore,
             currentUserIDProvider: { currentUserID }
@@ -302,6 +320,7 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var deletedGroupIDs: [String] = []
     var leaveGroupCalls: [(groupID: String, uid: String)] = []
     var joinGroupInviteTokens: [String] = []
+    var joinGroupResult: JoinGroupResult?
     var removeMemberCalls: [(groupID: String, memberUID: String, requesterUID: String)] = []
     var cachedGroupsAssignments: [(uid: String, groups: [GroupSummary])] = []
     var memberPreviewsByGroupID: [String: [GroupMemberPreview]] = [:]
@@ -346,9 +365,13 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
         leaveGroupCalls.append((groupID, uid))
     }
 
-    func joinGroup(inviteToken: String) async throws {
+    func joinGroup(inviteToken: String) async throws -> JoinGroupResult {
         if let joinGroupError { throw joinGroupError }
         joinGroupInviteTokens.append(inviteToken)
+        return joinGroupResult ?? JoinGroupResult(
+            group: GroupSummary(id: "joined-group", name: "Joined", ownerUID: "owner", members: [], totalMemberCount: 1),
+            didJoin: true
+        )
     }
 
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws {
