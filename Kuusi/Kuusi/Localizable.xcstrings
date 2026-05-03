@@ -657,6 +657,7 @@
 
     },
     "message.added_to_favourites" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Added to favourites" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "お気に入りに追加しました" } } } },
+    "message.already_joined_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Already joined this group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "すでにこのグループに参加しています" } } } },
     "message.apple_sign_in_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Sign-In failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Appleサインインに失敗しました" } } } },
     "message.apple_token_unavailable" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple ID token was not available" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Apple IDトークンを取得できませんでした" } } } },
     "message.biometric_authentication_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Biometric authentication failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "生体認証に失敗しました" } } } },

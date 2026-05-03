@@ -53,7 +53,7 @@ protocol SettingsGroupsServicing: GroupStoreServicing {
     func updateGroupName(groupID: String, name: String) async throws
     func deleteGroup(groupID: String) async throws
     func leaveGroup(groupID: String, uid: String) async throws
-    func joinGroup(inviteToken: String) async throws
+    func joinGroup(inviteToken: String) async throws -> JoinGroupResult
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws
 }
 
@@ -383,9 +383,12 @@ final class SettingsGroupsViewModel: ObservableObject {
         defer { isJoiningGroup = false }
 
         do {
-            try await groupService.joinGroup(inviteToken: inviteToken)
-            await loadGroups()
-            setSaveStatus(AppMessage(.joinedGroup, .success))
+            let result = try await groupService.joinGroup(inviteToken: inviteToken)
+            groupStore.appendGroup(result.group)
+            editableGroupName = result.group.name
+            previewLoadedGroupIDs.remove(result.group.id)
+            await loadGroupPreviewIfNeeded(for: result.group.id, force: true)
+            setSaveStatus(AppMessage(result.didJoin ? .joinedGroup : .alreadyJoinedGroup, .success))
         } catch let error as GroupServiceError {
             setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {

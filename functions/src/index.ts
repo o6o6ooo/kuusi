@@ -216,6 +216,7 @@ export const joinGroupInvite = onCall({ region: callableFunctionRegion }, async 
 
   const groupRef = db.collection("groups").doc(groupId);
   const userRef = db.collection("users").doc(uid);
+  let didJoin = false;
 
   await db.runTransaction(async (transaction) => {
     const groupSnapshot = await transaction.get(groupRef);
@@ -226,7 +227,10 @@ export const joinGroupInvite = onCall({ region: callableFunctionRegion }, async 
     const groupData = groupSnapshot.data() as GroupData;
     const members = Array.isArray(groupData.members) ? groupData.members : [];
 
-    if (!members.includes(uid) && members.length >= maxGroupMembers) {
+    const isAlreadyMember = members.includes(uid);
+    didJoin = !isAlreadyMember;
+
+    if (!isAlreadyMember && members.length >= maxGroupMembers) {
       throw new HttpsError("resource-exhausted", "Group member limit reached");
     }
 
@@ -240,7 +244,7 @@ export const joinGroupInvite = onCall({ region: callableFunctionRegion }, async 
 
   return {
     groupId,
-    joined: true
+    joined: didJoin
   };
 });
 

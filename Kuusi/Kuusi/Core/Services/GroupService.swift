@@ -28,6 +28,11 @@ struct GroupSummary: Identifiable {
     let totalMemberCount: Int
 }
 
+struct JoinGroupResult {
+    let group: GroupSummary
+    let didJoin: Bool
+}
+
 final class GroupService {
     static let maxGroupMembers = 50
     static let inviteLifetimeHours = 24
@@ -235,11 +240,23 @@ final class GroupService {
         removeCachedGroup(groupID: groupID, for: uid)
     }
 
-    func joinGroup(inviteToken: String) async throws {
+    func joinGroup(inviteToken: String) async throws -> JoinGroupResult {
         do {
-            _ = try await functions.httpsCallable("joinGroupInvite").call([
+            let result = try await functions.httpsCallable("joinGroupInvite").call([
                 "inviteToken": inviteToken
             ])
+
+            guard
+                let data = result.data as? [String: Any],
+                let groupID = data["groupId"] as? String,
+                !groupID.isEmpty
+            else {
+                throw GroupServiceError.invalidInvite
+            }
+
+            let group = try await fetchGroupSummary(groupID: groupID)
+            let didJoin = (data["joined"] as? Bool) ?? true
+            return JoinGroupResult(group: group, didJoin: didJoin)
         } catch {
             throw mapInviteError(error)
         }
@@ -310,6 +327,14 @@ final class GroupService {
         }
     }
 
+    private func fetchGroupSummary(groupID: String) async throws -> GroupSummary {
+        let snapshot = try await getDocument(db.collection("groups").document(groupID))
+        guard snapshot.exists else {
+            throw GroupServiceError.groupNotFound
+        }
+        return makeGroupSummary(id: snapshot.documentID, data: snapshot.data() ?? [:])
+    }
+
     private func setDocument(_ ref: DocumentReference, data: [String: Any], merge: Bool) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             ref.setData(data, merge: merge) { error in
@@ -356,12 +381,15 @@ final class GroupService {
     }
 
     private func makeGroupSummaryWithoutPreviews(from document: QueryDocumentSnapshot) -> GroupSummary {
-        let data = document.data()
+        makeGroupSummary(id: document.documentID, data: document.data())
+    }
+
+    private func makeGroupSummary(id: String, data: [String: Any]) -> GroupSummary {
         let name = (data["name"] as? String) ?? "Untitled group"
         let ownerUID = (data["owner_uid"] as? String) ?? ""
         let memberIDs = (data["members"] as? [String]) ?? []
         return GroupSummary(
-            id: document.documentID,
+            id: id,
             name: name,
             ownerUID: ownerUID,
             members: [],

@@ -10,6 +10,7 @@ struct AppMessage: Equatable {
     }
 
     enum ID: Equatable {
+        case alreadyJoinedGroup
         case appleSignInFailed
         case appleTokenUnavailable
         case biometricAuthenticationFailed
@@ -115,6 +116,8 @@ struct AppMessage: Equatable {
 extension AppMessage.ID {
     var text: String {
         switch self {
+        case .alreadyJoinedGroup:
+            return String(localized: "message.already_joined_group")
         case .appleSignInFailed:
             return String(localized: "message.apple_sign_in_failed")
         case .appleTokenUnavailable:
