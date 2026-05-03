@@ -18,7 +18,7 @@ struct FeedTopChromeView: View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(groupName)
-                    .font(.system(size: 32, weight: .bold))
+                    .font(.largeTitle.weight(.bold))
                     .foregroundStyle(chromePrimaryColor)
                     .shadow(color: chromeShadowColor, radius: 10, x: 0, y: 4)
                     .lineLimit(1)

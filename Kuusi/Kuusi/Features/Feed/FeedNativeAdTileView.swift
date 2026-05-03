@@ -177,7 +177,8 @@ private struct NativeAdRepresentable: UIViewRepresentable {
         let badgeLabel = PaddingLabel(horizontalPadding: 9, verticalPadding: 5)
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
         badgeLabel.text = "Sponsored"
-        badgeLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        badgeLabel.font = scaledSystemFont(textStyle: .caption2, size: 11, weight: .semibold)
+        badgeLabel.adjustsFontForContentSizeCategory = true
         badgeLabel.textColor = UIColor.white.withAlphaComponent(0.92)
         badgeLabel.backgroundColor = UIColor.white.withAlphaComponent(0.22)
         badgeLabel.layer.cornerRadius = 14
@@ -186,7 +187,8 @@ private struct NativeAdRepresentable: UIViewRepresentable {
 
         let headlineLabel = UILabel()
         headlineLabel.translatesAutoresizingMaskIntoConstraints = false
-        headlineLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        headlineLabel.font = scaledSystemFont(textStyle: .caption1, size: 13, weight: .semibold)
+        headlineLabel.adjustsFontForContentSizeCategory = true
         headlineLabel.textColor = UIColor(AppTheme.primaryText(for: colorScheme))
         headlineLabel.numberOfLines = 2
         adView.headlineView = headlineLabel
@@ -194,7 +196,8 @@ private struct NativeAdRepresentable: UIViewRepresentable {
 
         let advertiserLabel = UILabel()
         advertiserLabel.translatesAutoresizingMaskIntoConstraints = false
-        advertiserLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        advertiserLabel.font = scaledSystemFont(textStyle: .caption2, size: 11, weight: .medium)
+        advertiserLabel.adjustsFontForContentSizeCategory = true
         advertiserLabel.textColor = UIColor(AppTheme.primaryText(for: colorScheme).opacity(0.68))
         advertiserLabel.numberOfLines = 1
         adView.advertiserView = advertiserLabel
@@ -240,6 +243,10 @@ private struct NativeAdRepresentable: UIViewRepresentable {
         ])
 
         return adView
+    }
+
+    private func scaledSystemFont(textStyle: UIFont.TextStyle, size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        UIFontMetrics(forTextStyle: textStyle).scaledFont(for: .systemFont(ofSize: size, weight: weight))
     }
 
     func updateUIView(_ adView: NativeAdView, context: Context) {
