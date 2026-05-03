@@ -178,6 +178,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         cachedPhotos.sort(by: Self.photosAreOrderedBefore)
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
+        updateFavouriteIDs(for: updatedPhoto)
         persistCachedPhotosIfPossible()
     }
 
@@ -188,6 +189,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         cachedPhotos.removeAll { $0.id == id }
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
+        favouriteIDs?.remove(id)
         persistCachedPhotosIfPossible()
     }
 
@@ -254,7 +256,7 @@ final class PhotoCollectionViewModel: ObservableObject {
                 groupIDs: [selectedGroupID],
                 limit: limit,
                 startAfter: cursor,
-                favouriteIDs: forceReload ? nil : favouriteIDs
+                favouriteIDs: favouriteIDs
             )
             let mergedPhotos: [FeedPhoto]
             let nextCursor: FeedPageCursor?
@@ -301,6 +303,15 @@ final class PhotoCollectionViewModel: ObservableObject {
     private func persistCachedPhotosIfPossible() {
         guard let uid = currentUserIDProvider() else { return }
         persistCachedPhotos(for: uid)
+    }
+
+    private func updateFavouriteIDs(for photo: FeedPhoto) {
+        guard favouriteIDs != nil else { return }
+        if photo.isFavourite {
+            favouriteIDs?.insert(photo.id)
+        } else {
+            favouriteIDs?.remove(photo.id)
+        }
     }
 
     private func persistCachedPhotos(for uid: String) {

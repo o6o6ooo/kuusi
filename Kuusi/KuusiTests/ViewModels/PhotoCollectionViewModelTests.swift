@@ -343,6 +343,35 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func refreshReusesCachedFavouriteIDs() async {
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID["group-a"] = [
+            RecentPhotoFetchResult(
+                photos: [makePhoto(id: "photo-1", groupID: "group-a", year: 2025).withFavourite(true)],
+                hasMore: false,
+                nextCursor: nil,
+                favouriteIDs: ["photo-1"]
+            ),
+            RecentPhotoFetchResult(
+                photos: [makePhoto(id: "photo-2", groupID: "group-a", year: 2026)],
+                hasMore: false,
+                nextCursor: nil,
+                favouriteIDs: ["photo-1"]
+            )
+        ]
+        let viewModel = makeViewModel(feedService: feedService, userID: "refresh-favourites-user")
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+
+        await viewModel.loadInitial(limit: 6)
+        await viewModel.refresh(limit: 6)
+
+        #expect(feedService.fetchCalls.count == 2)
+        #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
+        #expect(feedService.fetchCalls.last?.favouriteIDs == ["photo-1"])
+    }
+
+    @Test
     func refreshFallsBackToFirstGroupWhenSelectionDisappears() async {
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID["group-a"] = [
