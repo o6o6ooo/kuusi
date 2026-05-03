@@ -6,6 +6,7 @@ import UIKit
 struct GroupQRCodeOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var toastMessage: AppMessage?
+    let groupName: String
     let payload: String
     private let context = CIContext()
     private let filter = CIFilter.qrCodeGenerator()
@@ -16,6 +17,11 @@ struct GroupQRCodeOverlayView: View {
 
         NavigationStack {
             VStack(spacing: 18) {
+                Text(groupName)
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
                 if let image = qrImage {
                     Image(uiImage: image)
                         .interpolation(.none)

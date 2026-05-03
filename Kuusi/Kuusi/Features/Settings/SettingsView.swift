@@ -109,8 +109,11 @@ struct SettingsView: View {
             )
             .sheet(isPresented: $groupsViewModel.isGroupQRCodeOverlayPresented) {
                 if let payload = groupsViewModel.selectedGroupInvitePayload {
-                    GroupQRCodeOverlayView(payload: payload)
-                        .presentationDetents([.height(400)])
+                    GroupQRCodeOverlayView(
+                        groupName: groupsViewModel.selectedGroup?.name ?? groupsViewModel.editableGroupName,
+                        payload: payload
+                    )
+                        .presentationDetents([.height(440)])
                         .presentationDragIndicator(.visible)
                 }
             }
