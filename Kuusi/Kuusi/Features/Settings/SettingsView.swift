@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var consentStore: ConsentStore
+    @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @Environment(\.scenePhase) private var scenePhase
 
@@ -68,6 +69,7 @@ struct SettingsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if !hasLoaded {
+                    groupsViewModel.bindGroupStore(groupStore)
                     await subscriptionStore.prepare()
                     await profileViewModel.loadProfile()
                     await groupsViewModel.loadGroups()

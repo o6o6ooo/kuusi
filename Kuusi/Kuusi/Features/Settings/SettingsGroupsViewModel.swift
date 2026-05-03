@@ -46,17 +46,15 @@ enum GroupInvitePayloadParser {
     }
 }
 
-protocol SettingsGroupsServicing {
+protocol SettingsGroupsServicing: GroupStoreServicing {
     func createInvitePayload(groupID: String) async throws -> String
     func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview]
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary
-    func fetchGroups(for uid: String) async throws -> [GroupSummary]
     func updateGroupName(groupID: String, name: String) async throws
     func deleteGroup(groupID: String) async throws
     func leaveGroup(groupID: String, uid: String) async throws
     func joinGroup(inviteToken: String) async throws
     func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws
-    func setCachedGroups(_ groups: [GroupSummary], for uid: String)
 }
 
 extension GroupService: SettingsGroupsServicing {}
@@ -64,9 +62,7 @@ extension GroupService: SettingsGroupsServicing {}
 @MainActor
 final class SettingsGroupsViewModel: ObservableObject {
     @Published var createGroupName = ""
-    @Published var selectedGroupID: String?
     @Published var editableGroupName = ""
-    @Published var groups: [GroupSummary] = []
     @Published var createStatusMessage: AppMessage?
     @Published var saveStatusMessage: AppMessage?
     @Published var isCreating = false
@@ -85,23 +81,34 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
     private let groupService: SettingsGroupsServicing
+    private var groupStore: GroupStore
     private let currentUserIDProvider: @MainActor () -> String?
     private var clearCreateMessageTask: Task<Void, Never>?
     private var clearSaveMessageTask: Task<Void, Never>?
+    private var groupStoreCancellable: AnyCancellable?
     private var previewLoadedGroupIDs: Set<String> = []
 
     init(
         groupService: SettingsGroupsServicing,
+        groupStore: GroupStore,
         currentUserIDProvider: @escaping @MainActor () -> String?
     ) {
         self.groupService = groupService
+        self.groupStore = groupStore
         self.currentUserIDProvider = currentUserIDProvider
+        groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in
+                self?.objectWillChange.send()
+            }
+        }
     }
 
     convenience init() {
         let launchArguments = ProcessInfo.processInfo.arguments
+        let groupService = GroupService()
         self.init(
-            groupService: GroupService(),
+            groupService: groupService,
+            groupStore: GroupStore(groupService: groupService),
             currentUserIDProvider: {
                 guard !launchArguments.contains("UI_TEST_FORCE_EMPTY_GROUPS") else { return nil }
                 return Auth.auth().currentUser?.uid
@@ -110,8 +117,17 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     var selectedGroup: GroupSummary? {
-        guard let selectedGroupID else { return nil }
-        return groups.first(where: { $0.id == selectedGroupID })
+        groupStore.selectedGroup
+    }
+
+    var groups: [GroupSummary] {
+        get { groupStore.groups }
+        set { groupStore.replaceGroups(newValue) }
+    }
+
+    var selectedGroupID: String? {
+        get { groupStore.selectedGroupID }
+        set { groupStore.selectedGroupID = newValue }
     }
 
     var currentUserIsSelectedGroupOwner: Bool {
@@ -149,6 +165,17 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func updateCurrentPlan(_ plan: AppPlan) {
         currentPlan = plan
+    }
+
+    func bindGroupStore(_ groupStore: GroupStore) {
+        guard self.groupStore !== groupStore else { return }
+        self.groupStore = groupStore
+        groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in
+                self?.objectWillChange.send()
+            }
+        }
+        objectWillChange.send()
     }
 
     func presentGroupQRCode(for group: GroupSummary) async {
@@ -201,11 +228,9 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             let created = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
             createGroupName = ""
-            groups.append(created)
-            selectedGroupID = created.id
+            groupStore.appendGroup(created)
             editableGroupName = created.name
             previewLoadedGroupIDs.remove(created.id)
-            cacheGroupsForCurrentUser()
             await loadGroupPreviewIfNeeded(for: created.id, force: true)
             setCreateStatus(AppMessage(.groupCreated, .success))
         } catch {
@@ -214,13 +239,13 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func loadGroups() async {
-        guard let uid = currentUserIDProvider() else { return }
+        guard currentUserIDProvider() != nil else { return }
         isLoadingGroups = true
         defer { isLoadingGroups = false }
 
         do {
-            let fetched = try await groupService.fetchGroups(for: uid)
-            groups = fetched
+            try await groupStore.refreshFromFirestore()
+            let fetched = groupStore.groups
             previewLoadedGroupIDs.removeAll()
 
             if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
@@ -261,16 +286,7 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.updateGroupName(groupID: selectedGroupID, name: trimmed)
-            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
-                groups[index] = GroupSummary(
-                    id: groups[index].id,
-                    name: trimmed,
-                    ownerUID: groups[index].ownerUID,
-                    members: groups[index].members,
-                    totalMemberCount: groups[index].totalMemberCount
-                )
-            }
-            cacheGroupsForCurrentUser()
+            groupStore.renameGroup(id: selectedGroupID, name: trimmed)
             setSaveStatus(AppMessage(.groupUpdated, .success))
         } catch let error as GroupServiceError {
             setSaveStatus(AppMessage(error.appMessageID, .error))
@@ -287,11 +303,9 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.deleteGroup(groupID: selectedGroupID)
-            groups.removeAll { $0.id == selectedGroupID }
+            groupStore.removeGroup(id: selectedGroupID)
             previewLoadedGroupIDs.remove(selectedGroupID)
-            self.selectedGroupID = groups.first?.id
             editableGroupName = groups.first?.name ?? ""
-            cacheGroupsForCurrentUser()
             if let nextGroupID = self.selectedGroupID {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
@@ -316,11 +330,9 @@ final class SettingsGroupsViewModel: ObservableObject {
 
         do {
             try await groupService.leaveGroup(groupID: selectedGroupID, uid: uid)
-            groups.removeAll { $0.id == selectedGroupID }
+            groupStore.removeGroup(id: selectedGroupID)
             previewLoadedGroupIDs.remove(selectedGroupID)
-            self.selectedGroupID = groups.first?.id
             editableGroupName = groups.first?.name ?? ""
-            cacheGroupsForCurrentUser()
             if let nextGroupID = self.selectedGroupID {
                 await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
             }
@@ -401,18 +413,14 @@ final class SettingsGroupsViewModel: ObservableObject {
 
             selectedGroupMembers.removeAll { $0.id == member.id }
 
-            if let index = groups.firstIndex(where: { $0.id == selectedGroupID }) {
-                let existing = groups[index]
-                groups[index] = GroupSummary(
-                    id: existing.id,
-                    name: existing.name,
-                    ownerUID: existing.ownerUID,
+            if let existing = groups.first(where: { $0.id == selectedGroupID }) {
+                groupStore.updateMembers(
+                    groupID: selectedGroupID,
                     members: existing.members.filter { $0.id != member.id },
                     totalMemberCount: max(existing.totalMemberCount - 1, 0)
                 )
             }
 
-            cacheGroupsForCurrentUser()
             await loadGroupPreviewIfNeeded(for: selectedGroupID, force: true)
             setSaveStatus(AppMessage(.memberRemoved, .success))
         } catch let error as GroupServiceError {
@@ -469,27 +477,14 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     private func loadGroupPreviewIfNeeded(for groupID: String, force: Bool) async {
         if !force && previewLoadedGroupIDs.contains(groupID) { return }
-        guard let index = groups.firstIndex(where: { $0.id == groupID }) else { return }
+        guard groups.contains(where: { $0.id == groupID }) else { return }
 
         do {
             let previews = try await groupService.loadMemberPreviews(groupID: groupID, limit: 3)
-            let existing = groups[index]
-            groups[index] = GroupSummary(
-                id: existing.id,
-                name: existing.name,
-                ownerUID: existing.ownerUID,
-                members: previews,
-                totalMemberCount: existing.totalMemberCount
-            )
+            groupStore.updateMembers(groupID: groupID, members: previews)
             previewLoadedGroupIDs.insert(groupID)
-            cacheGroupsForCurrentUser()
         } catch {
             previewLoadedGroupIDs.remove(groupID)
         }
-    }
-
-    private func cacheGroupsForCurrentUser() {
-        guard let uid = currentUserIDProvider() else { return }
-        groupService.setCachedGroups(groups, for: uid)
     }
 }

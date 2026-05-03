@@ -7,6 +7,7 @@
 
 import GoogleSignIn
 import GoogleMobileAds
+import FirebaseAuth
 import SwiftUI
 
 @main
@@ -15,6 +16,7 @@ struct KuusiApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
     @StateObject private var consentStore = ConsentStore()
+    @StateObject private var groupStore = GroupStore()
     @StateObject private var toastCenter = AppToastCenter()
     @StateObject private var subscriptionStore = SubscriptionStore()
 
@@ -28,6 +30,7 @@ struct KuusiApp: App {
                 .controlSize(.small)
                 .environmentObject(appState)
                 .environmentObject(consentStore)
+                .environmentObject(groupStore)
                 .environmentObject(toastCenter)
                 .environmentObject(subscriptionStore)
                 .onOpenURL { url in
@@ -35,6 +38,9 @@ struct KuusiApp: App {
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     appState.handleScenePhaseChange(newPhase)
+                }
+                .onChange(of: appState.currentUser?.uid) { _, uid in
+                    groupStore.handleCurrentUserChanged(to: uid)
                 }
         }
     }

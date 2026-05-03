@@ -12,13 +12,7 @@ protocol PhotoCollectionFeedServicing {
     ) async throws -> RecentPhotoFetchResult
 }
 
-protocol PhotoCollectionGroupServicing {
-    func cachedGroups(for uid: String) -> [GroupSummary]
-    func fetchGroups(for uid: String) async throws -> [GroupSummary]
-}
-
 extension FeedService: PhotoCollectionFeedServicing {}
-extension GroupService: PhotoCollectionGroupServicing {}
 
 private struct CachedFeedPhoto: Codable {
     let id: String
@@ -75,7 +69,6 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var errorMessageID: AppMessage.ID?
 
     private let feedService: PhotoCollectionFeedServicing
-    private let groupService: PhotoCollectionGroupServicing
     private let currentUserIDProvider: @MainActor () -> String?
     private static var photosCacheByUID: [String: [String: [FeedPhoto]]] = [:]
     private static let cacheLock = NSLock()
@@ -87,11 +80,9 @@ final class PhotoCollectionViewModel: ObservableObject {
 
     init(
         feedService: PhotoCollectionFeedServicing,
-        groupService: PhotoCollectionGroupServicing,
         currentUserIDProvider: @escaping @MainActor () -> String?
     ) {
         self.feedService = feedService
-        self.groupService = groupService
         self.currentUserIDProvider = currentUserIDProvider
     }
 
@@ -99,7 +90,6 @@ final class PhotoCollectionViewModel: ObservableObject {
         let launchArguments = ProcessInfo.processInfo.arguments
         self.init(
             feedService: FeedService(),
-            groupService: GroupService(),
             currentUserIDProvider: {
                 guard !launchArguments.contains("UI_TEST_FORCE_EMPTY_GROUPS") else { return nil }
                 return Auth.auth().currentUser?.uid
@@ -129,26 +119,14 @@ final class PhotoCollectionViewModel: ObservableObject {
         return hasMorePhotosByGroupID[selectedGroupID] ?? false
     }
 
-    func loadInitial(limit: Int) async {
+    func loadInitial(groups: [GroupSummary], selectedGroupID: String?, limit: Int) async {
         guard let uid = currentUserIDProvider() else {
             resetState()
             return
         }
 
-        var cachedGroups = groupService.cachedGroups(for: uid)
-        if cachedGroups.isEmpty {
-            do {
-                cachedGroups = try await groupService.fetchGroups(for: uid)
-            } catch {
-                resetState()
-                errorMessageID = .failedToLoadGroups
-                return
-            }
-        }
-
-        groups = cachedGroups
-        selectedGroupID = cachedGroups.first?.id
-        photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(cachedGroups.map(\.id)))
+        syncGroups(groups, selectedGroupID: selectedGroupID)
+        photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(groups.map(\.id)))
         availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
         nextCursorByGroupID = photosByGroupID.compactMapValues(Self.makeNextCursor(from:))
@@ -156,27 +134,29 @@ final class PhotoCollectionViewModel: ObservableObject {
         await fetchPhotosForSelectedGroup(forceReload: false, limit: limit)
     }
 
-    func refresh(limit: Int) async {
+    func syncGroups(_ groups: [GroupSummary], selectedGroupID: String?) {
+        self.groups = groups
+        if let selectedGroupID, groups.contains(where: { $0.id == selectedGroupID }) {
+            self.selectedGroupID = selectedGroupID
+        } else if let current = self.selectedGroupID, groups.contains(where: { $0.id == current }) {
+            self.selectedGroupID = current
+        } else {
+            self.selectedGroupID = groups.first?.id
+        }
+
+        let validGroupIDs = Set(groups.map(\.id))
+        photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
+        availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
+        nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
+        hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
+        persistCachedPhotosIfPossible()
+    }
+
+    func refreshPhotos(limit: Int) async {
         guard let uid = currentUserIDProvider() else { return }
 
-        do {
-            let freshGroups = try await groupService.fetchGroups(for: uid)
-            groups = freshGroups
-            if let selectedGroupID, freshGroups.contains(where: { $0.id == selectedGroupID }) {
-                self.selectedGroupID = selectedGroupID
-            } else {
-                selectedGroupID = freshGroups.first?.id
-            }
-            let validGroupIDs = Set(freshGroups.map(\.id))
-            photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
-            availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
-            nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
-            hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
-            persistCachedPhotos(for: uid)
-            await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, shouldPreserveLoadedPhotos: true)
-        } catch {
-            errorMessageID = .failedToLoadGroups
-        }
+        persistCachedPhotos(for: uid)
+        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, shouldPreserveLoadedPhotos: true)
     }
 
     func selectGroup(_ groupID: String, limit: Int) {

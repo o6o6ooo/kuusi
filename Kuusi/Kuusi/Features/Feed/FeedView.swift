@@ -46,6 +46,7 @@ private extension FeedServiceError {
 struct FeedView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var consentStore: ConsentStore
+    @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @StateObject private var photoCollection = PhotoCollectionViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
@@ -73,7 +74,11 @@ struct FeedView: View {
     }
 
     private var currentGroupName: String {
-        photoCollection.groups.first(where: { $0.id == photoCollection.selectedGroupID })?.name ?? "Feed"
+        groupStore.groups.first(where: { $0.id == groupStore.selectedGroupID })?.name ?? "Feed"
+    }
+
+    private var groupStoreSignature: [String] {
+        groupStore.groups.map { "\($0.id)-\($0.name)-\($0.totalMemberCount)" }
     }
 
     private var availableHashtags: [String] {
@@ -118,7 +123,7 @@ struct FeedView: View {
                     FeedTopChromeView(
                         groupName: currentGroupName,
                         subtitle: feedSubtitle,
-                        hasGroups: !photoCollection.groups.isEmpty,
+                        hasGroups: !groupStore.groups.isEmpty,
                         profileIcon: profileViewModel.icon,
                         profileBackgroundColour: profileViewModel.bgColour,
                         isFavouritesFilterEnabled: isFavouritesFilterEnabled,
@@ -139,7 +144,7 @@ struct FeedView: View {
                     VStack {
                         Spacer()
                         FeedBottomChromeView(
-                            groups: photoCollection.groups,
+                            groups: groupStore.groups,
                             availableHashtags: availableHashtags,
                             selectedHashtag: $selectedHashtag,
                             isHashtagBarExpanded: $isHashtagBarExpanded,
@@ -147,6 +152,7 @@ struct FeedView: View {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                                     selectedHashtag = nil
                                     hiddenInlineAdPhotoIDs.removeAll()
+                                    groupStore.selectedGroupID = groupID
                                     photoCollection.selectGroup(groupID, limit: feedPageSize)
                                 }
                             }
@@ -159,7 +165,7 @@ struct FeedView: View {
                     Text("ui-screen-feed")
                         .accessibilityIdentifier("ui-screen-feed")
 
-                    if photoCollection.groups.isEmpty {
+                    if groupStore.groups.isEmpty {
                         Text("ui-feed-no-groups")
                             .accessibilityIdentifier("ui-feed-no-groups")
                     } else if !photoCollection.isLoading,
@@ -178,9 +184,7 @@ struct FeedView: View {
             .toolbar(.hidden, for: .navigationBar)
             .appFeedBackground()
             .task {
-                if photoCollection.groups.isEmpty {
-                    await photoCollection.loadInitial(limit: feedPageSize)
-                }
+                await loadGroupsAndPhotosIfNeeded()
                 if profileViewModel.name.isEmpty {
                     await profileViewModel.loadProfile()
                 }
@@ -199,6 +203,17 @@ struct FeedView: View {
                 }
                 requestTrackingAuthorizationForAdsIfNeeded()
             }
+            .onChange(of: groupStoreSignature) { _, _ in
+                syncPhotoCollectionGroups()
+            }
+            .onChange(of: groupStore.selectedGroupID) { _, newValue in
+                syncPhotoCollectionGroups()
+                guard let newValue else { return }
+                guard !isSettingsPresented else { return }
+                selectedHashtag = nil
+                hiddenInlineAdPhotoIDs.removeAll()
+                photoCollection.selectGroup(newValue, limit: feedPageSize)
+            }
             .onChange(of: feedMessage) { _, newValue in
                 scheduleFeedMessageAutoClear(for: newValue)
             }
@@ -216,6 +231,10 @@ struct FeedView: View {
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isSettingsPresented, onDismiss: {
+                syncPhotoCollectionGroups()
+                if let selectedGroupID = groupStore.selectedGroupID {
+                    photoCollection.selectGroup(selectedGroupID, limit: feedPageSize)
+                }
                 Task { await profileViewModel.loadProfile() }
             }) {
                 SettingsView()
@@ -246,7 +265,7 @@ struct FeedView: View {
 
     @ViewBuilder
     private func content(for proxy: GeometryProxy) -> some View {
-        if photoCollection.groups.isEmpty {
+        if groupStore.groups.isEmpty {
             emptyFeedState(
                 in: proxy,
                 title: String(localized: "feed.empty.no_groups.title"),
@@ -457,7 +476,29 @@ struct FeedView: View {
     private func refreshCurrentGroup() async {
         selectedHashtag = nil
         hiddenInlineAdPhotoIDs.removeAll()
-        await photoCollection.refresh(limit: feedPageSize)
+        await photoCollection.refreshPhotos(limit: feedPageSize)
+    }
+
+    @MainActor
+    private func loadGroupsAndPhotosIfNeeded() async {
+        do {
+            try await groupStore.loadCachedThenFetchIfNeeded()
+        } catch {
+            photoCollection.errorMessageID = .failedToLoadGroups
+            return
+        }
+
+        photoCollection.syncGroups(groupStore.groups, selectedGroupID: groupStore.selectedGroupID)
+        await photoCollection.loadInitial(
+            groups: groupStore.groups,
+            selectedGroupID: groupStore.selectedGroupID,
+            limit: feedPageSize
+        )
+    }
+
+    @MainActor
+    private func syncPhotoCollectionGroups() {
+        photoCollection.syncGroups(groupStore.groups, selectedGroupID: groupStore.selectedGroupID)
     }
 
     private func deletePhoto(_ photo: FeedPhoto) async {

@@ -114,10 +114,10 @@ enum UploadOverlayRules {
 
 struct UploadOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var groupStore: GroupStore
 
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
-    @State private var groups: [GroupSummary] = []
     @State private var selectedGroupID: String?
     @State private var yearText = String(Calendar.current.component(.year, from: Date()))
     @State private var hashtagInput = ""
@@ -135,7 +135,6 @@ struct UploadOverlayView: View {
     @State private var effectiveUsageMB = 0.0
 
     private let uploadService = UploadService()
-    private let groupService = GroupService()
     private let googleAccountService = GoogleAccountService()
     private let googlePhotosPickerService = GooglePhotosPickerService()
     let currentUsageMB: Double
@@ -155,7 +154,7 @@ struct UploadOverlayView: View {
 
     private var selectedGroupName: String {
         guard let selectedGroupID else { return String(localized: "upload.group_placeholder") }
-        return groups.first(where: { $0.id == selectedGroupID })?.name ?? String(localized: "upload.group_placeholder")
+        return groupStore.groups.first(where: { $0.id == selectedGroupID })?.name ?? String(localized: "upload.group_placeholder")
     }
 
     private var yearOptions: [Int] {
@@ -303,8 +302,11 @@ struct UploadOverlayView: View {
             }
             .appToastHost()
             .task {
-                loadCachedGroupsOnly()
+                syncSelectedGroupIfNeeded()
                 await showStorageLimitToastIfNeeded()
+            }
+            .onChange(of: groupStore.groups.map(\.id)) { _, _ in
+                syncSelectedGroupIfNeeded()
             }
             .sheet(isPresented: $isYearPickerPresented) {
                 YearWheelPickerSheet(
@@ -441,10 +443,10 @@ struct UploadOverlayView: View {
 
     private var groupPicker: some View {
         Menu {
-            if groups.isEmpty {
+            if groupStore.groups.isEmpty {
                 Text("groups.empty")
             } else {
-                ForEach(groups) { group in
+                ForEach(groupStore.groups) { group in
                     Button(group.name) {
                         selectedGroupID = group.id
                     }
@@ -508,13 +510,11 @@ struct UploadOverlayView: View {
             }
     }
 
-    private func loadCachedGroupsOnly() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        let cached = groupService.cachedGroups(for: uid)
-        groups = cached
-        if selectedGroupID == nil {
-            selectedGroupID = cached.first?.id
+    private func syncSelectedGroupIfNeeded() {
+        if let selectedGroupID, groupStore.groups.contains(where: { $0.id == selectedGroupID }) {
+            return
         }
+        selectedGroupID = groupStore.selectedGroupID ?? groupStore.groups.first?.id
     }
 
     private func addHashtagsFromInput() {

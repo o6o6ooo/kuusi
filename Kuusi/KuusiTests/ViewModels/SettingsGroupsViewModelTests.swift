@@ -270,8 +270,13 @@ struct SettingsGroupsViewModelTests {
         groupService: SettingsGroupsServicing = SettingsGroupsServiceSpy(),
         currentUserID: String? = "user-1"
     ) -> SettingsGroupsViewModel {
+        let groupStore = GroupStore(
+            groupService: groupService,
+            currentUserIDProvider: { currentUserID }
+        )
         SettingsGroupsViewModel(
             groupService: groupService,
+            groupStore: groupStore,
             currentUserIDProvider: { currentUserID }
         )
     }
@@ -300,6 +305,10 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var removeMemberCalls: [(groupID: String, memberUID: String, requesterUID: String)] = []
     var cachedGroupsAssignments: [(uid: String, groups: [GroupSummary])] = []
     var memberPreviewsByGroupID: [String: [GroupMemberPreview]] = [:]
+
+    func cachedGroups(for uid: String) -> [GroupSummary] {
+        cachedGroupsAssignments.last(where: { $0.uid == uid })?.groups ?? fetchedGroups
+    }
 
     func createInvitePayload(groupID: String) async throws -> String {
         if let createInvitePayloadError { throw createInvitePayloadError }

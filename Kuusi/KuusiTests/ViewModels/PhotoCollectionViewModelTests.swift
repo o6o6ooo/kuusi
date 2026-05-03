@@ -2,6 +2,16 @@ import SwiftUI
 import Testing
 @testable import Kuusi
 
+private extension PhotoCollectionViewModel {
+    func loadInitial(limit: Int) async {
+        await loadInitial(groups: groups, selectedGroupID: selectedGroupID, limit: limit)
+    }
+
+    func refresh(limit: Int) async {
+        await refreshPhotos(limit: limit)
+    }
+}
+
 @MainActor
 struct PhotoCollectionViewModelTests {
     @Test
@@ -543,7 +553,7 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
     }
 }
 
-private final class GroupServiceSpy: PhotoCollectionGroupServicing {
+private final class GroupServiceSpy {
     var cachedGroupsValue: [GroupSummary] = []
     var fetchedGroupsValue: [GroupSummary] = []
     var fetchGroupsError: Error?
@@ -567,12 +577,11 @@ private enum TestError: Error {
 @MainActor
 private func makeViewModel(
     feedService: PhotoCollectionFeedServicing,
-    groupService: PhotoCollectionGroupServicing,
+    groupService _: GroupServiceSpy,
     userID: String
 ) -> PhotoCollectionViewModel {
     PhotoCollectionViewModel(
         feedService: feedService,
-        groupService: groupService,
         currentUserIDProvider: { userID }
     )
 }
@@ -581,7 +590,6 @@ private func makeViewModel(
 private func makeViewModel(userID: String) -> PhotoCollectionViewModel {
     PhotoCollectionViewModel(
         feedService: FeedServiceSpy(),
-        groupService: GroupServiceSpy(),
         currentUserIDProvider: { userID }
     )
 }
@@ -593,19 +601,17 @@ private func makeViewModel(
 ) -> PhotoCollectionViewModel {
     PhotoCollectionViewModel(
         feedService: feedService,
-        groupService: GroupServiceSpy(),
         currentUserIDProvider: { userID }
     )
 }
 
 @MainActor
 private func makeViewModel(
-    groupService: PhotoCollectionGroupServicing,
+    groupService _: GroupServiceSpy,
     userID: String
 ) -> PhotoCollectionViewModel {
     PhotoCollectionViewModel(
         feedService: FeedServiceSpy(),
-        groupService: groupService,
         currentUserIDProvider: { userID }
     )
 }
