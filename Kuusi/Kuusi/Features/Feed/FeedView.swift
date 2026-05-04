@@ -34,8 +34,6 @@ enum FeedAdRules {
 private extension FeedServiceError {
     var appMessageID: AppMessage.ID {
         switch self {
-        case .cannotEditOthersPhotos:
-            return .cannotEditOthersPhotos
         case .cannotDeleteOthersPhotos:
             return .cannotDeleteOthersPhotos
         }
@@ -575,7 +573,7 @@ struct FeedView: View {
 
     private func savePhotoEdits(photo: FeedPhoto, update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError> {
         guard !editingPhotoIDs.contains(photo.id) else { return .failure(FeedEditError(toastMessage: AppMessage(.photoAlreadyBeingUpdated, .error))) }
-        guard let uid = currentUserID else {
+        guard currentUserID != nil else {
             return .failure(FeedEditError(toastMessage: AppMessage(.pleaseSignInFirst, .error)))
         }
 
@@ -583,14 +581,12 @@ struct FeedView: View {
         defer { editingPhotoIDs.remove(photo.id) }
 
         do {
-            try await feedService.updatePhotoMetadata(photo, requesterUID: uid, update: update)
+            try await feedService.updatePhotoMetadata(photo, update: update)
             let updated = photo.withMetadata(update)
             photoCollection.replacePhoto(updated)
             feedMessage = AppMessage(.photoUpdated, .success)
             editingPhoto = nil
             return .success(())
-        } catch let error as FeedServiceError {
-            return .failure(FeedEditError(toastMessage: AppMessage(error.appMessageID, .error)))
         } catch {
             return .failure(FeedEditError(toastMessage: AppMessage(.failedToUpdatePhoto, .error)))
         }

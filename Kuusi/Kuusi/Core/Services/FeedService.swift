@@ -3,7 +3,6 @@ import FirebaseFunctions
 import Foundation
 
 enum FeedServiceError: Error {
-    case cannotEditOthersPhotos
     case cannotDeleteOthersPhotos
 }
 
@@ -111,7 +110,7 @@ final class FeedService {
         }
     }
 
-    func updatePhotoMetadata(_ photo: FeedPhoto, requesterUID _: String, update: FeedPhotoMetadataUpdate) async throws {
+    func updatePhotoMetadata(_ photo: FeedPhoto, update: FeedPhotoMetadataUpdate) async throws {
         let ref = db.collection("photos").document(photo.id)
         let payload = update.firestorePayload()
 
