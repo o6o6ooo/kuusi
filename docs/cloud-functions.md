@@ -117,6 +117,7 @@ For one-time admin data fixes, prefer local scripts over new deployed functions.
     - `users.groups` entries whose group ID no longer exists
     - expired or invalid `group_invites`
     - `photo_notification_batches` documents whose `created_at` is at least 7 days old
+    - `admin_notifications` documents with `status = sent` or `status = failed` whose newest timestamp is at least 30 days old
   - Defaults to dry-run mode
   - Add `-- --apply` to delete orphaned data and remove stale references
   - Requires Firebase Admin credentials, for example:
