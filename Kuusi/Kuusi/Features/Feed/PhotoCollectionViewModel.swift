@@ -149,7 +149,9 @@ final class PhotoCollectionViewModel: ObservableObject {
         availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
         nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
         hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
-        persistCachedPhotosIfPossible()
+        if !photosByGroupID.isEmpty {
+            persistCachedPhotosIfPossible()
+        }
     }
 
     func refreshPhotos(limit: Int) async {

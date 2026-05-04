@@ -300,19 +300,17 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
-    func loadInitialShowsFailedToLoadGroupsWhenFetchFailsWithoutCache() async {
+    func loadInitialWithNoGroupsDoesNotSetGroupLoadingError() async {
         let userID = "initial-groups-failure-\(UUID().uuidString)"
         PhotoCollectionViewModel.clearCachedPhotos(for: userID)
 
-        let groupService = GroupServiceSpy()
-        groupService.fetchGroupsError = TestError.failed
-        let viewModel = makeViewModel(groupService: groupService, userID: userID)
+        let viewModel = makeViewModel(userID: userID)
 
         await viewModel.loadInitial(limit: 6)
 
         #expect(viewModel.groups.isEmpty)
         #expect(viewModel.selectedGroupID == nil)
-        #expect(viewModel.errorMessageID == .failedToLoadGroups)
+        #expect(viewModel.errorMessageID == nil)
     }
 
     @Test
@@ -375,6 +373,9 @@ struct PhotoCollectionViewModelTests {
 
     @Test
     func refreshReusesCachedFavouriteIDs() async {
+        let userID = "refresh-favourites-\(UUID().uuidString)"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID["group-a"] = [
             RecentPhotoFetchResult(
@@ -390,7 +391,7 @@ struct PhotoCollectionViewModelTests {
                 favouriteIDs: ["photo-1"]
             )
         ]
-        let viewModel = makeViewModel(feedService: feedService, userID: "refresh-favourites-user")
+        let viewModel = makeViewModel(feedService: feedService, userID: userID)
         viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
         viewModel.selectedGroupID = "group-a"
 
@@ -400,6 +401,8 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.count == 2)
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
         #expect(feedService.fetchCalls.last?.favouriteIDs == ["photo-1"])
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
     }
 
     @Test
@@ -430,6 +433,7 @@ struct PhotoCollectionViewModelTests {
             "group-a": [makePhoto(id: "photo-a", groupID: "group-a", year: 2024)],
             "group-b": [makePhoto(id: "photo-b", groupID: "group-b", year: 2025)]
         ]
+        viewModel.syncGroups(groupService.fetchedGroupsValue, selectedGroupID: viewModel.selectedGroupID)
 
         await viewModel.refresh(limit: 6)
 
@@ -439,7 +443,7 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
-    func refreshFetchesGroupsAndPreservesLoadedPhotos() async {
+    func refreshPreservesLoadedPhotosAfterGroupStoreSync() async {
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID["group-b"] = [
             RecentPhotoFetchResult(
@@ -473,6 +477,7 @@ struct PhotoCollectionViewModelTests {
                 makePhoto(id: "photo-new", groupID: "group-b", year: 2024)
             ]
         ]
+        viewModel.syncGroups(groupService.fetchedGroupsValue, selectedGroupID: viewModel.selectedGroupID)
 
         await viewModel.refresh(limit: 6)
 
@@ -485,10 +490,10 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
-    func refreshShowsFailedToLoadGroupsWhenGroupFetchFails() async {
-        let groupService = GroupServiceSpy()
-        groupService.fetchGroupsError = TestError.failed
-        let viewModel = makeViewModel(groupService: groupService, userID: "refresh-groups-failure-user")
+    func refreshShowsFailedToLoadFeedWhenRefreshFetchFails() async {
+        let feedService = FeedServiceSpy()
+        feedService.fetchError = TestError.failed
+        let viewModel = makeViewModel(feedService: feedService, userID: "refresh-feed-failure-user")
         viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
         viewModel.selectedGroupID = "group-a"
 
@@ -496,7 +501,7 @@ struct PhotoCollectionViewModelTests {
 
         #expect(viewModel.groups.map(\.id) == ["group-a"])
         #expect(viewModel.selectedGroupID == "group-a")
-        #expect(viewModel.errorMessageID == .failedToLoadGroups)
+        #expect(viewModel.errorMessageID == .failedToLoadFeed)
     }
 
     @Test
@@ -637,13 +642,15 @@ private enum TestError: Error {
 @MainActor
 private func makeViewModel(
     feedService: PhotoCollectionFeedServicing,
-    groupService _: GroupServiceSpy,
+    groupService: GroupServiceSpy,
     userID: String
 ) -> PhotoCollectionViewModel {
-    PhotoCollectionViewModel(
+    let viewModel = PhotoCollectionViewModel(
         feedService: feedService,
         currentUserIDProvider: { userID }
     )
+    syncInitialGroups(from: groupService, into: viewModel)
+    return viewModel
 }
 
 @MainActor
@@ -667,13 +674,21 @@ private func makeViewModel(
 
 @MainActor
 private func makeViewModel(
-    groupService _: GroupServiceSpy,
+    groupService: GroupServiceSpy,
     userID: String
 ) -> PhotoCollectionViewModel {
-    PhotoCollectionViewModel(
+    let viewModel = PhotoCollectionViewModel(
         feedService: FeedServiceSpy(),
         currentUserIDProvider: { userID }
     )
+    syncInitialGroups(from: groupService, into: viewModel)
+    return viewModel
+}
+
+@MainActor
+private func syncInitialGroups(from groupService: GroupServiceSpy, into viewModel: PhotoCollectionViewModel) {
+    let initialGroups = groupService.cachedGroupsValue.isEmpty ? groupService.fetchedGroupsValue : groupService.cachedGroupsValue
+    viewModel.syncGroups(initialGroups, selectedGroupID: viewModel.selectedGroupID)
 }
 
 private func makeGroup(id: String, name: String) -> GroupSummary {

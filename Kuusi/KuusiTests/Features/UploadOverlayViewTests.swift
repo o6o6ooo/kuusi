@@ -8,6 +8,7 @@ struct UploadOverlayViewTests {
              (.pleaseSignInFirst?, .pleaseSignInFirst?),
              (.selectGroup?, .selectGroup?),
              (.enterValidYear?, .enterValidYear?),
+             (.networkUnavailable?, .networkUnavailable?),
              (nil, nil):
             #expect(Bool(true))
         default:
