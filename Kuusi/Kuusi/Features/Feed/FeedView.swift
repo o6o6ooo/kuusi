@@ -157,7 +157,6 @@ struct FeedView: View {
                                     selectedHashtag = nil
                                     hiddenInlineAdPhotoIDs.removeAll()
                                     groupStore.selectedGroupID = groupID
-                                    photoCollection.selectGroup(groupID, limit: feedPageSize)
                                 }
                             }
                         )
