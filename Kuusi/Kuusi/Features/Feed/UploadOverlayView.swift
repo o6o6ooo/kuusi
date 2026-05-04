@@ -49,6 +49,7 @@ enum UploadOverlayRules {
         isUploading: Bool,
         isImportingGooglePhotos: Bool,
         isEstimatingUploadSize: Bool,
+        didFailUploadSizeEstimation: Bool = false,
         selectedGroupID: String?,
         yearText: String,
         effectiveUsageMB: Double,
@@ -59,6 +60,7 @@ enum UploadOverlayRules {
         !isUploading &&
         !isImportingGooglePhotos &&
         !isEstimatingUploadSize &&
+        !didFailUploadSizeEstimation &&
         selectedGroupID != nil &&
         parseYear(from: yearText) != nil &&
         !PlanAccessPolicy.isStorageLimitReached(
@@ -78,7 +80,8 @@ enum UploadOverlayRules {
         yearText: String,
         effectiveUsageMB: Double,
         estimatedUploadSizeMB: Double,
-        isPremiumActive: Bool
+        isPremiumActive: Bool,
+        didFailUploadSizeEstimation: Bool = false
     ) -> AppMessage.ID? {
         if PlanAccessPolicy.isStorageLimitReached(
             usageMB: effectiveUsageMB,
@@ -89,6 +92,7 @@ enum UploadOverlayRules {
         guard currentUserID != nil else { return .pleaseSignInFirst }
         guard selectedGroupID != nil else { return .selectGroup }
         guard parseYear(from: yearText) != nil else { return .enterValidYear }
+        guard !didFailUploadSizeEstimation else { return .networkUnavailable }
         guard PlanAccessPolicy.canUpload(
             currentUsageMB: effectiveUsageMB,
             additionalUsageMB: estimatedUploadSizeMB,
@@ -113,6 +117,8 @@ enum UploadOverlayRules {
 }
 
 struct UploadOverlayView: View {
+    private static let uploadSizeEstimationTimeout: TimeInterval = 15
+
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var groupStore: GroupStore
 
@@ -132,6 +138,7 @@ struct UploadOverlayView: View {
     @State private var googleImportTask: Task<Void, Never>?
     @State private var estimatedUploadSizeMB = 0.0
     @State private var isEstimatingUploadSize = false
+    @State private var didFailUploadSizeEstimation = false
     @State private var effectiveUsageMB = 0.0
 
     private let uploadService = UploadService()
@@ -177,6 +184,7 @@ struct UploadOverlayView: View {
             isUploading: isUploading,
             isImportingGooglePhotos: isImportingGooglePhotos,
             isEstimatingUploadSize: isEstimatingUploadSize,
+            didFailUploadSizeEstimation: didFailUploadSizeEstimation,
             selectedGroupID: selectedGroupID,
             yearText: yearText,
             effectiveUsageMB: effectiveUsageMB,
@@ -565,7 +573,8 @@ struct UploadOverlayView: View {
             yearText: yearText,
             effectiveUsageMB: effectiveUsageMB,
             estimatedUploadSizeMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive
+            isPremiumActive: isPremiumActive,
+            didFailUploadSizeEstimation: didFailUploadSizeEstimation
         ) {
             toastMessage = AppMessage(messageID, .error)
             return
@@ -594,6 +603,7 @@ struct UploadOverlayView: View {
             hashtags = []
             effectiveUsageMB += uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) }
             estimatedUploadSizeMB = 0
+            didFailUploadSizeEstimation = false
             toastMessage = AppMessage(.uploadCompleted, .success)
         } catch {
             toastMessage = AppMessage(.failedToLoadImage, .error)
@@ -687,19 +697,27 @@ struct UploadOverlayView: View {
         guard !selectedImages.isEmpty else {
             estimatedUploadSizeMB = 0
             isEstimatingUploadSize = false
+            didFailUploadSizeEstimation = false
             return
         }
 
         isEstimatingUploadSize = true
+        didFailUploadSizeEstimation = false
         defer { isEstimatingUploadSize = false }
 
+        let images = selectedImages
         do {
-            estimatedUploadSizeMB = try await uploadService.estimatedUploadSizeMB(for: selectedImages)
+            estimatedUploadSizeMB = try await withTimeout(seconds: Self.uploadSizeEstimationTimeout) {
+                try await uploadService.estimatedUploadSizeMB(for: images)
+            }
+            didFailUploadSizeEstimation = false
             if wouldExceedStorageLimit {
                 toastMessage = AppMessage(.storageLimitReached, .error)
             }
         } catch {
             estimatedUploadSizeMB = 0
+            didFailUploadSizeEstimation = true
+            toastMessage = AppMessage(.networkUnavailable, .error)
         }
     }
 
@@ -707,5 +725,26 @@ struct UploadOverlayView: View {
     private func showStorageLimitToastIfNeeded() async {
         guard isStorageLimitReached else { return }
         toastMessage = AppMessage(.storageLimitReached, .error)
+    }
+
+    private func withTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw CancellationError()
+            }
+
+            guard let result = try await group.next() else {
+                throw CancellationError()
+            }
+            group.cancelAll()
+            return result
+        }
     }
 }

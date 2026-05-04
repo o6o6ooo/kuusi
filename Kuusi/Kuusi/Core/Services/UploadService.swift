@@ -10,7 +10,7 @@ enum UploadServiceError: Error {
 
 final class UploadService {
     private static let functionsRegion = "europe-west2"
-    private static let storageRetryTimeout: TimeInterval = 30
+    private static let storageRetryTimeout: TimeInterval = 15
 
     private let previewMaxDimension: CGFloat = 1200
     private let previewCompression: CGFloat = 0.6

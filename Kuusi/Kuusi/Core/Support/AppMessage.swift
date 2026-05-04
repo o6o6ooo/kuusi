@@ -72,6 +72,7 @@ struct AppMessage: Equatable {
         case leftGroup
         case memberRemoved
         case nameCannotBeEmpty
+        case networkUnavailable
         case noActivePurchasesFound
         case onlyOwnerCanRemoveMembers
         case ownerCannotBeRemoved
@@ -239,6 +240,8 @@ extension AppMessage.ID {
             return String(localized: "message.member_removed")
         case .nameCannotBeEmpty:
             return String(localized: "message.name_cannot_be_empty")
+        case .networkUnavailable:
+            return String(localized: "message.network_unavailable")
         case .noActivePurchasesFound:
             return String(localized: "message.no_active_purchases_found")
         case .onlyOwnerCanRemoveMembers:

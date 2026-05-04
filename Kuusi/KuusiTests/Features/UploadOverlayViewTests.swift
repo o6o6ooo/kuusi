@@ -121,6 +121,24 @@ struct UploadOverlayViewTests {
     }
 
     @Test
+    func canUploadRejectsFailedSizeEstimation() {
+        #expect(
+            UploadOverlayRules.canUpload(
+                selectedImageCount: 1,
+                isUploading: false,
+                isImportingGooglePhotos: false,
+                isEstimatingUploadSize: false,
+                didFailUploadSizeEstimation: true,
+                selectedGroupID: "group-1",
+                yearText: "2025",
+                effectiveUsageMB: 100,
+                estimatedUploadSizeMB: 0,
+                isPremiumActive: false
+            ) == false
+        )
+    }
+
+    @Test
     func canUploadRejectsStorageLimitAndProjectedOverflow() {
         #expect(
             UploadOverlayRules.canUpload(
@@ -227,6 +245,22 @@ struct UploadOverlayViewTests {
                 isPremiumActive: false
             ),
             matches: .storageLimitReached
+        )
+    }
+
+    @Test
+    func uploadValidationMessageReturnsNetworkUnavailableForFailedSizeEstimation() {
+        expectMessageID(
+            UploadOverlayRules.uploadValidationMessageID(
+                currentUserID: "user-1",
+                selectedGroupID: "group-1",
+                yearText: "2025",
+                effectiveUsageMB: 100,
+                estimatedUploadSizeMB: 0,
+                isPremiumActive: false,
+                didFailUploadSizeEstimation: true
+            ),
+            matches: .networkUnavailable
         )
     }
 
