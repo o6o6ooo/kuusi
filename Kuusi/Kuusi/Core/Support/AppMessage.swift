@@ -29,7 +29,6 @@ struct AppMessage: Equatable {
         case noPhotosSelectedFromGooglePhotos
         case failedToGenerateQRCode
         case cannotDeleteOthersPhotos
-        case cannotEditOthersPhotos
         case debugEmailPasswordProviderDisabled
         case debugInvalidCredentials
         case debugSignInFailed
@@ -154,8 +153,6 @@ extension AppMessage.ID {
             return String(localized: "message.failed_to_generate_qr_code")
         case .cannotDeleteOthersPhotos:
             return String(localized: "message.cannot_delete_others_photos")
-        case .cannotEditOthersPhotos:
-            return String(localized: "message.cannot_edit_others_photos")
         case .debugEmailPasswordProviderDisabled:
             return String(localized: "message.debug_email_password_provider_disabled")
         case .debugInvalidCredentials:
