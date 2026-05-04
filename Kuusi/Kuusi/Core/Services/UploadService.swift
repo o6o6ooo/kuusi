@@ -1,39 +1,61 @@
-import FirebaseFirestore
+import FirebaseFunctions
 import FirebaseStorage
 import Foundation
 import UIKit
 
 enum UploadServiceError: Error {
     case failedToPrepareImages
+    case invalidCommitResponse
 }
 
 final class UploadService {
+    private static let functionsRegion = "europe-west2"
+    private static let storageRetryTimeout: TimeInterval = 30
+
     private let previewMaxDimension: CGFloat = 1200
     private let previewCompression: CGFloat = 0.6
     private let thumbnailMaxDimension: CGFloat = 600
     private let thumbnailCompression: CGFloat = 0.55
-    private let maxConcurrentImageUploads = 3
 
-    private let db = Firestore.firestore()
-    private let storage = Storage.storage()
+    private let storage: Storage = {
+        let storage = Storage.storage()
+        storage.maxUploadRetryTime = UploadService.storageRetryTimeout
+        storage.maxOperationRetryTime = UploadService.storageRetryTimeout
+        return storage
+    }()
+    private let functions = Functions.functions(region: UploadService.functionsRegion)
 
-    func upload(images: [UIImage], userID: String, groupID: String, year: Int, hashtags: [String]) async throws -> [FeedPhoto] {
+    func upload(
+        images: [UIImage],
+        userID: String,
+        groupID: String,
+        year: Int,
+        hashtags: [String],
+        isPremiumActive: Bool
+    ) async throws -> [FeedPhoto] {
         let preparedImages = await prepareImagesForUpload(images)
         try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
         let uploadBatchID = UUID().uuidString
-        let uploadBatchCount = preparedImages.count
 
-        let result = try await uploadPreparedImages(
+        let temporaryPhotos = try await uploadTemporaryImages(
             preparedImages,
             userID: userID,
-            groupID: groupID,
-            year: year,
-            hashtags: hashtags,
-            uploadBatchID: uploadBatchID,
-            uploadBatchCount: uploadBatchCount
+            uploadBatchID: uploadBatchID
         )
-        try await updateUserUsage(uid: userID, totalMB: result.totalUploadedMB)
-        return result.photos
+
+        do {
+            return try await commitUploadBatch(
+                temporaryPhotos: temporaryPhotos,
+                groupID: groupID,
+                year: year,
+                hashtags: hashtags,
+                uploadBatchID: uploadBatchID,
+                isPremiumActive: isPremiumActive
+            )
+        } catch {
+            await deleteTemporaryAssets(temporaryPhotos)
+            throw error
+        }
     }
 
     func estimatedUploadSizeMB(for images: [UIImage]) async throws -> Double {
@@ -97,107 +119,60 @@ final class UploadService {
         }
     }
 
-    private func uploadPreparedImages(
+    private func uploadTemporaryImages(
         _ preparedImages: [PreparedImage],
         userID: String,
-        groupID: String,
-        year: Int,
-        hashtags: [String],
-        uploadBatchID: String,
-        uploadBatchCount: Int
-    ) async throws -> UploadResult {
-        var iterator = preparedImages.makeIterator()
+        uploadBatchID: String
+    ) async throws -> [TemporaryUploadedPhoto] {
+        var uploadedPhotos: [TemporaryUploadedPhoto] = []
+        uploadedPhotos.reserveCapacity(preparedImages.count)
 
-        return try await withThrowingTaskGroup(of: UploadedPhoto.self) { group in
-            for _ in 0..<min(maxConcurrentImageUploads, preparedImages.count) {
-                guard let prepared = iterator.next() else { break }
-                group.addTask { [self] in
-                    try await uploadPreparedImage(
-                        prepared,
-                        userID: userID,
-                        groupID: groupID,
-                        year: year,
-                        hashtags: hashtags,
-                        uploadBatchID: uploadBatchID,
-                        uploadBatchCount: uploadBatchCount
-                    )
-                }
+        do {
+            for prepared in preparedImages {
+                let uploaded = try await uploadTemporaryImage(
+                    prepared,
+                    userID: userID,
+                    uploadBatchID: uploadBatchID
+                )
+                uploadedPhotos.append(uploaded)
             }
-
-            var totalUploadedMB = 0.0
-            var photos: [FeedPhoto] = []
-
-            while let uploaded = try await group.next() {
-                totalUploadedMB += uploaded.sizeMB
-                photos.append(uploaded.photo)
-
-                if let prepared = iterator.next() {
-                    group.addTask { [self] in
-                        try await uploadPreparedImage(
-                            prepared,
-                            userID: userID,
-                            groupID: groupID,
-                            year: year,
-                            hashtags: hashtags,
-                            uploadBatchID: uploadBatchID,
-                            uploadBatchCount: uploadBatchCount
-                        )
-                    }
-                }
-            }
-
-            photos.sort { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-            return UploadResult(photos: photos, totalUploadedMB: totalUploadedMB)
+            return uploadedPhotos
+        } catch {
+            await deleteTemporaryAssets(uploadedPhotos)
+            throw error
         }
     }
 
-    private func uploadPreparedImage(
+    private func uploadTemporaryImage(
         _ prepared: PreparedImage,
         userID: String,
-        groupID: String,
-        year: Int,
-        hashtags: [String],
-        uploadBatchID: String,
-        uploadBatchCount: Int
-    ) async throws -> UploadedPhoto {
-        let previewPath = "photos/\(userID)/\(prepared.id)_preview.jpg"
-        let thumbPath = "photos/\(userID)/\(prepared.id)_thumb.jpg"
-        let createdAt = Date()
+        uploadBatchID: String
+    ) async throws -> TemporaryUploadedPhoto {
+        let previewPath = Self.temporaryPreviewPath(userID: userID, uploadBatchID: uploadBatchID, photoID: prepared.id)
+        let thumbPath = Self.temporaryThumbnailPath(userID: userID, uploadBatchID: uploadBatchID, photoID: prepared.id)
 
         async let previewUploadTask = uploadData(prepared.previewData, at: previewPath)
         async let thumbUploadTask = uploadData(prepared.thumbData, at: thumbPath)
 
-        _ = try await (previewUploadTask, thumbUploadTask)
-
-        let payload = Self.makePhotoPayload(
-            previewPath: previewPath,
-            thumbPath: thumbPath,
-            groupID: groupID,
-            userID: userID,
-            year: year,
-            hashtags: hashtags,
-            prepared: prepared,
-            uploadBatchID: uploadBatchID,
-            uploadBatchCount: uploadBatchCount
-        )
-
-        let documentID = try await addPhotoDocument(payload)
-        return UploadedPhoto(
-            photo: FeedPhoto(
-                id: documentID,
-                previewStoragePath: previewPath,
-                thumbnailStoragePath: thumbPath,
-                groupID: groupID,
-                postedBy: userID,
-                year: year,
-                hashtags: hashtags,
-                isFavourite: false,
-                sizeMB: Self.roundedMegabytes(prepared.sizeMB),
-                aspectRatio: prepared.aspectRatio,
-                createdAt: createdAt
-            ),
-            sizeMB: prepared.sizeMB
-        )
+        do {
+            _ = try await (previewUploadTask, thumbUploadTask)
+            return TemporaryUploadedPhoto(
+                id: prepared.id,
+                previewPath: previewPath,
+                thumbnailPath: thumbPath,
+                aspectRatio: prepared.aspectRatio
+            )
+        } catch {
+            await deleteTemporaryAssets([
+                TemporaryUploadedPhoto(
+                    id: prepared.id,
+                    previewPath: previewPath,
+                    thumbnailPath: thumbPath,
+                    aspectRatio: prepared.aspectRatio
+                )
+            ])
+            throw error
+        }
     }
 
     private func resizedJPEGData(from image: UIImage, maxDimension: CGFloat, compression: CGFloat) -> Data? {
@@ -233,28 +208,38 @@ final class UploadService {
         }
     }
 
-    private func addPhotoDocument(_ data: [String: Any]) async throws -> String {
-        let ref = db.collection("photos").document()
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ref.setData(data) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            }
-        }
-        return ref.documentID
+    private func commitUploadBatch(
+        temporaryPhotos: [TemporaryUploadedPhoto],
+        groupID: String,
+        year: Int,
+        hashtags: [String],
+        uploadBatchID: String,
+        isPremiumActive: Bool
+    ) async throws -> [FeedPhoto] {
+        let payload: [String: Any] = [
+            "groupId": groupID,
+            "year": year,
+            "hashtags": hashtags,
+            "uploadBatchId": uploadBatchID,
+            "isPremiumActive": isPremiumActive,
+            "photos": temporaryPhotos.map { $0.commitPayload() }
+        ]
+        let result = try await functions.httpsCallable("commitPhotoUploadBatch").call(payload)
+        return try Self.feedPhotos(from: result.data)
     }
 
-    private func updateUserUsage(uid: String, totalMB: Double) async throws {
-        let ref = db.collection("users").document(uid)
-        let payload: [String: Any] = [
-            "usage_mb": FieldValue.increment(totalMB)
-        ]
+    private func deleteTemporaryAssets(_ photos: [TemporaryUploadedPhoto]) async {
+        for photo in photos {
+            for path in [photo.previewPath, photo.thumbnailPath] {
+                try? await deleteStoragePath(path)
+            }
+        }
+    }
 
+    private func deleteStoragePath(_ path: String) async throws {
+        let ref = storage.reference(withPath: path)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ref.setData(payload, merge: true) { error in
+            ref.delete { error in
                 if let error {
                     continuation.resume(throwing: error)
                     return
@@ -286,41 +271,101 @@ final class UploadService {
         }
     }
 
-    static func makePhotoPayload(
-        previewPath: String,
-        thumbPath: String,
-        groupID: String,
-        userID: String,
-        year: Int,
-        hashtags: [String],
-        prepared: PreparedImage,
-        uploadBatchID: String,
-        uploadBatchCount: Int
-    ) -> [String: Any] {
-        [
-            "preview_storage_path": previewPath,
-            "thumbnail_storage_path": thumbPath,
-            "group_id": groupID,
-            "posted_by": userID,
-            "year": year,
-            "hashtags": hashtags,
-            "aspect_ratio": prepared.aspectRatio,
-            "size_mb": roundedMegabytes(prepared.sizeMB),
-            "upload_batch_id": uploadBatchID,
-            "upload_batch_count": uploadBatchCount,
-            "created_at": FieldValue.serverTimestamp()
-        ]
+    static func temporaryPreviewPath(userID: String, uploadBatchID: String, photoID: String) -> String {
+        "photos/\(userID)/upload_\(uploadBatchID)_\(photoID)_preview.jpg"
+    }
+
+    static func temporaryThumbnailPath(userID: String, uploadBatchID: String, photoID: String) -> String {
+        "photos/\(userID)/upload_\(uploadBatchID)_\(photoID)_thumb.jpg"
+    }
+
+    nonisolated private static func feedPhotos(from data: Any) throws -> [FeedPhoto] {
+        guard
+            let payload = data as? [String: Any],
+            let photoPayloads = payload["photos"] as? [[String: Any]]
+        else {
+            throw UploadServiceError.invalidCommitResponse
+        }
+
+        return try photoPayloads.map(feedPhoto(from:))
+    }
+
+    nonisolated private static func feedPhoto(from payload: [String: Any]) throws -> FeedPhoto {
+        guard
+            let id = payload["id"] as? String,
+            let previewPath = payload["preview_storage_path"] as? String,
+            let thumbnailPath = payload["thumbnail_storage_path"] as? String,
+            let groupID = payload["group_id"] as? String,
+            let postedBy = payload["posted_by"] as? String,
+            let hashtags = payload["hashtags"] as? [String],
+            let year = intValue(payload["year"]),
+            let sizeMB = doubleValue(payload["size_mb"]),
+            let aspectRatio = doubleValue(payload["aspect_ratio"])
+        else {
+            throw UploadServiceError.invalidCommitResponse
+        }
+
+        let createdAt = (payload["created_at"] as? String).flatMap(Self.dateFromISOString)
+        return FeedPhoto(
+            id: id,
+            previewStoragePath: previewPath,
+            thumbnailStoragePath: thumbnailPath,
+            groupID: groupID,
+            postedBy: postedBy,
+            year: year,
+            hashtags: hashtags,
+            isFavourite: false,
+            sizeMB: sizeMB,
+            aspectRatio: aspectRatio,
+            createdAt: createdAt
+        )
+    }
+
+    nonisolated private static func dateFromISOString(_ value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        return ISO8601DateFormatter().date(from: value)
+    }
+
+    nonisolated private static func intValue(_ value: Any?) -> Int? {
+        if let int = value as? Int {
+            return int
+        }
+        if let number = value as? NSNumber {
+            return number.intValue
+        }
+        return nil
+    }
+
+    nonisolated private static func doubleValue(_ value: Any?) -> Double? {
+        if let double = value as? Double {
+            return double
+        }
+        if let number = value as? NSNumber {
+            return number.doubleValue
+        }
+        return nil
     }
 }
 
-private struct UploadResult: Sendable {
-    let photos: [FeedPhoto]
-    let totalUploadedMB: Double
-}
+private struct TemporaryUploadedPhoto: Sendable {
+    let id: String
+    let previewPath: String
+    let thumbnailPath: String
+    let aspectRatio: Double
 
-private struct UploadedPhoto: Sendable {
-    let photo: FeedPhoto
-    let sizeMB: Double
+    func commitPayload() -> [String: Any] {
+        [
+            "id": id,
+            "previewPath": previewPath,
+            "thumbnailPath": thumbnailPath,
+            "aspectRatio": aspectRatio
+        ]
+    }
 }
 
 struct PreparedImage: Sendable {

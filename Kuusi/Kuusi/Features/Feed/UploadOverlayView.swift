@@ -584,14 +584,15 @@ struct UploadOverlayView: View {
                 userID: uid,
                 groupID: groupID,
                 year: year,
-                hashtags: hashtags
+                hashtags: hashtags,
+                isPremiumActive: isPremiumActive
             )
             onUploadCompleted(uploadedPhotos)
             selectedImages = []
             pickerItems = []
             hashtagInput = ""
             hashtags = []
-            effectiveUsageMB += estimatedUploadSizeMB
+            effectiveUsageMB += uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) }
             estimatedUploadSizeMB = 0
             toastMessage = AppMessage(.uploadCompleted, .success)
         } catch {

@@ -31,6 +31,13 @@ Callable functions are deployed in `europe-west2`.
   - Deletes the photo's Storage files
   - Deletes the photo Firestore document
   - Cleans favourites and `usage_mb` with the same helper used by group/account deletion
+- `commitPhotoUploadBatch`
+  - Verifies the caller is signed in and still belongs to the target group
+  - Validates the temporary Storage paths uploaded by the iOS app
+  - Copies temporary preview and thumbnail files to final photo Storage paths
+  - Creates the `photos` documents and increments `users/{uid}.usage_mb` in a transaction
+  - Deletes temporary files after a successful commit
+  - Deletes copied final files and temporary files if the commit fails
 - `removeGroupMember`
   - Verifies the caller owns the group
   - Removes the target user from `groups/{groupId}.members`

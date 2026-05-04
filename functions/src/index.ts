@@ -13,15 +13,20 @@ const storage = getStorage();
 const maxBatchWriteCount = 450;
 const maxGroupMembers = 50;
 const maxMessagingBatchSize = 500;
+const maxUploadBatchPhotoCount = 10;
 const callableFunctionRegion = "europe-west2";
 const notificationFunctionRegion = "europe-west2";
 const announcementsTopic = "announcements";
 const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
+const freeQuotaMB = 1024;
+const premiumQuotaMB = 51200;
 const invalidMessagingTokenCodes = new Set([
   "messaging/invalid-registration-token",
   "messaging/registration-token-not-registered"
 ]);
+
+type StorageBucket = ReturnType<typeof storage.bucket>;
 
 type GroupData = {
   name?: string;
@@ -37,13 +42,28 @@ type GroupInviteData = {
 };
 
 type PhotoData = {
+  aspect_ratio?: number;
+  created_at?: Timestamp;
   group_id?: string;
+  hashtags?: string[];
   preview_storage_path?: string;
   thumbnail_storage_path?: string;
   posted_by?: string;
   size_mb?: number;
+  year?: number;
   upload_batch_id?: string;
   upload_batch_count?: number;
+};
+
+type UploadCommitItem = {
+  aspectRatio: number;
+  finalPreviewPath: string;
+  finalThumbnailPath: string;
+  id: string;
+  previewPath: string;
+  ref: FirebaseFirestore.DocumentReference;
+  sizeMB: number;
+  thumbnailPath: string;
 };
 
 type DeviceData = {
@@ -326,6 +346,153 @@ export const removeGroupMember = onCall({ region: callableFunctionRegion }, asyn
   };
 });
 
+export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  const groupId = normalizeGroupId(request.data?.groupId);
+  const uploadBatchId = normalizeUploadBatchId(request.data?.uploadBatchId);
+  const year = normalizeUploadYear(request.data?.year);
+  const hashtags = normalizeHashtags(request.data?.hashtags);
+  const isPremiumActive = request.data?.isPremiumActive === true;
+  const inputPhotos: unknown[] = Array.isArray(request.data?.photos) ? request.data.photos : [];
+
+  if (!groupId || !uploadBatchId || year === null) {
+    throw new HttpsError("invalid-argument", "groupId, uploadBatchId, and year are required");
+  }
+
+  if (inputPhotos.length === 0 || inputPhotos.length > maxUploadBatchPhotoCount) {
+    throw new HttpsError("invalid-argument", "photos must contain 1 to 10 items");
+  }
+
+  const groupSnapshot = await db.collection("groups").doc(groupId).get();
+  if (!groupSnapshot.exists) {
+    throw new HttpsError("not-found", "Group not found");
+  }
+
+  const groupData = groupSnapshot.data() as GroupData;
+  const members = Array.isArray(groupData.members) ? groupData.members : [];
+  if (!members.includes(uid)) {
+    throw new HttpsError("permission-denied", "Only group members can upload photos");
+  }
+
+  const bucket = storage.bucket();
+  const createdAt = new Date();
+  const committedPhotos: UploadCommitItem[] = [];
+
+  try {
+    for (const rawPhoto of inputPhotos) {
+      const input = normalizeUploadPhoto(rawPhoto, uid, uploadBatchId);
+      const ref = db.collection("photos").doc();
+      const finalPreviewPath = `photos/${uid}/${ref.id}_preview.jpg`;
+      const finalThumbnailPath = `photos/${uid}/${ref.id}_thumb.jpg`;
+      const [previewSizeMB, thumbnailSizeMB] = await Promise.all([
+        storageFileSizeMB(bucket, input.previewPath),
+        storageFileSizeMB(bucket, input.thumbnailPath)
+      ]);
+
+      await Promise.all([
+        bucket.file(input.previewPath).copy(bucket.file(finalPreviewPath)),
+        bucket.file(input.thumbnailPath).copy(bucket.file(finalThumbnailPath))
+      ]);
+
+      committedPhotos.push({
+        ...input,
+        finalPreviewPath,
+        finalThumbnailPath,
+        ref,
+        sizeMB: roundMegabytes(previewSizeMB + thumbnailSizeMB)
+      });
+    }
+
+    const totalUploadMB = roundMegabytes(committedPhotos.reduce((total, photo) => total + photo.sizeMB, 0));
+    const quotaMB = isPremiumActive ? premiumQuotaMB : freeQuotaMB;
+
+    await db.runTransaction(async (transaction) => {
+      const freshGroupSnapshot = await transaction.get(db.collection("groups").doc(groupId));
+      if (!freshGroupSnapshot.exists) {
+        throw new HttpsError("not-found", "Group not found");
+      }
+
+      const freshGroupData = freshGroupSnapshot.data() as GroupData;
+      const freshMembers = Array.isArray(freshGroupData.members) ? freshGroupData.members : [];
+      if (!freshMembers.includes(uid)) {
+        throw new HttpsError("permission-denied", "Only group members can upload photos");
+      }
+
+      const userRef = db.collection("users").doc(uid);
+      const userSnapshot = await transaction.get(userRef);
+      const usageMB = numericValue(userSnapshot.data()?.usage_mb) ?? 0;
+      if (usageMB + totalUploadMB > quotaMB) {
+        throw new HttpsError("resource-exhausted", "Storage limit reached");
+      }
+
+      for (const photo of committedPhotos) {
+        transaction.set(photo.ref, {
+          preview_storage_path: photo.finalPreviewPath,
+          thumbnail_storage_path: photo.finalThumbnailPath,
+          group_id: groupId,
+          posted_by: uid,
+          year,
+          hashtags,
+          aspect_ratio: photo.aspectRatio,
+          size_mb: photo.sizeMB,
+          upload_batch_id: uploadBatchId,
+          upload_batch_count: committedPhotos.length,
+          created_at: FieldValue.serverTimestamp()
+        });
+      }
+
+      transaction.set(userRef, {
+        usage_mb: FieldValue.increment(totalUploadMB)
+      }, { merge: true });
+    });
+
+    await deleteStoragePaths([
+      ...committedPhotos.map((photo) => photo.previewPath),
+      ...committedPhotos.map((photo) => photo.thumbnailPath)
+    ]);
+
+    return {
+      photos: committedPhotos.map((photo) => ({
+        id: photo.ref.id,
+        preview_storage_path: photo.finalPreviewPath,
+        thumbnail_storage_path: photo.finalThumbnailPath,
+        group_id: groupId,
+        posted_by: uid,
+        year,
+        hashtags,
+        aspect_ratio: photo.aspectRatio,
+        size_mb: photo.sizeMB,
+        upload_batch_id: uploadBatchId,
+        upload_batch_count: committedPhotos.length,
+        created_at: createdAt.toISOString()
+      })),
+      totalUploadMB
+    };
+  } catch (error) {
+    await deleteStoragePaths([
+      ...committedPhotos.map((photo) => photo.finalPreviewPath),
+      ...committedPhotos.map((photo) => photo.finalThumbnailPath),
+      ...inputPhotos.flatMap((rawPhoto) => {
+        try {
+          const input = normalizeUploadPhoto(rawPhoto, uid, uploadBatchId);
+          return [input.previewPath, input.thumbnailPath];
+        } catch {
+          return [];
+        }
+      })
+    ]);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", errorMessage(error));
+  }
+});
+
 export const onPhotoCreated = onDocumentCreated({
   document: "photos/{photoId}",
   region: notificationFunctionRegion
@@ -477,8 +644,132 @@ function normalizeText(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function normalizeUploadBatchId(value: unknown): string | null {
+  const text = normalizeText(value);
+  return text && /^[A-Za-z0-9_-]{1,128}$/.test(text) ? text : null;
+}
+
+function normalizeUploadYear(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return null;
+  }
+
+  const currentYear = new Date().getFullYear();
+  return value >= 2000 && value <= currentYear ? value : null;
+}
+
+function normalizeHashtags(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const hashtags = value
+    .map((item) => normalizeText(item))
+    .filter((item): item is string => item !== null)
+    .map((item) => item.replace(/^#/, "").trim())
+    .filter((item) => item.length > 0 && item.length <= 40);
+
+  return Array.from(new Set(hashtags)).slice(0, 30);
+}
+
+function normalizeUploadPhoto(
+  value: unknown,
+  uid: string,
+  uploadBatchId: string
+): Omit<UploadCommitItem, "finalPreviewPath" | "finalThumbnailPath" | "ref" | "sizeMB"> {
+  if (!value || typeof value !== "object") {
+    throw new HttpsError("invalid-argument", "Each photo must be an object");
+  }
+
+  const data = value as Record<string, unknown>;
+  const id = normalizeUploadBatchId(data.id);
+  const previewPath = normalizeText(data.previewPath);
+  const thumbnailPath = normalizeText(data.thumbnailPath);
+  const aspectRatio = numericValue(data.aspectRatio);
+  const expectedPrefix = `photos/${uid}/upload_${uploadBatchId}_`;
+
+  if (!id || !previewPath || !thumbnailPath || aspectRatio === null) {
+    throw new HttpsError("invalid-argument", "Each photo requires id, paths, and aspectRatio");
+  }
+
+  if (
+    !Number.isFinite(aspectRatio)
+    || aspectRatio < 0.2
+    || aspectRatio > 10
+  ) {
+    throw new HttpsError("invalid-argument", "aspectRatio is invalid");
+  }
+
+  if (
+    !previewPath.startsWith(expectedPrefix)
+    || !previewPath.endsWith("_preview.jpg")
+    || !thumbnailPath.startsWith(expectedPrefix)
+    || !thumbnailPath.endsWith("_thumb.jpg")
+  ) {
+    throw new HttpsError("permission-denied", "Upload paths are invalid");
+  }
+
+  return {
+    aspectRatio,
+    id,
+    previewPath,
+    thumbnailPath
+  };
+}
+
 function normalizeBatchCount(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function numericValue(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+async function storageFileSizeMB(bucket: StorageBucket, path: string): Promise<number> {
+  try {
+    const [metadata] = await bucket.file(path).getMetadata();
+    const byteSize = numericValue(metadata.size);
+    if (byteSize === null || byteSize <= 0) {
+      throw new HttpsError("failed-precondition", "Upload file is empty");
+    }
+    return byteSize / 1024 / 1024;
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("failed-precondition", `Upload file is missing: ${path}`);
+  }
+}
+
+function roundMegabytes(sizeMB: number): number {
+  return Math.round(sizeMB * 100) / 100;
+}
+
+async function deleteStoragePaths(paths: string[]): Promise<void> {
+  const bucket = storage.bucket();
+  const uniquePaths = Array.from(new Set(paths.filter((path) => path.length > 0)));
+
+  for (const path of uniquePaths) {
+    try {
+      await bucket.file(path).delete();
+    } catch (error) {
+      if (!isObjectNotFoundError(error)) {
+        console.warn("Failed to delete upload storage path", {
+          path,
+          error: errorMessage(error)
+        });
+      }
+    }
+  }
 }
 
 function errorMessage(error: unknown): string {

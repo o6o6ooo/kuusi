@@ -47,37 +47,20 @@ struct UploadServiceTests {
     }
 
     @Test
-    func makePhotoPayloadMapsPreparedImageFields() {
-        let prepared = PreparedImage(
-            id: "photo-1",
-            previewData: Data([0x01]),
-            thumbData: Data([0x02]),
-            aspectRatio: 1.5,
-            sizeMB: 2.345
+    func temporaryStoragePathsUseUploadBatchPrefix() {
+        #expect(
+            UploadService.temporaryPreviewPath(
+                userID: "user-1",
+                uploadBatchID: "batch-1",
+                photoID: "photo-1"
+            ) == "photos/user-1/upload_batch-1_photo-1_preview.jpg"
         )
-
-        let payload = UploadService.makePhotoPayload(
-            previewPath: "photos/user-1/photo-1_preview.jpg",
-            thumbPath: "photos/user-1/photo-1_thumb.jpg",
-            groupID: "group-1",
-            userID: "user-1",
-            year: 2025,
-            hashtags: ["family", "spring"],
-            prepared: prepared,
-            uploadBatchID: "batch-1",
-            uploadBatchCount: 3
+        #expect(
+            UploadService.temporaryThumbnailPath(
+                userID: "user-1",
+                uploadBatchID: "batch-1",
+                photoID: "photo-1"
+            ) == "photos/user-1/upload_batch-1_photo-1_thumb.jpg"
         )
-
-        #expect(payload["preview_storage_path"] as? String == "photos/user-1/photo-1_preview.jpg")
-        #expect(payload["thumbnail_storage_path"] as? String == "photos/user-1/photo-1_thumb.jpg")
-        #expect(payload["group_id"] as? String == "group-1")
-        #expect(payload["posted_by"] as? String == "user-1")
-        #expect(payload["year"] as? Int == 2025)
-        #expect(payload["hashtags"] as? [String] == ["family", "spring"])
-        #expect(payload["aspect_ratio"] as? Double == 1.5)
-        #expect(payload["size_mb"] as? Double == 2.35)
-        #expect(payload["upload_batch_id"] as? String == "batch-1")
-        #expect(payload["upload_batch_count"] as? Int == 3)
-        #expect(payload["created_at"] != nil)
     }
 }
