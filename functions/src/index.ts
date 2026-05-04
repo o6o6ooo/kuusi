@@ -439,26 +439,34 @@ export const onAdminNotificationCreated = onDocumentCreated({
     return;
   }
 
-  const messageId = await sendPushToTopic(announcementsTopic, {
-    title,
-    body,
-    data: {
-      type: "admin_announcement",
-      notification_id: notificationId,
-      deep_link: normalizeText(notificationData.deep_link) ?? "feed"
-    }
-  });
+  try {
+    const messageId = await sendPushToTopic(announcementsTopic, {
+      title,
+      body,
+      data: {
+        type: "admin_announcement",
+        notification_id: notificationId,
+        deep_link: normalizeText(notificationData.deep_link) ?? "feed"
+      }
+    });
 
-  await notificationRef.set({
-    status: "sent",
-    sent_at: FieldValue.serverTimestamp(),
-    delivery: {
-      mode: "topic",
-      topic: announcementsTopic,
-      message_id: messageId
-    },
-    updated_at: FieldValue.serverTimestamp()
-  }, { merge: true });
+    await notificationRef.set({
+      status: "sent",
+      sent_at: FieldValue.serverTimestamp(),
+      delivery: {
+        mode: "topic",
+        topic: announcementsTopic,
+        message_id: messageId
+      },
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    await notificationRef.set({
+      status: "failed",
+      failure_reason: errorMessage(error),
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
 });
 
 function normalizeGroupId(value: unknown): string | null {
@@ -471,6 +479,10 @@ function normalizeText(value: unknown): string | null {
 
 function normalizeBatchCount(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message.length > 0 ? error.message : "unknown_error";
 }
 
 async function reservePhotoBatchNotification(
