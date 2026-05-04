@@ -93,29 +93,6 @@ final class FeedService {
         }
     }
 
-    func fetchFavouritePhotos(userID: String, groupIDs: [String], limit: Int = 10) async throws -> [FeedPhoto] {
-        let visibleGroupIDs = Self.visibleGroupIDs(from: groupIDs)
-        guard !visibleGroupIDs.isEmpty else { return [] }
-        let favouriteIDs = Array(try await fetchFavouriteIDs(userID: userID))
-        guard !favouriteIDs.isEmpty else { return [] }
-
-        let chunks = favouriteIDs.chunked(into: 10)
-        var docs: [QueryDocumentSnapshot] = []
-        docs.reserveCapacity(favouriteIDs.count)
-
-        for chunk in chunks {
-            let query = db.collection("photos")
-                .whereField(FieldPath.documentID(), in: chunk)
-            let snapshot = try await fetchQuery(query)
-            docs.append(contentsOf: snapshot.documents)
-        }
-
-        let photos = docs
-            .map { FeedPhoto(id: $0.documentID, data: $0.data()) }
-
-        return Self.presentFavouritePhotos(photos, visibleGroupIDs: visibleGroupIDs, limit: limit)
-    }
-
     func setFavourite(photoID: String, userID: String, isFavourite: Bool) async throws {
         let ref = db.collection("users").document(userID)
         let payload: [String: Any] = [
@@ -245,19 +222,6 @@ final class FeedService {
             .sorted(by: feedPhotosAreOrderedBefore)
     }
 
-    static func presentFavouritePhotos(_ photos: [FeedPhoto], visibleGroupIDs: [String], limit: Int) -> [FeedPhoto] {
-        let visibleGroups = Set(visibleGroupIDs)
-        return photos
-            .filter { photo in
-                guard let groupID = photo.groupID else { return false }
-                return visibleGroups.contains(groupID)
-            }
-            .map { $0.withFavourite(true) }
-            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-            .prefix(limit)
-            .map { $0 }
-    }
-
     private static func isMissingIndexError(_ error: Error) -> Bool {
         let nsError = error as NSError
         guard nsError.domain == FirestoreErrorDomain else { return false }
@@ -300,19 +264,4 @@ private func feedPhotosAreOrderedBefore(_ lhs: FeedPhoto, _ rhs: FeedPhoto) -> B
         return lhsCreatedAt > rhsCreatedAt
     }
     return lhs.id > rhs.id
-}
-
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0 else { return [self] }
-        var result: [[Element]] = []
-        result.reserveCapacity((count + size - 1) / size)
-        var index = 0
-        while index < count {
-            let end = Swift.min(index + size, count)
-            result.append(Array(self[index..<end]))
-            index += size
-        }
-        return result
-    }
 }

@@ -120,19 +120,6 @@ final class UserService {
         try await setDocument(ref, data: payload, merge: true)
     }
 
-    func deleteUserDocument(uid: String) async throws {
-        let ref = db.collection("users").document(uid)
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            ref.delete { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            }
-        }
-    }
-
     func deleteCurrentUserData() async throws {
         _ = try await functions.httpsCallable("deleteCurrentUserData").call([:])
     }

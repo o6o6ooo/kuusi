@@ -147,42 +147,6 @@ final class GroupService {
         }
     }
 
-    func joinGroup(groupID: String, uid: String) async throws {
-        let groupRef = db.collection("groups").document(groupID)
-        let userRef = db.collection("users").document(uid)
-
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.runTransaction({ transaction, errorPointer in
-                do {
-                    let groupSnapshot = try transaction.getDocument(groupRef)
-                    guard groupSnapshot.exists else {
-                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
-                        return nil
-                    }
-
-                    let members = (groupSnapshot.data()?["members"] as? [String]) ?? []
-                    if !members.contains(uid), members.count >= Self.maxGroupMembers {
-                        errorPointer?.pointee = GroupServiceError.memberLimitReached(maxMembers: Self.maxGroupMembers) as NSError
-                        return nil
-                    }
-                } catch {
-                    errorPointer?.pointee = error as NSError
-                    return nil
-                }
-
-                transaction.updateData(["members": FieldValue.arrayUnion([uid])], forDocument: groupRef)
-                transaction.setData(["groups": FieldValue.arrayUnion([groupID])], forDocument: userRef, merge: true)
-                return nil
-            }, completion: { _, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            })
-        }
-    }
-
     func deleteGroup(groupID: String) async throws {
         let snapshot = try await getDocument(db.collection("groups").document(groupID))
         guard snapshot.exists else {
@@ -338,18 +302,6 @@ final class GroupService {
     private func setDocument(_ ref: DocumentReference, data: [String: Any], merge: Bool) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             ref.setData(data, merge: merge) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            }
-        }
-    }
-
-    private func commitBatch(_ batch: WriteBatch) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            batch.commit { error in
                 if let error {
                     continuation.resume(throwing: error)
                     return

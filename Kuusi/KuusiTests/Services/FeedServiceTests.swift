@@ -34,25 +34,6 @@ struct FeedServiceTests {
     }
 
     @Test
-    func presentFavouritePhotosFiltersVisibleGroupsSortsAndLimits() {
-        let photos = [
-            makePhoto(id: "a", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100)),
-            makePhoto(id: "b", groupID: "g2", createdAt: Date(timeIntervalSince1970: 300)),
-            makePhoto(id: "c", groupID: "g3", createdAt: Date(timeIntervalSince1970: 200)),
-            makePhoto(id: "d", groupID: nil, createdAt: Date(timeIntervalSince1970: 400))
-        ]
-
-        let result = FeedService.presentFavouritePhotos(photos, visibleGroupIDs: ["g1", "g3"], limit: 5)
-
-        if result.map(\.id) != ["c", "a"] {
-            Issue.record("Expected favourite photos to be sorted newest-first and filtered to visible groups.")
-        }
-        if result.contains(where: { !$0.isFavourite }) {
-            Issue.record("Expected favourite photos presentation to mark every photo as favourite.")
-        }
-    }
-
-    @Test
     func presentRecentPhotosFromUnorderedResultsRespectsCursor() {
         let photos = [
             makePhoto(id: "c", groupID: "g1", createdAt: Date(timeIntervalSince1970: 300)),
