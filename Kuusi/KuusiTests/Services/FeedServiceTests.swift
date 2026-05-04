@@ -70,8 +70,6 @@ struct FeedServiceTests {
             switch error {
             case .cannotDeleteOthersPhotos:
                 break
-            default:
-                Issue.record("Unexpected FeedServiceError: \(error)")
             }
         } catch {
             Issue.record("Unexpected error: \(error)")
