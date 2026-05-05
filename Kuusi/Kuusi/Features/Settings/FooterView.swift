@@ -5,9 +5,9 @@ struct FooterView: View {
     let onPrivacyChoices: () -> Void
     let onDeleteAccount: () -> Void
 
-    private let faqURL = URL(string: "https://getkuusi.vercel.app/faq")!
-    private let privacyPolicyURL = URL(string: "https://getkuusi.vercel.app/privacy")!
-    private let termsOfServiceURL = URL(string: "https://getkuusi.vercel.app/terms")!
+    private let faqURL = URL(string: "https://kuusi.app/faq")!
+    private let privacyPolicyURL = URL(string: "https://kuusi.app/privacy")!
+    private let termsOfServiceURL = URL(string: "https://kuusi.app/terms")!
     private let authorURL = URL(string: "https://github.com/o6o6ooo")!
 
     var body: some View {
