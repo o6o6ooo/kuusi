@@ -77,6 +77,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private var nextCursorByGroupID: [String: FeedPageCursor] = [:]
     private var hasMorePhotosByGroupID: [String: Bool] = [:]
     private var favouriteIDs: Set<String>?
+    private var removedPhotoIDsByGroupID: [String: Set<String>] = [:]
 
     init(
         feedService: PhotoCollectionFeedServicing,
@@ -149,6 +150,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
         nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
         hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
+        removedPhotoIDsByGroupID = removedPhotoIDsByGroupID.filter { validGroupIDs.contains($0.key) }
         if !photosByGroupID.isEmpty {
             persistCachedPhotosIfPossible()
         }
@@ -159,6 +161,10 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         persistCachedPhotos(for: uid)
         await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, shouldPreserveLoadedPhotos: true)
+    }
+
+    func reloadPhotosFromSource(limit: Int) async {
+        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
     }
 
     func selectGroup(_ groupID: String, limit: Int) {
@@ -189,12 +195,30 @@ final class PhotoCollectionViewModel: ObservableObject {
 
         for groupID in Set(uploadedPhotos.compactMap(\.groupID)) {
             let newPhotos = uploadedPhotos.filter { $0.groupID == groupID }
-            let existingPhotos = photosByGroupID[groupID] ?? []
+            let removedPhotoIDs = removedPhotoIDsByGroupID[groupID] ?? []
+            let existingPhotos = (photosByGroupID[groupID] ?? [])
+                .filter { !removedPhotoIDs.contains($0.id) }
             photosByGroupID[groupID] = Self.mergeFreshPhotos(newPhotos, withExistingPhotos: existingPhotos)
                 .sorted(by: Self.photosAreOrderedBefore)
             availableHashtagsByGroupID[groupID] = Self.makeAvailableHashtags(from: photosByGroupID[groupID] ?? [])
             nextCursorByGroupID[groupID] = Self.makeNextCursor(from: photosByGroupID[groupID] ?? [])
             hasMorePhotosByGroupID[groupID] = hasMorePhotosByGroupID[groupID] ?? false
+        }
+
+        persistCachedPhotosIfPossible()
+    }
+
+    func replaceWithUploadedPhotosPendingReload(_ uploadedPhotos: [FeedPhoto]) {
+        guard !uploadedPhotos.isEmpty else { return }
+
+        for groupID in Set(uploadedPhotos.compactMap(\.groupID)) {
+            let newPhotos = uploadedPhotos
+                .filter { $0.groupID == groupID }
+                .sorted(by: Self.photosAreOrderedBefore)
+            photosByGroupID[groupID] = newPhotos
+            availableHashtagsByGroupID[groupID] = Self.makeAvailableHashtags(from: newPhotos)
+            nextCursorByGroupID[groupID] = Self.makeNextCursor(from: newPhotos)
+            hasMorePhotosByGroupID[groupID] = true
         }
 
         persistCachedPhotosIfPossible()
@@ -207,6 +231,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         cachedPhotos.removeAll { $0.id == id }
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
+        removedPhotoIDsByGroupID[selectedGroupID, default: []].insert(id)
         favouriteIDs?.remove(id)
         persistCachedPhotosIfPossible()
     }
@@ -285,8 +310,11 @@ final class PhotoCollectionViewModel: ObservableObject {
                 nextCursor = result.nextCursor
                 hasMorePhotos = result.hasMore
             } else if shouldPreserveLoadedPhotos {
-                let existingPhotos = photosByGroupID[selectedGroupID] ?? []
+                let removedPhotoIDs = removedPhotoIDsByGroupID[selectedGroupID] ?? []
+                let existingPhotos = (photosByGroupID[selectedGroupID] ?? [])
+                    .filter { !removedPhotoIDs.contains($0.id) }
                 mergedPhotos = Self.mergeFreshPhotos(result.photos, withExistingPhotos: existingPhotos)
+                    .filter { !removedPhotoIDs.contains($0.id) }
                 nextCursor = Self.makeNextCursor(from: mergedPhotos)
                 hasMorePhotos = result.hasMore || mergedPhotos.count > result.photos.count
             } else {
@@ -315,6 +343,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         nextCursorByGroupID = [:]
         hasMorePhotosByGroupID = [:]
         favouriteIDs = nil
+        removedPhotoIDsByGroupID = [:]
         errorMessageID = nil
     }
 

@@ -228,12 +228,17 @@ struct FeedView: View {
                     currentUsageMB: profileViewModel.usageMB,
                     isPremiumActive: subscriptionStore.isPremiumActive,
                     onUploadCompleted: { uploadedPhotos in
-                        photoCollection.prependUploadedPhotos(uploadedPhotos)
                         if let uploadedGroupID = uploadedPhotos.first?.groupID {
                             selectedHashtag = nil
                             hiddenInlineAdPhotoIDs.removeAll()
                             groupStore.selectedGroupID = uploadedGroupID
                             photoCollection.selectedGroupID = uploadedGroupID
+                            photoCollection.replaceWithUploadedPhotosPendingReload(uploadedPhotos)
+                            Task {
+                                await photoCollection.reloadPhotosFromSource(limit: feedPageSize)
+                            }
+                        } else {
+                            photoCollection.replaceWithUploadedPhotosPendingReload(uploadedPhotos)
                         }
                     }
                 )

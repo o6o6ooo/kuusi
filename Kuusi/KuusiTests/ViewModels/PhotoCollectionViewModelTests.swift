@@ -10,6 +10,10 @@ private extension PhotoCollectionViewModel {
     func refresh(limit: Int) async {
         await refreshPhotos(limit: limit)
     }
+
+    func reload(limit: Int) async {
+        await reloadPhotosFromSource(limit: limit)
+    }
 }
 
 @MainActor
@@ -102,6 +106,24 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func prependUploadedPhotosDoesNotRestoreRemovedPhoto() {
+        let removedPhoto = makePhoto(id: "photo-removed", groupID: "group-a", year: 2024)
+        let keptPhoto = makePhoto(id: "photo-kept", groupID: "group-a", year: 2023)
+        let uploadedPhoto = makePhoto(id: "photo-uploaded", groupID: "group-a", year: 2026)
+        let viewModel = makeViewModel(userID: "prepend-after-remove-user")
+
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+        viewModel.photosByGroupID = ["group-a": [removedPhoto, keptPhoto]]
+
+        viewModel.removePhoto(id: removedPhoto.id)
+        viewModel.photosByGroupID["group-a"] = [removedPhoto, keptPhoto]
+        viewModel.prependUploadedPhotos([uploadedPhoto])
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-uploaded", "photo-kept"])
+    }
+
+    @Test
     func prependUploadedPhotosAddsPhotosToGroupCache() {
         let viewModel = makeViewModel(userID: "prepend-upload-user")
         viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
@@ -130,6 +152,22 @@ struct PhotoCollectionViewModelTests {
 
         #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old"])
         #expect(viewModel.currentGroupAvailableHashtags == ["new", "old"])
+    }
+
+    @Test
+    func replaceWithUploadedPhotosPendingReloadDropsStaleGroupCache() {
+        let staleDeletedPhoto = makePhoto(id: "photo-deleted", groupID: "group-a", year: 2024)
+        let uploadedPhoto = makePhoto(id: "photo-uploaded", groupID: "group-a", year: 2026, hashtags: ["new"])
+        let viewModel = makeViewModel(userID: "replace-upload-cache-user")
+
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+        viewModel.photosByGroupID = ["group-a": [staleDeletedPhoto]]
+
+        viewModel.replaceWithUploadedPhotosPendingReload([uploadedPhoto])
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-uploaded"])
+        #expect(viewModel.currentGroupAvailableHashtags == ["new"])
     }
 
     @Test
@@ -487,6 +525,49 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.count == 1)
         #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
         #expect(viewModel.errorMessageID == nil)
+    }
+
+    @Test
+    func refreshDoesNotPreserveRemovedPhoto() async {
+        let removedPhoto = makePhoto(id: "photo-removed", groupID: "group-a", year: 2025)
+        let keptPhoto = makePhoto(id: "photo-kept", groupID: "group-a", year: 2024)
+        let refreshedPhoto = makePhoto(id: "photo-refreshed", groupID: "group-a", year: 2026)
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID["group-a"] = [
+            RecentPhotoFetchResult(photos: [refreshedPhoto], hasMore: false, nextCursor: nil, favouriteIDs: [])
+        ]
+        let viewModel = makeViewModel(feedService: feedService, userID: "refresh-after-remove-user")
+
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+        viewModel.photosByGroupID = ["group-a": [removedPhoto, keptPhoto]]
+
+        viewModel.removePhoto(id: removedPhoto.id)
+        viewModel.photosByGroupID["group-a"] = [removedPhoto, keptPhoto]
+        await viewModel.refresh(limit: 6)
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-refreshed", "photo-kept"])
+    }
+
+    @Test
+    func reloadReplacesStaleCachedPhotosAfterUpload() async {
+        let staleDeletedPhoto = makePhoto(id: "photo-deleted", groupID: "group-a", year: 2024)
+        let uploadedPhoto = makePhoto(id: "photo-uploaded", groupID: "group-a", year: 2026)
+        let serverPhoto = makePhoto(id: "photo-server", groupID: "group-a", year: 2025)
+        let feedService = FeedServiceSpy()
+        feedService.resultsByGroupID["group-a"] = [
+            RecentPhotoFetchResult(photos: [uploadedPhoto, serverPhoto], hasMore: false, nextCursor: nil, favouriteIDs: [])
+        ]
+        let viewModel = makeViewModel(feedService: feedService, userID: "reload-after-upload-user")
+
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+        viewModel.photosByGroupID = ["group-a": [staleDeletedPhoto]]
+
+        viewModel.replaceWithUploadedPhotosPendingReload([uploadedPhoto])
+        await viewModel.reload(limit: 6)
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-uploaded", "photo-server"])
     }
 
     @Test
