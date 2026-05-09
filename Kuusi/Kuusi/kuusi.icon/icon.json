@@ -1,38 +1,123 @@
 {
-  "fill-specializations" : [
-    {
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:0.76471,0.86667,0.99216,1.00000",
-          "srgb:0.64314,0.78431,0.92549,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
-      }
-    },
-    {
-      "appearance" : "dark",
-      "value" : "system-dark"
-    }
-  ],
+  "fill" : {
+    "solid" : "display-p3:0.64706,0.76471,0.87059,1.00000"
+  },
   "groups" : [
     {
       "layers" : [
         {
-          "glass" : false,
-          "hidden" : false,
-          "image-name" : "tree.svg",
-          "name" : "tree",
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
           "position" : {
-            "scale" : 6,
+            "scale" : 0.3,
+            "translation-in-points" : [
+              0,
+              -181.42063600199072
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              47.53650941246542,
+              -64.80939249100038
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              87.53650941246542,
+              134.14535398391376
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              -75,
+              119.14535398391376
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              -2,
+              94.14535398391376
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              62.53650941246542,
+              51.8213914178275
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              -57,
+              21.8213914178275
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              3,
+              -24.282481891065117
+            ]
+          }
+        },
+        {
+          "image-name" : "snow.svg",
+          "name" : "snow",
+          "opacity" : 0.5,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              -27,
+              -91.80939249100038
+            ]
+          }
+        },
+        {
+          "image-name" : "kuusi_tree3.svg",
+          "name" : "kuusi_tree3",
+          "position" : {
+            "scale" : 2,
             "translation-in-points" : [
               0,
               0
