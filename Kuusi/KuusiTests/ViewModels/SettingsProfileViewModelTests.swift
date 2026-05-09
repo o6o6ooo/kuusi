@@ -69,6 +69,7 @@ struct SettingsProfileViewModelTests {
     func saveProfileTrimsValuesAndKeepsBlankIconWhenBlank() async {
         let userService = UserServiceSpy()
         let viewModel = makeViewModel(userService: userService)
+        viewModel.usageMB = 12.5
         viewModel.name = "  Sakura  "
         viewModel.icon = "   "
         viewModel.bgColour = "#abcdef"
@@ -80,6 +81,10 @@ struct SettingsProfileViewModelTests {
         #expect(userService.updateCalls.first?.name == "Sakura")
         #expect(userService.updateCalls.first?.icon == "")
         #expect(userService.updateCalls.first?.bgColour == "#abcdef")
+        #expect(userService.cacheUserProfileCalls.count == 1)
+        #expect(userService.cacheUserProfileCalls.first?.uid == "user-1")
+        #expect(userService.cacheUserProfileCalls.first?.name == "Sakura")
+        #expect(userService.cacheUserProfileCalls.first?.usageMB == 12.5)
         #expect(viewModel.toastMessage?.id == .profileUpdated)
         if case .success = viewModel.toastMessage?.tone {
             #expect(Bool(true))
@@ -104,6 +109,26 @@ struct SettingsProfileViewModelTests {
         } else {
             Issue.record("Expected error inline message")
         }
+    }
+
+    @Test
+    func addUploadedUsageUpdatesUsageAndCachesProfile() {
+        let userService = UserServiceSpy()
+        let viewModel = makeViewModel(userService: userService)
+        viewModel.name = "Sakura"
+        viewModel.icon = "🌲"
+        viewModel.bgColour = "#123456"
+        viewModel.usageMB = 10
+
+        viewModel.addUploadedUsage(2.5)
+
+        #expect(viewModel.usageMB == 12.5)
+        #expect(userService.cacheUserProfileCalls.count == 1)
+        #expect(userService.cacheUserProfileCalls.first?.uid == "user-1")
+        #expect(userService.cacheUserProfileCalls.first?.name == "Sakura")
+        #expect(userService.cacheUserProfileCalls.first?.icon == "🌲")
+        #expect(userService.cacheUserProfileCalls.first?.bgColour == "#123456")
+        #expect(userService.cacheUserProfileCalls.first?.usageMB == 12.5)
     }
 
     @Test
@@ -173,13 +198,22 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
         let uid: String
     }
 
+    struct CacheUserProfileCall {
+        let uid: String
+        let name: String
+        let icon: String
+        let bgColour: String
+        let usageMB: Double
+    }
+
     var fetchedUser: AppUser?
     var fetchError: Error?
     var updateError: Error?
     var updateCalls: [UpdateCall] = []
     var cacheAuthorNameCalls: [CacheAuthorNameCall] = []
+    var cacheUserProfileCalls: [CacheUserProfileCall] = []
 
-    func fetchUser(uid: String) async throws -> AppUser? {
+    func fetchCachedUser(uid: String) async throws -> AppUser? {
         if let fetchError {
             throw fetchError
         }
@@ -195,6 +229,16 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
 
     func cacheAuthorName(_ name: String, for uid: String) {
         cacheAuthorNameCalls.append(.init(name: name, uid: uid))
+    }
+
+    func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double) {
+        cacheUserProfileCalls.append(.init(
+            uid: uid,
+            name: name,
+            icon: icon,
+            bgColour: bgColour,
+            usageMB: usageMB
+        ))
     }
 }
 

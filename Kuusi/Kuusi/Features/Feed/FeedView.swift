@@ -228,6 +228,7 @@ struct FeedView: View {
                     currentUsageMB: profileViewModel.usageMB,
                     isPremiumActive: subscriptionStore.isPremiumActive,
                     onUploadCompleted: { uploadedPhotos in
+                        profileViewModel.addUploadedUsage(uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) })
                         if let uploadedGroupID = uploadedPhotos.first?.groupID {
                             selectedHashtag = nil
                             hiddenInlineAdPhotoIDs.removeAll()

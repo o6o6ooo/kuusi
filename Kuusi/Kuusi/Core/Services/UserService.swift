@@ -8,6 +8,40 @@ private struct CachedAuthorName: Codable {
     let cachedAt: Date
 }
 
+private struct CachedAppUser: Codable {
+    let id: String
+    let name: String
+    let email: String
+    let icon: String
+    let bgColour: String
+    let usageMB: Double
+    let groups: [String]
+    let cachedAt: Date
+
+    init(user: AppUser, cachedAt: Date = Date()) {
+        id = user.id
+        name = user.name
+        email = user.email
+        icon = user.icon
+        bgColour = user.bgColour
+        usageMB = user.usageMB
+        groups = user.groups
+        self.cachedAt = cachedAt
+    }
+
+    func toAppUser() -> AppUser {
+        AppUser(
+            id: id,
+            name: name,
+            email: email,
+            icon: icon,
+            bgColour: bgColour,
+            usageMB: usageMB,
+            groups: groups
+        )
+    }
+}
+
 @MainActor
 final class UserService {
     private static let functionsRegion = "europe-west2"
@@ -19,6 +53,9 @@ final class UserService {
     private static var authorNameMemoryCache: [String: CachedAuthorName] = [:]
     private static var authorNameInFlightTasks: [String: Task<String?, Never>] = [:]
     private static var didLoadAuthorNameDefaults = false
+    private static let profileCacheKey = "current_user_profile_cache_v1"
+    private static var profileMemoryCache: [String: CachedAppUser] = [:]
+    private static var didLoadProfileDefaults = false
 
     func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
         let ref = db.collection("users").document(user.uid)
@@ -57,7 +94,23 @@ final class UserService {
         guard snapshot.exists, let data = snapshot.data() else {
             return nil
         }
-        return AppUser(id: snapshot.documentID, data: data)
+        let user = AppUser(id: snapshot.documentID, data: data)
+        if let user {
+            cacheUser(user)
+        }
+        return user
+    }
+
+    func fetchCachedUser(uid: String) async throws -> AppUser? {
+        if let cached = cachedUser(uid: uid) {
+            return cached
+        }
+        return try await fetchUser(uid: uid)
+    }
+
+    func cachedUser(uid: String) -> AppUser? {
+        loadProfileDefaultsIfNeeded()
+        return Self.profileMemoryCache[uid]?.toAppUser()
     }
 
     func cachedAuthorName(uid: String) -> String? {
@@ -108,6 +161,26 @@ final class UserService {
         loadAuthorNameDefaultsIfNeeded()
         Self.authorNameMemoryCache[uid] = CachedAuthorName(name: name, cachedAt: Date())
         persistAuthorNameCache()
+    }
+
+    func cacheUser(_ user: AppUser) {
+        loadProfileDefaultsIfNeeded()
+        Self.profileMemoryCache[user.id] = CachedAppUser(user: user)
+        persistProfileCache()
+    }
+
+    func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double) {
+        let existing = cachedUser(uid: uid)
+        let user = AppUser(
+            id: uid,
+            name: name,
+            email: existing?.email ?? "",
+            icon: icon,
+            bgColour: bgColour,
+            usageMB: usageMB,
+            groups: existing?.groups ?? []
+        )
+        cacheUser(user)
     }
 
     func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws {
@@ -204,6 +277,27 @@ final class UserService {
             return
         }
         Self.defaults.set(data, forKey: Self.authorNameCacheKey)
+    }
+
+    private func loadProfileDefaultsIfNeeded() {
+        guard !Self.didLoadProfileDefaults else { return }
+        Self.didLoadProfileDefaults = true
+
+        guard
+            let data = Self.defaults.data(forKey: Self.profileCacheKey),
+            let cached = try? JSONDecoder().decode([String: CachedAppUser].self, from: data)
+        else {
+            return
+        }
+
+        Self.profileMemoryCache = cached
+    }
+
+    private func persistProfileCache() {
+        guard let data = try? JSONEncoder().encode(Self.profileMemoryCache) else {
+            return
+        }
+        Self.defaults.set(data, forKey: Self.profileCacheKey)
     }
 
     private func setDocument(_ ref: DocumentReference, data: [String: Any], merge: Bool) async throws {

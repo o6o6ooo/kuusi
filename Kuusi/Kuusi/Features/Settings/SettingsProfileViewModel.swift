@@ -23,9 +23,10 @@ private extension GoogleAccountError {
 }
 
 protocol SettingsProfileUserServicing {
-    func fetchUser(uid: String) async throws -> AppUser?
+    func fetchCachedUser(uid: String) async throws -> AppUser?
     func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws
     func cacheAuthorName(_ name: String, for uid: String)
+    func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double)
 }
 
 protocol SettingsProfileGoogleAccountServicing {
@@ -90,7 +91,7 @@ final class SettingsProfileViewModel: ObservableObject {
         guard let uid = currentUserIDProvider() else { return }
 
         do {
-            guard let user = try await userService.fetchUser(uid: uid) else { return }
+            guard let user = try await userService.fetchCachedUser(uid: uid) else { return }
             name = user.name
             icon = user.icon
             bgColour = user.bgColour
@@ -143,6 +144,19 @@ final class SettingsProfileViewModel: ObservableObject {
         await saveProfile(name: name, icon: icon, bgColour: bgColour)
     }
 
+    func addUploadedUsage(_ additionalUsageMB: Double) {
+        guard additionalUsageMB > 0 else { return }
+        guard let uid = currentUserIDProvider() else { return }
+        usageMB += additionalUsageMB
+        userService.cacheUserProfile(
+            uid: uid,
+            name: name,
+            icon: icon,
+            bgColour: bgColour,
+            usageMB: usageMB
+        )
+    }
+
     func saveProfile(name: String, icon: String, bgColour: String) async {
         guard let uid = currentUserIDProvider() else { return }
 
@@ -162,6 +176,13 @@ final class SettingsProfileViewModel: ObservableObject {
                 bgColour: bgColour
             )
             userService.cacheAuthorName(cleanName, for: uid)
+            userService.cacheUserProfile(
+                uid: uid,
+                name: cleanName,
+                icon: cleanIcon,
+                bgColour: bgColour,
+                usageMB: usageMB
+            )
             self.name = cleanName
             self.icon = cleanIcon
             self.bgColour = bgColour
