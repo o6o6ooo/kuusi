@@ -402,7 +402,7 @@ struct PhotoCollectionViewModelTests {
         await viewModel.refresh(limit: 6)
 
         #expect(viewModel.selectedGroupID == "group-b")
-        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old-b"])
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new"])
         #expect(feedService.fetchCalls.count == 1)
         #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
@@ -481,7 +481,7 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
-    func refreshPreservesLoadedPhotosAfterGroupStoreSync() async {
+    func refreshReplacesLoadedPhotosAfterGroupStoreSync() async {
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID["group-b"] = [
             RecentPhotoFetchResult(
@@ -502,7 +502,7 @@ struct PhotoCollectionViewModelTests {
         let viewModel = makeViewModel(
             feedService: feedService,
             groupService: groupService,
-            userID: "refresh-preserve-loaded-user"
+            userID: "refresh-replace-loaded-user"
         )
         viewModel.groups = [
             makeGroup(id: "group-a", name: "Family"),
@@ -521,7 +521,7 @@ struct PhotoCollectionViewModelTests {
 
         #expect(viewModel.groups.map(\.id) == ["group-a", "group-b", "group-c"])
         #expect(viewModel.selectedGroupID == "group-b")
-        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new", "photo-old"])
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-new"])
         #expect(feedService.fetchCalls.count == 1)
         #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
         #expect(viewModel.errorMessageID == nil)
@@ -546,7 +546,7 @@ struct PhotoCollectionViewModelTests {
         viewModel.photosByGroupID["group-a"] = [removedPhoto, keptPhoto]
         await viewModel.refresh(limit: 6)
 
-        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-refreshed", "photo-kept"])
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-refreshed"])
     }
 
     @Test

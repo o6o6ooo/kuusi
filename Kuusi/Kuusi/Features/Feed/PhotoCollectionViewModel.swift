@@ -160,7 +160,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         guard let uid = currentUserIDProvider() else { return }
 
         persistCachedPhotos(for: uid)
-        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, shouldPreserveLoadedPhotos: true)
+        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
     }
 
     func reloadPhotosFromSource(limit: Int) async {
@@ -257,8 +257,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private func fetchPhotosForSelectedGroup(
         forceReload: Bool,
         limit: Int,
-        isLoadMore: Bool = false,
-        shouldPreserveLoadedPhotos: Bool = false
+        isLoadMore: Bool = false
     ) async {
         if isLoadMore {
             isLoadingMore = true
@@ -309,14 +308,6 @@ final class PhotoCollectionViewModel: ObservableObject {
                 mergedPhotos = Self.mergePhotos(existingPhotos, with: result.photos)
                 nextCursor = result.nextCursor
                 hasMorePhotos = result.hasMore
-            } else if shouldPreserveLoadedPhotos {
-                let removedPhotoIDs = removedPhotoIDsByGroupID[selectedGroupID] ?? []
-                let existingPhotos = (photosByGroupID[selectedGroupID] ?? [])
-                    .filter { !removedPhotoIDs.contains($0.id) }
-                mergedPhotos = Self.mergeFreshPhotos(result.photos, withExistingPhotos: existingPhotos)
-                    .filter { !removedPhotoIDs.contains($0.id) }
-                nextCursor = Self.makeNextCursor(from: mergedPhotos)
-                hasMorePhotos = result.hasMore || mergedPhotos.count > result.photos.count
             } else {
                 mergedPhotos = result.photos
                 nextCursor = result.nextCursor
