@@ -653,6 +653,22 @@
         }
       }
     },
+    "groups.refresh" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh groups"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを更新"
+          }
+        }
+      }
+    },
     "groups.share_app" : {
       "localizations" : {
         "en" : {

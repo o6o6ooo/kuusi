@@ -80,6 +80,52 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
+    func loadGroupsUsesCachedGroupsAndCachedPreviews() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let cachedMember = GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false)
+        groupService.cachedGroups = [
+            GroupSummary(id: "group-1", name: "Family", ownerUID: "owner", members: [cachedMember], totalMemberCount: 1)
+        ]
+        groupService.fetchedGroups = [
+            makeGroup(id: "group-2", name: "Friends")
+        ]
+        let viewModel = makeViewModel(groupService: groupService)
+
+        await viewModel.loadGroups()
+
+        #expect(viewModel.groups.map(\.id) == ["group-1"])
+        #expect(viewModel.selectedGroupID == "group-1")
+        #expect(viewModel.editableGroupName == "Family")
+        #expect(groupService.fetchGroupsCalls.isEmpty)
+        #expect(groupService.loadMemberPreviewsCalls.isEmpty)
+    }
+
+    @Test
+    func refreshGroupsFetchesGroupsAndReloadsPreviews() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let refreshedMember = GroupMemberPreview(id: "member-2", name: "Noah", icon: "🌿", bgColour: "#eee", isOwner: false)
+        groupService.cachedGroups = [
+            makeGroup(id: "group-1", name: "Cached")
+        ]
+        groupService.fetchedGroups = [
+            makeGroup(id: "group-2", name: "Friends")
+        ]
+        groupService.memberPreviewsByGroupID["group-2"] = [refreshedMember]
+        let viewModel = makeViewModel(groupService: groupService)
+
+        await viewModel.refreshGroups()
+
+        #expect(groupService.fetchGroupsCalls == ["user-1"])
+        #expect(groupService.loadMemberPreviewsCalls.count == 1)
+        #expect(groupService.loadMemberPreviewsCalls.first?.groupID == "group-2")
+        #expect(groupService.loadMemberPreviewsCalls.first?.limit == 3)
+        #expect(viewModel.groups.map(\.id) == ["group-2"])
+        #expect(viewModel.groups.first?.members.map(\.id) == ["member-2"])
+        #expect(viewModel.selectedGroupID == "group-2")
+        #expect(viewModel.editableGroupName == "Friends")
+    }
+
+    @Test
     func saveGroupNameMapsGroupServiceError() async {
         let groupService = SettingsGroupsServiceSpy()
         groupService.updateGroupNameError = GroupServiceError.groupNotFound
@@ -314,8 +360,10 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var leaveGroupError: Error?
     var joinGroupError: Error?
     var removeMemberError: Error?
+    var cachedGroups: [GroupSummary] = []
     var fetchedGroups: [GroupSummary] = []
     var createdGroups: [(groupName: String, ownerUID: String)] = []
+    var fetchGroupsCalls: [String] = []
     var loadMemberPreviewsCalls: [(groupID: String, limit: Int?)] = []
     var deletedGroupIDs: [String] = []
     var leaveGroupCalls: [(groupID: String, uid: String)] = []
@@ -326,7 +374,7 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var memberPreviewsByGroupID: [String: [GroupMemberPreview]] = [:]
 
     func cachedGroups(for uid: String) -> [GroupSummary] {
-        cachedGroupsAssignments.last(where: { $0.uid == uid })?.groups ?? fetchedGroups
+        cachedGroupsAssignments.last(where: { $0.uid == uid })?.groups ?? cachedGroups
     }
 
     func createInvitePayload(groupID: String) async throws -> String {
@@ -348,6 +396,7 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
 
     func fetchGroups(for uid: String) async throws -> [GroupSummary] {
         if let fetchGroupsError { throw fetchGroupsError }
+        fetchGroupsCalls.append(uid)
         return fetchedGroups
     }
 

@@ -83,6 +83,21 @@ struct GroupsSectionView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("groups-create-button")
 
+                Button {
+                    Task {
+                        await viewModel.refreshGroups()
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 19, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isLoadingGroups)
+                .accessibilityLabel(Text("groups.refresh"))
+                .accessibilityIdentifier("groups-refresh-button")
+
                 Spacer()
             }
 

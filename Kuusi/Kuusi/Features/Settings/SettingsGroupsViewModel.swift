@@ -242,14 +242,26 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     func loadGroups() async {
+        await loadGroups(fetchFromSource: false)
+    }
+
+    func refreshGroups() async {
+        await loadGroups(fetchFromSource: true)
+    }
+
+    private func loadGroups(fetchFromSource: Bool) async {
         guard currentUserIDProvider() != nil else { return }
         isLoadingGroups = true
         defer { isLoadingGroups = false }
 
         do {
-            try await groupStore.refreshFromFirestore()
+            if fetchFromSource {
+                try await groupStore.refreshFromFirestore()
+                previewLoadedGroupIDs.removeAll()
+            } else {
+                try await groupStore.loadCachedThenFetchIfNeeded()
+            }
             let fetched = groupStore.groups
-            previewLoadedGroupIDs.removeAll()
 
             if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
                 selectedGroupID = fetched.first?.id
@@ -261,7 +273,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             } else {
                 editableGroupName = ""
             }
-            await loadAllGroupPreviews(force: true)
+            await loadAllGroupPreviews(force: fetchFromSource)
         } catch {
             setCreateStatus(AppMessage(.failedToLoadGroups, .error))
         }
@@ -483,7 +495,11 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     private func loadGroupPreviewIfNeeded(for groupID: String, force: Bool) async {
         if !force && previewLoadedGroupIDs.contains(groupID) { return }
-        guard groups.contains(where: { $0.id == groupID }) else { return }
+        guard let group = groups.first(where: { $0.id == groupID }) else { return }
+        if !force && !group.members.isEmpty {
+            previewLoadedGroupIDs.insert(groupID)
+            return
+        }
 
         do {
             let previews = try await groupService.loadMemberPreviews(groupID: groupID, limit: 3)
