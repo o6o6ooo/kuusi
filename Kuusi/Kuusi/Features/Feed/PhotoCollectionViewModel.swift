@@ -74,6 +74,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
     private static let photoCacheKeyPrefix = "feed_photos_cache_v1_"
+    private static let favouriteIDsCacheKeyPrefix = "feed_favourite_ids_cache_v1_"
     private var nextCursorByGroupID: [String: FeedPageCursor] = [:]
     private var hasMorePhotosByGroupID: [String: Bool] = [:]
     private var favouriteIDs: Set<String>?
@@ -127,7 +128,14 @@ final class PhotoCollectionViewModel: ObservableObject {
         }
 
         syncGroups(groups, selectedGroupID: selectedGroupID)
+        favouriteIDs = loadCachedFavouriteIDs(for: uid)
         photosByGroupID = loadCachedPhotos(for: uid, validGroupIDs: Set(groups.map(\.id)))
+        if let favouriteIDs {
+            photosByGroupID = Self.applyFavouriteIDs(favouriteIDs, to: photosByGroupID)
+            if !photosByGroupID.isEmpty {
+                persistCachedPhotos(for: uid)
+            }
+        }
         availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
         nextCursorByGroupID = photosByGroupID.compactMapValues(Self.makeNextCursor(from:))
@@ -187,6 +195,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
         updateFavouriteIDs(for: updatedPhoto)
+        persistFavouriteIDsIfPossible()
         persistCachedPhotosIfPossible()
     }
 
@@ -233,6 +242,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
         removedPhotoIDsByGroupID[selectedGroupID, default: []].insert(id)
         favouriteIDs?.remove(id)
+        persistFavouriteIDsIfPossible()
         persistCachedPhotosIfPossible()
     }
 
@@ -314,11 +324,13 @@ final class PhotoCollectionViewModel: ObservableObject {
                 hasMorePhotos = result.hasMore
             }
 
-            photosByGroupID[selectedGroupID] = mergedPhotos
-            availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: mergedPhotos)
+            favouriteIDs = result.favouriteIDs
+            let presentedPhotos = Self.applyFavouriteIDs(result.favouriteIDs, to: mergedPhotos)
+            photosByGroupID[selectedGroupID] = presentedPhotos
+            availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: presentedPhotos)
             nextCursorByGroupID[selectedGroupID] = nextCursor
             hasMorePhotosByGroupID[selectedGroupID] = hasMorePhotos
-            favouriteIDs = result.favouriteIDs
+            persistFavouriteIDs(result.favouriteIDs, for: uid)
             persistCachedPhotos(for: uid)
             errorMessageID = nil
         } catch {
@@ -343,8 +355,15 @@ final class PhotoCollectionViewModel: ObservableObject {
         persistCachedPhotos(for: uid)
     }
 
+    private func persistFavouriteIDsIfPossible() {
+        guard let uid = currentUserIDProvider(), let favouriteIDs else { return }
+        persistFavouriteIDs(favouriteIDs, for: uid)
+    }
+
     private func updateFavouriteIDs(for photo: FeedPhoto) {
-        guard favouriteIDs != nil else { return }
+        if favouriteIDs == nil {
+            favouriteIDs = Self.makeFavouriteIDs(from: photosByGroupID)
+        }
         if photo.isFavourite {
             favouriteIDs?.insert(photo.id)
         } else {
@@ -400,11 +419,39 @@ final class PhotoCollectionViewModel: ObservableObject {
         "\(photoCacheKeyPrefix)\(uid)"
     }
 
+    private static func favouriteIDsCacheKey(for uid: String) -> String {
+        "\(favouriteIDsCacheKeyPrefix)\(uid)"
+    }
+
+    private func loadCachedFavouriteIDs(for uid: String) -> Set<String>? {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+
+        guard
+            let data = Self.defaults.data(forKey: Self.favouriteIDsCacheKey(for: uid)),
+            let decoded = try? JSONDecoder().decode([String].self, from: data)
+        else {
+            return nil
+        }
+
+        return Set(decoded)
+    }
+
+    private func persistFavouriteIDs(_ favouriteIDs: Set<String>, for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+
+        if let data = try? JSONEncoder().encode(Array(favouriteIDs).sorted()) {
+            Self.defaults.set(data, forKey: Self.favouriteIDsCacheKey(for: uid))
+        }
+    }
+
     static func clearCachedPhotos(for uid: String) {
         cacheLock.lock()
         defer { cacheLock.unlock() }
         photosCacheByUID[uid] = nil
         defaults.removeObject(forKey: photoCacheKey(for: uid))
+        defaults.removeObject(forKey: favouriteIDsCacheKey(for: uid))
     }
 
     private static func makeAvailableHashtags(from photos: [FeedPhoto]) -> [String] {
@@ -435,6 +482,26 @@ final class PhotoCollectionViewModel: ObservableObject {
             seenIDs.insert(photo.id)
         }
         return merged
+    }
+
+    private static func applyFavouriteIDs(_ favouriteIDs: Set<String>, to photosByGroupID: [String: [FeedPhoto]]) -> [String: [FeedPhoto]] {
+        photosByGroupID.mapValues { photos in
+            applyFavouriteIDs(favouriteIDs, to: photos)
+        }
+    }
+
+    private static func applyFavouriteIDs(_ favouriteIDs: Set<String>, to photos: [FeedPhoto]) -> [FeedPhoto] {
+        photos.map { photo in
+            photo.withFavourite(favouriteIDs.contains(photo.id))
+        }
+    }
+
+    private static func makeFavouriteIDs(from photosByGroupID: [String: [FeedPhoto]]) -> Set<String> {
+        Set(photosByGroupID.values.flatMap { photos in
+            photos.compactMap { photo in
+                photo.isFavourite ? photo.id : nil
+            }
+        })
     }
 
     private static func mergeFreshPhotos(_ freshPhotos: [FeedPhoto], withExistingPhotos existingPhotos: [FeedPhoto]) -> [FeedPhoto] {

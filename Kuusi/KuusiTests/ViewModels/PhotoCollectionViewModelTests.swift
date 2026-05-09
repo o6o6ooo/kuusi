@@ -444,6 +444,80 @@ struct PhotoCollectionViewModelTests {
     }
 
     @Test
+    func persistedFavouriteIDsArePassedToFutureFetches() async {
+        let userID = "persisted-favourites-\(UUID().uuidString)"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
+        let firstFeedService = FeedServiceSpy()
+        firstFeedService.resultsByGroupID["group-a"] = [
+            RecentPhotoFetchResult(
+                photos: [makePhoto(id: "photo-1", groupID: "group-a", year: 2025)],
+                hasMore: false,
+                nextCursor: nil,
+                favouriteIDs: ["photo-1"]
+            )
+        ]
+        let firstViewModel = makeViewModel(feedService: firstFeedService, userID: userID)
+        firstViewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        firstViewModel.selectedGroupID = "group-a"
+
+        await firstViewModel.loadInitial(limit: 6)
+
+        let secondFeedService = FeedServiceSpy()
+        secondFeedService.resultsByGroupID["group-b"] = [
+            RecentPhotoFetchResult(
+                photos: [makePhoto(id: "photo-2", groupID: "group-b", year: 2026)],
+                hasMore: false,
+                nextCursor: nil,
+                favouriteIDs: ["photo-1"]
+            )
+        ]
+        let secondViewModel = makeViewModel(feedService: secondFeedService, userID: userID)
+        secondViewModel.groups = [makeGroup(id: "group-b", name: "Friends")]
+        secondViewModel.selectedGroupID = "group-b"
+
+        await secondViewModel.loadInitial(limit: 6)
+
+        #expect(secondFeedService.fetchCalls.count == 1)
+        #expect(secondFeedService.fetchCalls.first?.favouriteIDs == ["photo-1"])
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+    }
+
+    @Test
+    func persistedFavouriteIDsAreAppliedToCachedPhotos() async {
+        let userID = "apply-persisted-favourites-\(UUID().uuidString)"
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+
+        let photoCacheJSON = """
+        {
+          "group-a": [
+            {
+              "id": "photo-a",
+              "hashtags": [],
+              "isFavourite": false
+            }
+          ]
+        }
+        """
+        UserDefaults.standard.set(Data(photoCacheJSON.utf8), forKey: "feed_photos_cache_v1_\(userID)")
+        UserDefaults.standard.set(try? JSONEncoder().encode(["photo-a"]), forKey: "feed_favourite_ids_cache_v1_\(userID)")
+
+        let feedService = FeedServiceSpy()
+        let viewModel = makeViewModel(feedService: feedService, userID: userID)
+        viewModel.groups = [makeGroup(id: "group-a", name: "Family")]
+        viewModel.selectedGroupID = "group-a"
+
+        await viewModel.loadInitial(limit: 6)
+
+        #expect(viewModel.currentGroupPhotos.map(\.id) == ["photo-a"])
+        #expect(viewModel.currentGroupPhotos.first?.isFavourite == true)
+        #expect(feedService.fetchCalls.isEmpty)
+
+        PhotoCollectionViewModel.clearCachedPhotos(for: userID)
+    }
+
+    @Test
     func refreshFallsBackToFirstGroupWhenSelectionDisappears() async {
         let feedService = FeedServiceSpy()
         feedService.resultsByGroupID["group-a"] = [
