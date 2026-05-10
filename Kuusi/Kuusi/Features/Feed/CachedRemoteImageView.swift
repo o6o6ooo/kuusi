@@ -97,6 +97,9 @@ private actor FeedImageCache {
     private let fileManager = FileManager.default
     private let cacheDirectoryURL: URL
     private let maxStorageReadBytes: Int64 = 12 * 1024 * 1024
+    private let staleImageCacheInterval: TimeInterval = 60 * 24 * 60 * 60
+    private let cleanupInterval: TimeInterval = 24 * 60 * 60
+    private let cleanupDefaultsKey = "feed_storage_image_cache_last_cleanup_v1"
 
     private init() {
         memoryCache.countLimit = 300
@@ -106,6 +109,13 @@ private actor FeedImageCache {
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         cacheDirectoryURL = cachesDirectory.appendingPathComponent("feed-storage-image-cache", isDirectory: true)
         try? fileManager.createDirectory(at: cacheDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+        Self.cleanUpDiskCacheIfNeeded(
+            fileManager: fileManager,
+            cacheDirectoryURL: cacheDirectoryURL,
+            staleImageCacheInterval: staleImageCacheInterval,
+            cleanupInterval: cleanupInterval,
+            cleanupDefaultsKey: cleanupDefaultsKey
+        )
     }
 
     func image(for source: FeedImageSource) -> UIImage? {
@@ -164,6 +174,7 @@ private actor FeedImageCache {
             return nil
         }
 
+        updateLastAccessDate(for: fileURL)
         return (image, data)
     }
 
@@ -173,9 +184,71 @@ private actor FeedImageCache {
         let fileURL = fileURL(for: cacheKey)
         do {
             try data.write(to: fileURL, options: .atomic)
+            updateLastAccessDate(for: fileURL)
         } catch {
             return
         }
+    }
+
+    private static func cleanUpDiskCacheIfNeeded(
+        fileManager: FileManager,
+        cacheDirectoryURL: URL,
+        staleImageCacheInterval: TimeInterval,
+        cleanupInterval: TimeInterval,
+        cleanupDefaultsKey: String,
+        now: Date = Date()
+    ) {
+        let defaults = UserDefaults.standard
+        if let lastCleanup = defaults.object(forKey: cleanupDefaultsKey) as? Date,
+           now.timeIntervalSince(lastCleanup) < cleanupInterval {
+            return
+        }
+
+        cleanUpStaleDiskImages(
+            fileManager: fileManager,
+            cacheDirectoryURL: cacheDirectoryURL,
+            staleImageCacheInterval: staleImageCacheInterval,
+            now: now
+        )
+        defaults.set(now, forKey: cleanupDefaultsKey)
+    }
+
+    private static func cleanUpStaleDiskImages(
+        fileManager: FileManager,
+        cacheDirectoryURL: URL,
+        staleImageCacheInterval: TimeInterval,
+        now: Date
+    ) {
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: cacheDirectoryURL,
+            includingPropertiesForKeys: [.contentAccessDateKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+
+        let cutoff = now.addingTimeInterval(-staleImageCacheInterval)
+        for fileURL in files where fileURL.pathExtension == "imgcache" {
+            guard let lastUsedAt = lastUsedDate(for: fileURL), lastUsedAt < cutoff else {
+                continue
+            }
+            try? fileManager.removeItem(at: fileURL)
+        }
+    }
+
+    private static func lastUsedDate(for fileURL: URL) -> Date? {
+        guard let values = try? fileURL.resourceValues(forKeys: [.contentAccessDateKey, .contentModificationDateKey]) else {
+            return nil
+        }
+        return values.contentAccessDate ?? values.contentModificationDate
+    }
+
+    private func updateLastAccessDate(for fileURL: URL, now: Date = Date()) {
+        var mutableURL = fileURL
+        var values = URLResourceValues()
+        values.contentAccessDate = now
+        values.contentModificationDate = now
+        try? mutableURL.setResourceValues(values)
     }
 
     private func fileURL(for cacheKey: String) -> URL {
