@@ -1,10 +1,14 @@
 import SwiftUI
 
 struct FooterView: View {
+    @Environment(\.openURL) private var openURL
+
     var showsPrivacyChoices = false
     let onPrivacyChoices: () -> Void
     let onDeleteAccount: () -> Void
 
+    private let feedbackEmail = "hi@kuusi.app"
+    private let feedbackSubject = "Kuusi Feedback"
     private let faqURL = URL(string: "https://kuusi.app/faq")!
     private let privacyPolicyURL = URL(string: "https://kuusi.app/privacy")!
     private let termsOfServiceURL = URL(string: "https://kuusi.app/terms")!
@@ -17,6 +21,12 @@ struct FooterView: View {
                     .appErrorTextLinkStyle()
             }
             .accessibilityIdentifier("settings-delete-account-button")
+
+            Button(action: openFeedbackEmail) {
+                Text("settings.footer.send_feedback")
+                    .appSecondaryTextLinkStyle()
+            }
+            .accessibilityIdentifier("settings-send-feedback-button")
 
             if showsPrivacyChoices {
                 Button(action: onPrivacyChoices) {
@@ -44,5 +54,18 @@ struct FooterView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func openFeedbackEmail() {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = feedbackEmail
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: feedbackSubject)
+        ]
+
+        if let url = components.url {
+            openURL(url)
+        }
     }
 }
