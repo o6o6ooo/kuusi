@@ -405,7 +405,7 @@ struct FeedView: View {
         if let selectedHashtag {
             return "#\(selectedHashtag)"
         }
-        return String(format: String(localized: "feed.subtitle.photo_count"), currentGroupPhotos.count)
+        return String(format: String(localized: "feed.subtitle.photo_count"), photoCollection.currentGroupPhotoCount)
     }
 
     private var emptyStateTitle: String {

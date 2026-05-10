@@ -10,6 +10,7 @@ protocol PhotoCollectionFeedServicing {
         startAfter cursor: FeedPageCursor?,
         favouriteIDs: Set<String>?
     ) async throws -> RecentPhotoFetchResult
+    func fetchPhotoCount(groupID: String) async throws -> Int
 }
 
 extension FeedService: PhotoCollectionFeedServicing {}
@@ -64,6 +65,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     @Published var selectedGroupID: String?
     @Published var photosByGroupID: [String: [FeedPhoto]] = [:]
     @Published private(set) var availableHashtagsByGroupID: [String: [String]] = [:]
+    @Published private(set) var photoCountsByGroupID: [String: Int] = [:]
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var errorMessageID: AppMessage.ID?
@@ -75,6 +77,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     private static let defaults = UserDefaults.standard
     private static let photoCacheKeyPrefix = "feed_photos_cache_v1_"
     private static let favouriteIDsCacheKeyPrefix = "feed_favourite_ids_cache_v1_"
+    private static let photoCountsCacheKeyPrefix = "feed_photo_counts_cache_v1_"
     private var nextCursorByGroupID: [String: FeedPageCursor] = [:]
     private var hasMorePhotosByGroupID: [String: Bool] = [:]
     private var favouriteIDs: Set<String>?
@@ -102,6 +105,11 @@ final class PhotoCollectionViewModel: ObservableObject {
     var currentGroupPhotos: [FeedPhoto] {
         guard let selectedGroupID else { return [] }
         return photosByGroupID[selectedGroupID] ?? []
+    }
+
+    var currentGroupPhotoCount: Int {
+        guard let selectedGroupID else { return 0 }
+        return photoCountsByGroupID[selectedGroupID] ?? currentGroupPhotos.count
     }
 
     var currentGroupPhotoSignature: [String] {
@@ -137,6 +145,7 @@ final class PhotoCollectionViewModel: ObservableObject {
             }
         }
         availableHashtagsByGroupID = photosByGroupID.mapValues(Self.makeAvailableHashtags(from:))
+        photoCountsByGroupID = loadCachedPhotoCounts(for: uid, validGroupIDs: Set(groups.map(\.id)))
         hasMorePhotosByGroupID = photosByGroupID.mapValues { !$0.isEmpty }
         nextCursorByGroupID = photosByGroupID.compactMapValues(Self.makeNextCursor(from:))
         errorMessageID = nil
@@ -156,6 +165,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         let validGroupIDs = Set(groups.map(\.id))
         photosByGroupID = photosByGroupID.filter { validGroupIDs.contains($0.key) }
         availableHashtagsByGroupID = availableHashtagsByGroupID.filter { validGroupIDs.contains($0.key) }
+        photoCountsByGroupID = photoCountsByGroupID.filter { validGroupIDs.contains($0.key) }
         nextCursorByGroupID = nextCursorByGroupID.filter { validGroupIDs.contains($0.key) }
         hasMorePhotosByGroupID = hasMorePhotosByGroupID.filter { validGroupIDs.contains($0.key) }
         removedPhotoIDsByGroupID = removedPhotoIDsByGroupID.filter { validGroupIDs.contains($0.key) }
@@ -168,7 +178,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         guard let uid = currentUserIDProvider() else { return }
 
         persistCachedPhotos(for: uid)
-        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit)
+        await fetchPhotosForSelectedGroup(forceReload: true, limit: limit, refreshTotalCount: true)
     }
 
     func reloadPhotosFromSource(limit: Int) async {
@@ -210,11 +220,13 @@ final class PhotoCollectionViewModel: ObservableObject {
             photosByGroupID[groupID] = Self.mergeFreshPhotos(newPhotos, withExistingPhotos: existingPhotos)
                 .sorted(by: Self.photosAreOrderedBefore)
             availableHashtagsByGroupID[groupID] = Self.makeAvailableHashtags(from: photosByGroupID[groupID] ?? [])
+            incrementPhotoCount(for: groupID, by: newPhotos.count)
             nextCursorByGroupID[groupID] = Self.makeNextCursor(from: photosByGroupID[groupID] ?? [])
             hasMorePhotosByGroupID[groupID] = hasMorePhotosByGroupID[groupID] ?? false
         }
 
         persistCachedPhotosIfPossible()
+        persistCachedPhotoCountsIfPossible()
     }
 
     func replaceWithUploadedPhotosPendingReload(_ uploadedPhotos: [FeedPhoto]) {
@@ -226,11 +238,13 @@ final class PhotoCollectionViewModel: ObservableObject {
                 .sorted(by: Self.photosAreOrderedBefore)
             photosByGroupID[groupID] = newPhotos
             availableHashtagsByGroupID[groupID] = Self.makeAvailableHashtags(from: newPhotos)
+            incrementPhotoCount(for: groupID, by: newPhotos.count)
             nextCursorByGroupID[groupID] = Self.makeNextCursor(from: newPhotos)
             hasMorePhotosByGroupID[groupID] = true
         }
 
         persistCachedPhotosIfPossible()
+        persistCachedPhotoCountsIfPossible()
     }
 
     func removePhoto(id: String) {
@@ -240,10 +254,12 @@ final class PhotoCollectionViewModel: ObservableObject {
         cachedPhotos.removeAll { $0.id == id }
         photosByGroupID[selectedGroupID] = cachedPhotos
         availableHashtagsByGroupID[selectedGroupID] = Self.makeAvailableHashtags(from: cachedPhotos)
+        decrementPhotoCount(for: selectedGroupID)
         removedPhotoIDsByGroupID[selectedGroupID, default: []].insert(id)
         favouriteIDs?.remove(id)
         persistFavouriteIDsIfPossible()
         persistCachedPhotosIfPossible()
+        persistCachedPhotoCountsIfPossible()
     }
 
     func clearErrorMessage() {
@@ -267,7 +283,8 @@ final class PhotoCollectionViewModel: ObservableObject {
     private func fetchPhotosForSelectedGroup(
         forceReload: Bool,
         limit: Int,
-        isLoadMore: Bool = false
+        isLoadMore: Bool = false,
+        refreshTotalCount: Bool = false
     ) async {
         if isLoadMore {
             isLoadingMore = true
@@ -332,6 +349,9 @@ final class PhotoCollectionViewModel: ObservableObject {
             hasMorePhotosByGroupID[selectedGroupID] = hasMorePhotos
             persistFavouriteIDs(result.favouriteIDs, for: uid)
             persistCachedPhotos(for: uid)
+            if refreshTotalCount && !isLoadMore {
+                await refreshPhotoCountFromSource(groupID: selectedGroupID, uid: uid)
+            }
             errorMessageID = nil
         } catch {
             errorMessageID = .failedToLoadFeed
@@ -343,6 +363,7 @@ final class PhotoCollectionViewModel: ObservableObject {
         selectedGroupID = nil
         photosByGroupID = [:]
         availableHashtagsByGroupID = [:]
+        photoCountsByGroupID = [:]
         nextCursorByGroupID = [:]
         hasMorePhotosByGroupID = [:]
         favouriteIDs = nil
@@ -353,6 +374,11 @@ final class PhotoCollectionViewModel: ObservableObject {
     private func persistCachedPhotosIfPossible() {
         guard let uid = currentUserIDProvider() else { return }
         persistCachedPhotos(for: uid)
+    }
+
+    private func persistCachedPhotoCountsIfPossible() {
+        guard let uid = currentUserIDProvider() else { return }
+        persistCachedPhotoCounts(for: uid)
     }
 
     private func persistFavouriteIDsIfPossible() {
@@ -423,6 +449,33 @@ final class PhotoCollectionViewModel: ObservableObject {
         "\(favouriteIDsCacheKeyPrefix)\(uid)"
     }
 
+    private static func photoCountsCacheKey(for uid: String) -> String {
+        "\(photoCountsCacheKeyPrefix)\(uid)"
+    }
+
+    private func loadCachedPhotoCounts(for uid: String, validGroupIDs: Set<String>) -> [String: Int] {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+
+        guard
+            let data = Self.defaults.data(forKey: Self.photoCountsCacheKey(for: uid)),
+            let decoded = try? JSONDecoder().decode([String: Int].self, from: data)
+        else {
+            return [:]
+        }
+
+        return decoded.filter { validGroupIDs.contains($0.key) }
+    }
+
+    private func persistCachedPhotoCounts(for uid: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+
+        if let data = try? JSONEncoder().encode(photoCountsByGroupID) {
+            Self.defaults.set(data, forKey: Self.photoCountsCacheKey(for: uid))
+        }
+    }
+
     private func loadCachedFavouriteIDs(for uid: String) -> Set<String>? {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
@@ -452,6 +505,29 @@ final class PhotoCollectionViewModel: ObservableObject {
         photosCacheByUID[uid] = nil
         defaults.removeObject(forKey: photoCacheKey(for: uid))
         defaults.removeObject(forKey: favouriteIDsCacheKey(for: uid))
+        defaults.removeObject(forKey: photoCountsCacheKey(for: uid))
+    }
+
+    private func refreshPhotoCountFromSource(groupID: String, uid: String) async {
+        guard let count = try? await feedService.fetchPhotoCount(groupID: groupID) else {
+            return
+        }
+        photoCountsByGroupID[groupID] = count
+        persistCachedPhotoCounts(for: uid)
+    }
+
+    private func incrementPhotoCount(for groupID: String, by count: Int) {
+        guard count > 0 else { return }
+        if let current = photoCountsByGroupID[groupID] {
+            photoCountsByGroupID[groupID] = current + count
+        } else {
+            photoCountsByGroupID[groupID] = photosByGroupID[groupID]?.count ?? count
+        }
+    }
+
+    private func decrementPhotoCount(for groupID: String) {
+        guard let current = photoCountsByGroupID[groupID] else { return }
+        photoCountsByGroupID[groupID] = max(current - 1, 0)
     }
 
     private static func makeAvailableHashtags(from photos: [FeedPhoto]) -> [String] {

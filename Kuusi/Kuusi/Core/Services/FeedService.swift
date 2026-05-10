@@ -110,6 +110,25 @@ final class FeedService {
         }
     }
 
+    func fetchPhotoCount(groupID: String) async throws -> Int {
+        let query = db.collection("photos").whereField("group_id", isEqualTo: groupID)
+        let countQuery = query.count
+        let snapshot = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AggregateQuerySnapshot, Error>) in
+            countQuery.getAggregation(source: .server) { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let snapshot else {
+                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1))
+                    return
+                }
+                continuation.resume(returning: snapshot)
+            }
+        }
+        return snapshot.count.intValue
+    }
+
     func updatePhotoMetadata(_ photo: FeedPhoto, update: FeedPhotoMetadataUpdate) async throws {
         let ref = db.collection("photos").document(photo.id)
         let payload = update.firestorePayload()

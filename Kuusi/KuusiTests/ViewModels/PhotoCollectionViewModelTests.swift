@@ -380,6 +380,7 @@ struct PhotoCollectionViewModelTests {
         feedService.resultsByGroupID["group-b"] = [
             RecentPhotoFetchResult(photos: refreshedPhotos, hasMore: false, nextCursor: nil, favouriteIDs: ["photo-new"])
         ]
+        feedService.photoCountsByGroupID["group-b"] = 42
 
         let groupService = GroupServiceSpy()
         groupService.fetchedGroupsValue = [
@@ -406,6 +407,8 @@ struct PhotoCollectionViewModelTests {
         #expect(feedService.fetchCalls.count == 1)
         #expect(feedService.fetchCalls.first?.groupIDs == ["group-b"])
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
+        #expect(feedService.countCalls == ["group-b"])
+        #expect(viewModel.currentGroupPhotoCount == 42)
         #expect(viewModel.errorMessageID == nil)
     }
 
@@ -738,7 +741,9 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
 
     var photosByGroupID: [String: [FeedPhoto]] = [:]
     var resultsByGroupID: [String: [RecentPhotoFetchResult]] = [:]
+    var photoCountsByGroupID: [String: Int] = [:]
     var fetchCalls: [FetchCall] = []
+    var countCalls: [String] = []
     var fetchError: Error?
     var loadMoreError: Error?
     private var batchFetchCountByGroupID: [String: Int] = [:]
@@ -770,6 +775,11 @@ private final class FeedServiceSpy: PhotoCollectionFeedServicing {
             return RecentPhotoFetchResult(photos: fallback, hasMore: false, nextCursor: nil, favouriteIDs: favouriteIDs ?? [])
         }
         return RecentPhotoFetchResult(photos: [], hasMore: false, nextCursor: nil, favouriteIDs: favouriteIDs ?? [])
+    }
+
+    func fetchPhotoCount(groupID: String) async throws -> Int {
+        countCalls.append(groupID)
+        return photoCountsByGroupID[groupID] ?? photosByGroupID[groupID]?.count ?? 0
     }
 }
 
