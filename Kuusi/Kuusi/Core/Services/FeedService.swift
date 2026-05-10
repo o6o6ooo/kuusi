@@ -7,7 +7,7 @@ enum FeedServiceError: Error {
 }
 
 struct FeedPageCursor: Equatable {
-    let createdAt: Date
+    let date: Date
     let documentID: String
 }
 
@@ -45,11 +45,11 @@ final class FeedService {
         do {
             var orderedQuery = db.collection("photos")
                 .whereField("group_id", in: visibleGroupIDs)
-                .order(by: "created_at", descending: true)
+                .order(by: "date", descending: true)
                 .order(by: FieldPath.documentID(), descending: true)
                 .limit(to: orderedFetchLimit)
             if let cursor {
-                orderedQuery = orderedQuery.start(after: [Timestamp(date: cursor.createdAt), cursor.documentID])
+                orderedQuery = orderedQuery.start(after: [Timestamp(date: cursor.date), cursor.documentID])
             }
 
             let snapshot = try await fetchQuery(orderedQuery)
@@ -247,8 +247,8 @@ final class FeedService {
     }
 
     private static func makeNextCursor(from photos: [FeedPhoto]) -> FeedPageCursor? {
-        guard let lastPhoto = photos.last, let createdAt = lastPhoto.createdAt else { return nil }
-        return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
+        guard let lastPhoto = photos.last, let date = lastPhoto.date else { return nil }
+        return FeedPageCursor(date: date, documentID: lastPhoto.id)
     }
 
     private func mapDeletePhotoError(_ error: Error) -> Error {
@@ -265,9 +265,9 @@ final class FeedService {
 }
 
 private func compareFeedPhoto(_ photo: FeedPhoto, against cursor: FeedPageCursor) -> ComparisonResult {
-    let photoCreatedAt = photo.createdAt ?? .distantPast
-    if photoCreatedAt != cursor.createdAt {
-        return photoCreatedAt > cursor.createdAt ? .orderedAscending : .orderedDescending
+    let photoDate = photo.date ?? .distantPast
+    if photoDate != cursor.date {
+        return photoDate > cursor.date ? .orderedAscending : .orderedDescending
     }
     if photo.id == cursor.documentID {
         return .orderedSame
@@ -276,10 +276,10 @@ private func compareFeedPhoto(_ photo: FeedPhoto, against cursor: FeedPageCursor
 }
 
 private func feedPhotosAreOrderedBefore(_ lhs: FeedPhoto, _ rhs: FeedPhoto) -> Bool {
-    let lhsCreatedAt = lhs.createdAt ?? .distantPast
-    let rhsCreatedAt = rhs.createdAt ?? .distantPast
-    if lhsCreatedAt != rhsCreatedAt {
-        return lhsCreatedAt > rhsCreatedAt
+    let lhsDate = lhs.date ?? .distantPast
+    let rhsDate = rhs.date ?? .distantPast
+    if lhsDate != rhsDate {
+        return lhsDate > rhsDate
     }
     return lhs.id > rhs.id
 }

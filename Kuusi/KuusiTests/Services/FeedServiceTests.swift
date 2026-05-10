@@ -40,7 +40,7 @@ struct FeedServiceTests {
             makePhoto(id: "b", groupID: "g1", createdAt: Date(timeIntervalSince1970: 200)),
             makePhoto(id: "a", groupID: "g1", createdAt: Date(timeIntervalSince1970: 100))
         ]
-        let cursor = FeedPageCursor(createdAt: Date(timeIntervalSince1970: 200), documentID: "b")
+        let cursor = FeedPageCursor(date: Date(timeIntervalSince1970: 200), documentID: "b")
 
         let result = FeedService.presentRecentPhotosFromUnorderedResults(
             photos,
@@ -88,7 +88,7 @@ struct FeedServiceTests {
             thumbnailStoragePath: "photos/owner-1/\(id)_thumb.jpg",
             groupID: groupID,
             postedBy: postedBy,
-            year: 2024,
+            date: createdAt,
             hashtags: ["spring"],
             isFavourite: false,
             sizeMB: 2.0,

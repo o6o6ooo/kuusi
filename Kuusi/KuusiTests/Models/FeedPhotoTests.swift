@@ -6,6 +6,7 @@ import Testing
 struct FeedPhotoTests {
     @Test
     func initMapsFirestoreFields() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
         let createdAt = Date(timeIntervalSince1970: 1_710_000_000)
         let photo = FeedPhoto(
             id: "photo-1",
@@ -14,7 +15,7 @@ struct FeedPhotoTests {
                 "thumbnail_storage_path": "photos/user-1/thumb.jpg",
                 "group_id": "group-a",
                 "posted_by": "user-1",
-                "year": 2024,
+                "date": Timestamp(date: date),
                 "hashtags": ["spring", "family"],
                 "size_mb": 4.5,
                 "aspect_ratio": 1.25,
@@ -27,7 +28,7 @@ struct FeedPhotoTests {
         #expect(photo.thumbnailStoragePath == "photos/user-1/thumb.jpg")
         #expect(photo.groupID == "group-a")
         #expect(photo.postedBy == "user-1")
-        #expect(photo.year == 2024)
+        #expect(photo.date == date)
         #expect(photo.hashtags == ["spring", "family"])
         #expect(photo.isFavourite == false)
         #expect(photo.sizeMB == 4.5)
@@ -43,7 +44,7 @@ struct FeedPhotoTests {
         #expect(photo.thumbnailStoragePath == nil)
         #expect(photo.groupID == nil)
         #expect(photo.postedBy == nil)
-        #expect(photo.year == nil)
+        #expect(photo.date == nil)
         #expect(photo.hashtags == [])
         #expect(photo.isFavourite == false)
         #expect(photo.sizeMB == nil)
@@ -59,7 +60,7 @@ struct FeedPhotoTests {
             thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
-            year: 2024,
+            date: nil,
             hashtags: ["spring"],
             isFavourite: false,
             sizeMB: 4.5,
@@ -82,7 +83,7 @@ struct FeedPhotoTests {
             thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
-            year: 2024,
+            date: Date(timeIntervalSince1970: 100),
             hashtags: ["spring"],
             isFavourite: true,
             sizeMB: 4.5,
@@ -90,9 +91,10 @@ struct FeedPhotoTests {
             createdAt: nil
         )
 
-        let updated = original.withMetadata(year: 2025, hashtags: ["winter", "family"])
+        let updatedDate = Date(timeIntervalSince1970: 200)
+        let updated = original.withMetadata(FeedPhotoMetadataUpdate(date: updatedDate, hashtags: ["winter", "family"]))
 
-        #expect(updated.year == 2025)
+        #expect(updated.date == updatedDate)
         #expect(updated.hashtags == ["winter", "family"])
         #expect(updated.isFavourite == true)
         #expect(updated.previewStoragePath == original.previewStoragePath)
@@ -107,7 +109,7 @@ struct FeedPhotoTests {
             thumbnailStoragePath: nil,
             groupID: "group-a",
             postedBy: "user-1",
-            year: 2024,
+            date: nil,
             hashtags: ["spring"],
             isFavourite: false,
             sizeMB: 4.5,

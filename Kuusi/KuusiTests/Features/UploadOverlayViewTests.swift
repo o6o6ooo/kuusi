@@ -7,28 +7,12 @@ struct UploadOverlayViewTests {
         case (.storageLimitReached?, .storageLimitReached?),
              (.pleaseSignInFirst?, .pleaseSignInFirst?),
              (.selectGroup?, .selectGroup?),
-             (.enterValidYear?, .enterValidYear?),
              (.networkUnavailable?, .networkUnavailable?),
              (nil, nil):
             #expect(Bool(true))
         default:
             Issue.record("Expected \(String(describing: expected)), got \(String(describing: actual))")
         }
-    }
-
-    @Test
-    func parseYearTrimsWhitespaceAndParsesNumber() {
-        #expect(UploadOverlayRules.parseYear(from: " 2025 ") == 2025)
-    }
-
-    @Test
-    func parseYearRejectsEmptyText() {
-        #expect(UploadOverlayRules.parseYear(from: "   ") == nil)
-    }
-
-    @Test
-    func parseYearRejectsNonNumericText() {
-        #expect(UploadOverlayRules.parseYear(from: "year") == nil)
     }
 
     @Test
@@ -40,7 +24,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
@@ -49,7 +32,7 @@ struct UploadOverlayViewTests {
     }
 
     @Test
-    func canUploadRejectsMissingGroupOrYear() {
+    func canUploadRejectsMissingGroup() {
         #expect(
             UploadOverlayRules.canUpload(
                 selectedImageCount: 1,
@@ -57,20 +40,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: nil,
-                yearText: "2025",
-                effectiveUsageMB: 100,
-                estimatedUploadSizeMB: 20,
-                isPremiumActive: false
-            ) == false
-        )
-        #expect(
-            UploadOverlayRules.canUpload(
-                selectedImageCount: 1,
-                isUploading: false,
-                isImportingGooglePhotos: false,
-                isEstimatingUploadSize: false,
-                selectedGroupID: "group-1",
-                yearText: "",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
@@ -87,7 +56,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
@@ -100,7 +68,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: true,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
@@ -113,7 +80,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: true,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false
@@ -131,7 +97,6 @@ struct UploadOverlayViewTests {
                 isEstimatingUploadSize: false,
                 didFailUploadSizeEstimation: true,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
@@ -148,7 +113,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 1024,
                 estimatedUploadSizeMB: 1,
                 isPremiumActive: false
@@ -161,7 +125,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 1023,
                 estimatedUploadSizeMB: 2,
                 isPremiumActive: false
@@ -178,7 +141,6 @@ struct UploadOverlayViewTests {
                 isImportingGooglePhotos: false,
                 isEstimatingUploadSize: false,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 50000,
                 estimatedUploadSizeMB: 1000,
                 isPremiumActive: true
@@ -187,12 +149,11 @@ struct UploadOverlayViewTests {
     }
 
     @Test
-    func uploadValidationMessagePrioritizesStorageLimitThenSignInThenGroupThenYear() {
+    func uploadValidationMessagePrioritizesStorageLimitThenSignInThenGroup() {
         expectMessageID(
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 1024,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
@@ -203,7 +164,6 @@ struct UploadOverlayViewTests {
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: nil,
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
@@ -214,23 +174,11 @@ struct UploadOverlayViewTests {
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: nil,
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false
             ),
             matches: .selectGroup
-        )
-        expectMessageID(
-            UploadOverlayRules.uploadValidationMessageID(
-                currentUserID: "user-1",
-                selectedGroupID: "group-1",
-                yearText: "",
-                effectiveUsageMB: 100,
-                estimatedUploadSizeMB: 0,
-                isPremiumActive: false
-            ),
-            matches: .enterValidYear
         )
     }
 
@@ -240,7 +188,6 @@ struct UploadOverlayViewTests {
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 1023,
                 estimatedUploadSizeMB: 2,
                 isPremiumActive: false
@@ -255,7 +202,6 @@ struct UploadOverlayViewTests {
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 0,
                 isPremiumActive: false,
@@ -271,7 +217,6 @@ struct UploadOverlayViewTests {
             UploadOverlayRules.uploadValidationMessageID(
                 currentUserID: "user-1",
                 selectedGroupID: "group-1",
-                yearText: "2025",
                 effectiveUsageMB: 100,
                 estimatedUploadSizeMB: 20,
                 isPremiumActive: false

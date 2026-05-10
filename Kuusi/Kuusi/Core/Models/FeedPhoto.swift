@@ -7,7 +7,7 @@ struct FeedPhoto: Identifiable, Sendable {
     let thumbnailStoragePath: String?
     let groupID: String?
     let postedBy: String?
-    let year: Int?
+    let date: Date?
     let hashtags: [String]
     var isFavourite: Bool
     let sizeMB: Double?
@@ -16,9 +16,8 @@ struct FeedPhoto: Identifiable, Sendable {
 }
 
 struct FeedPhotoMetadataUpdate: Sendable {
-    let year: Int
+    let date: Date
     let hashtags: [String]
-    let createdAt: Date?
 }
 
 extension FeedPhoto {
@@ -33,7 +32,13 @@ extension FeedPhoto {
         self.thumbnailStoragePath = data["thumbnail_storage_path"] as? String
         self.groupID = data["group_id"] as? String
         self.postedBy = data["posted_by"] as? String
-        self.year = data["year"] as? Int
+        if let ts = data["date"] as? Timestamp {
+            self.date = ts.dateValue()
+        } else if let ts = data["created_at"] as? Timestamp {
+            self.date = ts.dateValue()
+        } else {
+            self.date = nil
+        }
         self.hashtags = (data["hashtags"] as? [String]) ?? []
         self.isFavourite = false
         self.sizeMB = data["size_mb"] as? Double
@@ -58,31 +63,21 @@ extension FeedPhoto {
             thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,
             postedBy: postedBy,
-            year: update.year,
+            date: update.date,
             hashtags: update.hashtags,
             isFavourite: isFavourite,
             sizeMB: sizeMB,
             aspectRatio: aspectRatio,
-            createdAt: update.createdAt ?? createdAt
+            createdAt: createdAt
         )
-    }
-
-    func withMetadata(year: Int, hashtags: [String]) -> FeedPhoto {
-        withMetadata(FeedPhotoMetadataUpdate(year: year, hashtags: hashtags, createdAt: nil))
     }
 }
 
 extension FeedPhotoMetadataUpdate {
     func firestorePayload() -> [String: Any] {
-        var payload: [String: Any] = [
-            "year": year,
+        [
+            "date": Timestamp(date: date),
             "hashtags": hashtags
         ]
-
-        if let createdAt {
-            payload["created_at"] = Timestamp(date: createdAt)
-        }
-
-        return payload
     }
 }

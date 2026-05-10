@@ -21,7 +21,7 @@ private struct CachedFeedPhoto: Codable {
     let thumbnailStoragePath: String?
     let groupID: String?
     let postedBy: String?
-    let year: Int?
+    let date: Date?
     let hashtags: [String]
     let isFavourite: Bool
     let sizeMB: Double?
@@ -34,7 +34,7 @@ private struct CachedFeedPhoto: Codable {
         thumbnailStoragePath = photo.thumbnailStoragePath
         groupID = photo.groupID
         postedBy = photo.postedBy
-        year = photo.year
+        date = photo.date
         hashtags = photo.hashtags
         isFavourite = photo.isFavourite
         sizeMB = photo.sizeMB
@@ -49,7 +49,7 @@ private struct CachedFeedPhoto: Codable {
             thumbnailStoragePath: thumbnailStoragePath,
             groupID: groupID,
             postedBy: postedBy,
-            year: year,
+            date: date ?? createdAt,
             hashtags: hashtags,
             isFavourite: isFavourite,
             sizeMB: sizeMB,
@@ -113,7 +113,7 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     var currentGroupPhotoSignature: [String] {
-        currentGroupPhotos.map { "\($0.id)-\($0.year ?? 0)" }
+        currentGroupPhotos.map { "\($0.id)-\($0.date?.timeIntervalSince1970 ?? 0)" }
     }
 
     var currentGroupAvailableHashtags: [String] {
@@ -594,15 +594,15 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     private static func makeNextCursor(from photos: [FeedPhoto]) -> FeedPageCursor? {
-        guard let lastPhoto = photos.last, let createdAt = lastPhoto.createdAt else { return nil }
-        return FeedPageCursor(createdAt: createdAt, documentID: lastPhoto.id)
+        guard let lastPhoto = photos.last, let date = lastPhoto.date else { return nil }
+        return FeedPageCursor(date: date, documentID: lastPhoto.id)
     }
 
     private static func photosAreOrderedBefore(_ lhs: FeedPhoto, _ rhs: FeedPhoto) -> Bool {
-        let lhsCreatedAt = lhs.createdAt ?? .distantPast
-        let rhsCreatedAt = rhs.createdAt ?? .distantPast
-        if lhsCreatedAt != rhsCreatedAt {
-            return lhsCreatedAt > rhsCreatedAt
+        let lhsDate = lhs.date ?? .distantPast
+        let rhsDate = rhs.date ?? .distantPast
+        if lhsDate != rhsDate {
+            return lhsDate > rhsDate
         }
         return lhs.id > rhs.id
     }

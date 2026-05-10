@@ -77,7 +77,8 @@ struct PhotoCollectionViewModelTests {
             hashtags: ["spring"],
             isFavourite: false
         )
-        let updated = original.withMetadata(year: 2025, hashtags: ["winter"]).withFavourite(true)
+        let updatedDate = Date(timeIntervalSince1970: 200)
+        let updated = original.withMetadata(FeedPhotoMetadataUpdate(date: updatedDate, hashtags: ["winter"])).withFavourite(true)
         let viewModel = makeViewModel(userID: "replace-photo-user")
 
         viewModel.selectedGroupID = "group-a"
@@ -86,7 +87,7 @@ struct PhotoCollectionViewModelTests {
         viewModel.replacePhoto(updated)
 
         #expect(viewModel.currentGroupPhotos.count == 1)
-        #expect(viewModel.currentGroupPhotos.first?.year == 2025)
+        #expect(viewModel.currentGroupPhotos.first?.date == updatedDate)
         #expect(viewModel.currentGroupPhotos.first?.hashtags == ["winter"])
         #expect(viewModel.currentGroupPhotos.first?.isFavourite == true)
     }
@@ -235,7 +236,7 @@ struct PhotoCollectionViewModelTests {
             RecentPhotoFetchResult(
                 photos: firstBatch,
                 hasMore: true,
-                nextCursor: FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"),
+                nextCursor: FeedPageCursor(date: Date(timeIntervalSince1970: 295), documentID: "photo-5"),
                 favouriteIDs: ["photo-1", "photo-4"]
             ),
             RecentPhotoFetchResult(photos: nextBatch, hasMore: false, nextCursor: nil, favouriteIDs: ["photo-1", "photo-4"])
@@ -251,7 +252,7 @@ struct PhotoCollectionViewModelTests {
         #expect(viewModel.currentGroupPhotos.count == 12)
         #expect(feedService.fetchCalls.count == 2)
         #expect(feedService.fetchCalls.last?.limit == 6)
-        #expect(feedService.fetchCalls.last?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
+        #expect(feedService.fetchCalls.last?.cursor == FeedPageCursor(date: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
         #expect(feedService.fetchCalls.first?.favouriteIDs == nil)
         #expect(feedService.fetchCalls.last?.favouriteIDs == ["photo-1", "photo-4"])
 
@@ -331,7 +332,7 @@ struct PhotoCollectionViewModelTests {
         try await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(feedService.fetchCalls.count == 1)
-        #expect(feedService.fetchCalls.first?.cursor == FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
+        #expect(feedService.fetchCalls.first?.cursor == FeedPageCursor(date: Date(timeIntervalSince1970: 295), documentID: "photo-5"))
         #expect(secondViewModel.currentGroupPhotos.count == 12)
 
         PhotoCollectionViewModel.clearCachedPhotos(for: userID)
@@ -707,7 +708,7 @@ struct PhotoCollectionViewModelTests {
             RecentPhotoFetchResult(
                 photos: firstBatch,
                 hasMore: true,
-                nextCursor: FeedPageCursor(createdAt: Date(timeIntervalSince1970: 295), documentID: "photo-5"),
+                nextCursor: FeedPageCursor(date: Date(timeIntervalSince1970: 295), documentID: "photo-5"),
                 favouriteIDs: ["photo-1"]
             )
         ]
@@ -876,7 +877,7 @@ private func makePhoto(
         thumbnailStoragePath: thumbnailStoragePath,
         groupID: groupID,
         postedBy: "user",
-        year: year,
+        date: createdAt ?? Date(timeIntervalSince1970: TimeInterval(year)),
         hashtags: hashtags,
         isFavourite: isFavourite,
         sizeMB: 2.0,

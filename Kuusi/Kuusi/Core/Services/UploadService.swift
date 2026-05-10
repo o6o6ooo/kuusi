@@ -29,7 +29,6 @@ final class UploadService {
         images: [UIImage],
         userID: String,
         groupID: String,
-        year: Int,
         hashtags: [String],
         isPremiumActive: Bool
     ) async throws -> [FeedPhoto] {
@@ -47,7 +46,6 @@ final class UploadService {
             return try await commitUploadBatch(
                 temporaryPhotos: temporaryPhotos,
                 groupID: groupID,
-                year: year,
                 hashtags: hashtags,
                 uploadBatchID: uploadBatchID,
                 isPremiumActive: isPremiumActive
@@ -211,14 +209,12 @@ final class UploadService {
     private func commitUploadBatch(
         temporaryPhotos: [TemporaryUploadedPhoto],
         groupID: String,
-        year: Int,
         hashtags: [String],
         uploadBatchID: String,
         isPremiumActive: Bool
     ) async throws -> [FeedPhoto] {
         let payload: [String: Any] = [
             "groupId": groupID,
-            "year": year,
             "hashtags": hashtags,
             "uploadBatchId": uploadBatchID,
             "isPremiumActive": isPremiumActive,
@@ -298,13 +294,13 @@ final class UploadService {
             let groupID = payload["group_id"] as? String,
             let postedBy = payload["posted_by"] as? String,
             let hashtags = payload["hashtags"] as? [String],
-            let year = intValue(payload["year"]),
             let sizeMB = doubleValue(payload["size_mb"]),
             let aspectRatio = doubleValue(payload["aspect_ratio"])
         else {
             throw UploadServiceError.invalidCommitResponse
         }
 
+        let date = (payload["date"] as? String).flatMap(Self.dateFromISOString)
         let createdAt = (payload["created_at"] as? String).flatMap(Self.dateFromISOString)
         return FeedPhoto(
             id: id,
@@ -312,7 +308,7 @@ final class UploadService {
             thumbnailStoragePath: thumbnailPath,
             groupID: groupID,
             postedBy: postedBy,
-            year: year,
+            date: date ?? createdAt,
             hashtags: hashtags,
             isFavourite: false,
             sizeMB: sizeMB,
@@ -329,16 +325,6 @@ final class UploadService {
         }
 
         return ISO8601DateFormatter().date(from: value)
-    }
-
-    nonisolated private static func intValue(_ value: Any?) -> Int? {
-        if let int = value as? Int {
-            return int
-        }
-        if let number = value as? NSNumber {
-            return number.intValue
-        }
-        return nil
     }
 
     nonisolated private static func doubleValue(_ value: Any?) -> Double? {

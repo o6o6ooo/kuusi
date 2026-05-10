@@ -44,13 +44,13 @@ type GroupInviteData = {
 type PhotoData = {
   aspect_ratio?: number;
   created_at?: Timestamp;
+  date?: Timestamp;
   group_id?: string;
   hashtags?: string[];
   preview_storage_path?: string;
   thumbnail_storage_path?: string;
   posted_by?: string;
   size_mb?: number;
-  year?: number;
   upload_batch_id?: string;
   upload_batch_count?: number;
 };
@@ -354,13 +354,12 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
 
   const groupId = normalizeGroupId(request.data?.groupId);
   const uploadBatchId = normalizeUploadBatchId(request.data?.uploadBatchId);
-  const year = normalizeUploadYear(request.data?.year);
   const hashtags = normalizeHashtags(request.data?.hashtags);
   const isPremiumActive = request.data?.isPremiumActive === true;
   const inputPhotos: unknown[] = Array.isArray(request.data?.photos) ? request.data.photos : [];
 
-  if (!groupId || !uploadBatchId || year === null) {
-    throw new HttpsError("invalid-argument", "groupId, uploadBatchId, and year are required");
+  if (!groupId || !uploadBatchId) {
+    throw new HttpsError("invalid-argument", "groupId and uploadBatchId are required");
   }
 
   if (inputPhotos.length === 0 || inputPhotos.length > maxUploadBatchPhotoCount) {
@@ -435,12 +434,12 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
           thumbnail_storage_path: photo.finalThumbnailPath,
           group_id: groupId,
           posted_by: uid,
-          year,
           hashtags,
           aspect_ratio: photo.aspectRatio,
           size_mb: photo.sizeMB,
           upload_batch_id: uploadBatchId,
           upload_batch_count: committedPhotos.length,
+          date: FieldValue.serverTimestamp(),
           created_at: FieldValue.serverTimestamp()
         });
       }
@@ -462,12 +461,12 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
         thumbnail_storage_path: photo.finalThumbnailPath,
         group_id: groupId,
         posted_by: uid,
-        year,
         hashtags,
         aspect_ratio: photo.aspectRatio,
         size_mb: photo.sizeMB,
         upload_batch_id: uploadBatchId,
         upload_batch_count: committedPhotos.length,
+        date: createdAt.toISOString(),
         created_at: createdAt.toISOString()
       })),
       totalUploadMB
@@ -647,15 +646,6 @@ function normalizeText(value: unknown): string | null {
 function normalizeUploadBatchId(value: unknown): string | null {
   const text = normalizeText(value);
   return text && /^[A-Za-z0-9_-]{1,128}$/.test(text) ? text : null;
-}
-
-function normalizeUploadYear(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    return null;
-  }
-
-  const currentYear = new Date().getFullYear();
-  return value >= 2000 && value <= currentYear ? value : null;
 }
 
 function normalizeHashtags(value: unknown): string[] {

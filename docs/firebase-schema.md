@@ -35,13 +35,13 @@ Current Firebase usage in the SwiftUI app.
 - `thumbnail_storage_path: string`
 - `group_id: string`
 - `posted_by: string`
-- `year: number`
+- `date: timestamp` (editable photo date used for feed ordering)
 - `hashtags: string[]`
 - `aspect_ratio: number`
 - `size_mb: number`
 - `upload_batch_id: string`
 - `upload_batch_count: number`
-- `created_at: timestamp`
+- `created_at: timestamp` (server upload timestamp used for preview access)
 
 ### `photo_notification_batches/{uploadBatchId}`
 - `created_at: timestamp`
@@ -79,9 +79,9 @@ Current Firebase usage in the SwiftUI app.
 ### `photos`
 - Composite index for feed pagination by group:
   - `group_id` ascending
-  - `created_at` descending
+  - `date` descending
 
-This is required for queries that filter photos by `group_id` and order the feed by newest `created_at`.
+This is required for queries that filter photos by `group_id` and order the feed by newest editable photo `date`.
 
 ## Notification flow
 

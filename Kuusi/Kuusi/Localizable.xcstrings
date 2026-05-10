@@ -1,35 +1,395 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "alert.create_group.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Create" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "作成" } } } },
-    "alert.create_group.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter a name for the new group." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "新しいグループの名前を入力してください。" } } } },
-    "alert.create_group.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Create Group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを作成" } } } },
-    "alert.delete_account.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウントを削除" } } } },
-    "alert.delete_account.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This will permanently delete your account, your photos, and any groups you created." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウント、写真、作成したグループが完全に削除されます。" } } } },
-    "alert.delete_account.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete account?" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウントを削除しますか？" } } } },
-    "alert.delete_group.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "削除" } } } },
-    "alert.delete_group.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This will remove the group for all members and permanently delete all photos in it." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "すべてのメンバーからグループが削除され、グループ内の写真も完全に削除されます。" } } } },
-    "alert.delete_group.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete group?" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを削除しますか？" } } } },
-    "alert.delete_photo.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "削除" } } } },
-    "alert.delete_photo.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This will permanently delete the photo." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "この写真は完全に削除されます。" } } } },
-    "alert.delete_photo.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete photo?" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真を削除しますか？" } } } },
-    "alert.edit_group.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter a new group name." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "新しいグループ名を入力してください。" } } } },
-    "alert.edit_group.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit Group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを編集" } } } },
-    "alert.edit_name.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter your display name." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "表示名を入力してください。" } } } },
-    "alert.edit_name.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit Name" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "名前を編集" } } } },
-    "alert.group_name.placeholder" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group name" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループ名" } } } },
-    "alert.leave_group.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "退出" } } } },
-    "alert.leave_group.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You will be removed from this group." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "このグループから退出します。" } } } },
-    "alert.leave_group.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave group?" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを退出しますか？" } } } },
-    "alert.name.placeholder" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Name" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "名前" } } } },
-    "alert.remove_member.confirm" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "削除" } } } },
-    "alert.remove_member.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This will remove %@ from the group." } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@をグループから削除します。" } } } },
-    "alert.remove_member.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove member?" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバーを削除しますか？" } } } },
     "#%@" : {
 
     },
     "•  %@" : {
 
+    },
+    "alert.create_group.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作成"
+          }
+        }
+      }
+    },
+    "alert.create_group.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a name for the new group."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しいグループの名前を入力してください。"
+          }
+        }
+      }
+    },
+    "alert.create_group.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを作成"
+          }
+        }
+      }
+    },
+    "alert.delete_account.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントを削除"
+          }
+        }
+      }
+    },
+    "alert.delete_account.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will permanently delete your account, your photos, and any groups you created."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウント、写真、作成したグループが完全に削除されます。"
+          }
+        }
+      }
+    },
+    "alert.delete_account.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete account?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントを削除しますか？"
+          }
+        }
+      }
+    },
+    "alert.delete_group.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        }
+      }
+    },
+    "alert.delete_group.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will remove the group for all members and permanently delete all photos in it."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのメンバーからグループが削除され、グループ内の写真も完全に削除されます。"
+          }
+        }
+      }
+    },
+    "alert.delete_group.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete group?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを削除しますか？"
+          }
+        }
+      }
+    },
+    "alert.delete_photo.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        }
+      }
+    },
+    "alert.delete_photo.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will permanently delete the photo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この写真は完全に削除されます。"
+          }
+        }
+      }
+    },
+    "alert.delete_photo.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete photo?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真を削除しますか？"
+          }
+        }
+      }
+    },
+    "alert.edit_group.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a new group name."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しいグループ名を入力してください。"
+          }
+        }
+      }
+    },
+    "alert.edit_group.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを編集"
+          }
+        }
+      }
+    },
+    "alert.edit_name.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter your display name."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示名を入力してください。"
+          }
+        }
+      }
+    },
+    "alert.edit_name.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Name"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名前を編集"
+          }
+        }
+      }
+    },
+    "alert.group_name.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group name"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループ名"
+          }
+        }
+      }
+    },
+    "alert.leave_group.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出"
+          }
+        }
+      }
+    },
+    "alert.leave_group.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You will be removed from this group."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このグループから退出します。"
+          }
+        }
+      }
+    },
+    "alert.leave_group.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave group?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを退出しますか？"
+          }
+        }
+      }
+    },
+    "alert.name.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名前"
+          }
+        }
+      }
+    },
+    "alert.remove_member.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        }
+      }
+    },
+    "alert.remove_member.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will remove %@ from the group."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@をグループから削除します。"
+          }
+        }
+      }
+    },
+    "alert.remove_member.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove member?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メンバーを削除しますか？"
+          }
+        }
+      }
     },
     "auth.login.dev_sign_in" : {
       "extractionState" : "stale",
@@ -129,6 +489,22 @@
         }
       }
     },
+    "common.cancel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャンセル"
+          }
+        }
+      }
+    },
     "common.close" : {
       "localizations" : {
         "en" : {
@@ -161,16 +537,20 @@
         }
       }
     },
-    "common.cancel" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセル" } }
-      }
-    },
     "common.ok" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
       }
     },
     "common.save" : {
@@ -525,22 +905,6 @@
         }
       }
     },
-    "groups.members.remove_accessibility" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@を削除"
-          }
-        }
-      }
-    },
     "groups.members.refresh" : {
       "localizations" : {
         "en" : {
@@ -553,6 +917,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "メンバーを更新"
+          }
+        }
+      }
+    },
+    "groups.members.remove_accessibility" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@を削除"
           }
         }
       }
@@ -653,22 +1033,6 @@
         }
       }
     },
-    "groups.scan_qr" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan QR code to join a group"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "QRコードをスキャンして参加"
-          }
-        }
-      }
-    },
     "groups.refresh" : {
       "localizations" : {
         "en" : {
@@ -681,6 +1045,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "グループを更新"
+          }
+        }
+      }
+    },
+    "groups.scan_qr" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan QR code to join a group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QRコードをスキャンして参加"
           }
         }
       }
@@ -720,94 +1100,1414 @@
     "Kuusi" : {
 
     },
-    "message.added_to_favourites" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Added to favourites" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "お気に入りに追加しました" } } } },
-    "message.already_joined_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Already joined this group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "すでにこのグループに参加しています" } } } },
-    "message.apple_sign_in_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Sign-In failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Appleサインインに失敗しました" } } } },
-    "message.apple_token_unavailable" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple ID token was not available" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Apple IDトークンを取得できませんでした" } } } },
-    "message.biometric_authentication_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Biometric authentication failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "生体認証に失敗しました" } } } },
-    "message.camera_access_denied" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Allow camera access in Settings to scan QR codes" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "QRコードをスキャンするには設定でカメラへのアクセスを許可してください" } } } },
-    "message.camera_unavailable" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Camera is not available" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "カメラを使用できません" } } } },
-    "message.cannot_delete_others_photos" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You can only delete your own photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "自分の写真だけ削除できます" } } } },
-    "message.could_not_open_google_photos" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not open Google Photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosを開けませんでした" } } } },
-    "message.could_not_open_google_sign_in" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not open Google Sign-In" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleサインインを開けませんでした" } } } },
-    "message.debug_email_password_provider_disabled" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enable Email/Password provider in Firebase Authentication for debug login" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "デバッグログインにはFirebase AuthenticationでEmail/Passwordプロバイダを有効にしてください" } } } },
-    "message.debug_invalid_credentials" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Debug user credentials are invalid, check email/password" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "デバッグユーザーの認証情報が無効です。メールアドレスとパスワードを確認してください" } } } },
-    "message.debug_sign_in_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Debug sign-in failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "デバッグサインインに失敗しました" } } } },
-    "message.enter_valid_year" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Enter a valid year" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "有効な年を入力してください" } } } },
-    "message.failed_to_connect_google_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to connect Google account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleアカウントの接続に失敗しました" } } } },
-    "message.failed_to_create_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to create group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループの作成に失敗しました" } } } },
-    "message.failed_to_delete_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to delete account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウントの削除に失敗しました" } } } },
-    "message.failed_to_delete_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to delete group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループの削除に失敗しました" } } } },
-    "message.failed_to_delete_photo" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to delete photo" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真の削除に失敗しました" } } } },
-    "message.failed_to_disconnect_google_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to disconnect Google account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleアカウントの接続解除に失敗しました" } } } },
-    "message.failed_to_generate_qr_code" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to generate QR code" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "QRコードの生成に失敗しました" } } } },
-    "message.failed_to_import_from_google_photos" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to import from Google Photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosからの取り込みに失敗しました" } } } },
-    "message.failed_to_join_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to join group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループへの参加に失敗しました" } } } },
-    "message.failed_to_leave_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to leave group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループからの退出に失敗しました" } } } },
-    "message.failed_to_load_feed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真の読み込みに失敗しました" } } } },
-    "message.failed_to_load_group_members" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load group members" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループメンバーの読み込みに失敗しました" } } } },
-    "message.failed_to_load_groups" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load groups" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループの読み込みに失敗しました" } } } },
-    "message.failed_to_load_image" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load image" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "画像の読み込みに失敗しました" } } } },
-    "message.failed_to_load_profile" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to load profile" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "プロフィールの読み込みに失敗しました" } } } },
-    "message.failed_to_open_manage_subscriptions" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not open subscription management" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "サブスクリプション管理を開けませんでした" } } } },
-    "message.failed_to_open_privacy_choices" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not open privacy choices" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "プライバシー設定を開けませんでした" } } } },
-    "message.failed_to_remove_member" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to remove member" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバーの削除に失敗しました" } } } },
-    "message.failed_to_restore_purchases" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to restore purchases" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入の復元に失敗しました" } } } },
-    "message.failed_to_save_profile" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to save profile" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "プロフィールの保存に失敗しました" } } } },
-    "message.failed_to_set_up_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to set up account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウントの設定に失敗しました" } } } },
-    "message.failed_to_sign_out" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to sign out" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインアウトに失敗しました" } } } },
-    "message.failed_to_update_favourite" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to update favourite" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "お気に入りの更新に失敗しました" } } } },
-    "message.failed_to_update_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to update group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループの更新に失敗しました" } } } },
-    "message.failed_to_update_photo" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to update photo" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真の更新に失敗しました" } } } },
-    "message.fill_in_group_name" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Fill in group name" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループ名を入力してください" } } } },
-    "message.google_account_connected" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google account connected" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleアカウントを接続しました" } } } },
-    "message.google_account_disconnected" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google account disconnected" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleアカウントの接続を解除しました" } } } },
-    "message.google_account_mismatch" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This Google account does not match the linked account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "このGoogleアカウントは接続済みのアカウントと一致しません" } } } },
-    "message.google_photos_picker_returned_invalid_link" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Photos did not return a valid picker link" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosから有効な選択リンクが返されませんでした" } } } },
-    "message.google_photos_picker_timed_out" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Photos selection took too long" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosの選択に時間がかかりすぎました" } } } },
-    "message.google_photos_request_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Photos request failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosへのリクエストに失敗しました" } } } },
-    "message.google_sign_in_not_configured" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Sign-In is not configured yet" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleサインインがまだ設定されていません" } } } },
-    "message.google_sign_in_returned_incomplete_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Sign-In did not return a valid email address" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleサインインから有効なメールアドレスが返されませんでした" } } } },
-    "message.google_sign_in_returned_invalid_token" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Google Sign-In did not return a valid token" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Googleサインインから有効なトークンが返されませんでした" } } } },
-    "message.group_created" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group created" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを作成しました" } } } },
-    "message.group_deleted" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group deleted" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを削除しました" } } } },
-    "message.group_limit_reached" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ supports up to %lld groups" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@では最大%lld個のグループを作成できます" } } } },
-    "message.group_member_limit_reached" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This group is full. Up to %lld members are supported" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "このグループは満員です。最大%lld人まで参加できます" } } } },
-    "message.group_not_found" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group not found" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループが見つかりません" } } } },
-    "message.group_updated" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group updated" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを更新しました" } } } },
-    "message.invalid_invite_qr" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid invite QR" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "招待QRコードが無効です" } } } },
-    "message.invite_qr_code_expired" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Invite QR has expired" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "招待QRコードの有効期限が切れています" } } } },
-    "message.joined_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Joined group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループに参加しました" } } } },
-    "message.left_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Left group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを退出しました" } } } },
-    "message.member_removed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Member removed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバーを削除しました" } } } },
-    "message.name_cannot_be_empty" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Name cannot be empty" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "名前を入力してください" } } } },
-    "message.network_unavailable" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Network connection unavailable" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "ネットワークに接続できません" } } } },
-    "message.no_active_purchases_found" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No active purchases found" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "有効な購入が見つかりませんでした" } } } },
-    "message.no_linked_google_account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Connect a Google account in Settings first" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "先に設定でGoogleアカウントを接続してください" } } } },
-    "message.no_photos_selected_from_google_photos" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No photos were selected from Google Photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosで写真が選択されませんでした" } } } },
-    "message.only_owner_can_remove_members" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Only the group owner can remove members" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバーを削除できるのはグループのオーナーだけです" } } } },
-    "message.owner_cannot_be_removed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group owners cannot be removed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループのオーナーは削除できません" } } } },
-    "message.owner_cannot_leave" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Group owners cannot leave their group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループのオーナーはグループを退出できません" } } } },
-    "message.photo_already_being_updated" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo is already being updated" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "この写真はすでに更新中です" } } } },
-    "message.photo_deleted" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo deleted" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真を削除しました" } } } },
-    "message.photo_updated" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo updated" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真を更新しました" } } } },
-    "message.photos_imported_from_google_photos" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld photos imported from Google Photos" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google Photosから%lld枚の写真を取り込みました" } } } },
-    "message.please_sign_in_first" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Please sign in first" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "先にサインインしてください" } } } },
-    "message.premium_unlocked" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium unlocked" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "Premiumが有効になりました" } } } },
-    "message.profile_updated" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Profile updated" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "プロフィールを更新しました" } } } },
-    "message.purchase_could_not_be_verified" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchase could not be verified" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入を確認できませんでした" } } } },
-    "message.purchase_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchase failed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入に失敗しました" } } } },
-    "message.purchase_pending_approval" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchase is pending approval" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入は承認待ちです" } } } },
-    "message.purchases_restored" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchases restored" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入を復元しました" } } } },
-    "message.qr_code_not_found_in_image" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "QR code was not found in the image" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "画像内にQRコードが見つかりませんでした" } } } },
-    "message.recent_login_required" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Please sign in again before deleting your account" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウントを削除する前にもう一度サインインしてください" } } } },
-    "message.removed_from_favourites" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Removed from favourites" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "お気に入りから削除しました" } } } },
-    "message.select_group" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Select a group" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "グループを選択してください" } } } },
-    "message.storage_limit_reached" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You've reached your storage limit" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "ストレージ上限に達しました" } } } },
-    "message.subscription_cancelled" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Automatic renewal cancelled" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "自動更新をキャンセルしました" } } } },
-    "message.subscription_resumed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Subscription resumed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "サブスクリプションを再開しました" } } } },
-    "message.subscription_unavailable" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Premium subscription is not available right now" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "現在Premiumサブスクリプションは利用できません" } } } },
-    "message.upload_completed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Upload completed" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "アップロードが完了しました" } } } },
+    "message.added_to_favourites" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to favourites"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お気に入りに追加しました"
+          }
+        }
+      }
+    },
+    "message.already_joined_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already joined this group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すでにこのグループに参加しています"
+          }
+        }
+      }
+    },
+    "message.apple_sign_in_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Sign-In failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appleサインインに失敗しました"
+          }
+        }
+      }
+    },
+    "message.apple_token_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple ID token was not available"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple IDトークンを取得できませんでした"
+          }
+        }
+      }
+    },
+    "message.biometric_authentication_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biometric authentication failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生体認証に失敗しました"
+          }
+        }
+      }
+    },
+    "message.camera_access_denied" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow camera access in Settings to scan QR codes"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QRコードをスキャンするには設定でカメラへのアクセスを許可してください"
+          }
+        }
+      }
+    },
+    "message.camera_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera is not available"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カメラを使用できません"
+          }
+        }
+      }
+    },
+    "message.cannot_delete_others_photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can only delete your own photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自分の写真だけ削除できます"
+          }
+        }
+      }
+    },
+    "message.could_not_open_google_photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open Google Photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosを開けませんでした"
+          }
+        }
+      }
+    },
+    "message.could_not_open_google_sign_in" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open Google Sign-In"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleサインインを開けませんでした"
+          }
+        }
+      }
+    },
+    "message.debug_email_password_provider_disabled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable Email/Password provider in Firebase Authentication for debug login"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバッグログインにはFirebase AuthenticationでEmail/Passwordプロバイダを有効にしてください"
+          }
+        }
+      }
+    },
+    "message.debug_invalid_credentials" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Debug user credentials are invalid, check email/password"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバッグユーザーの認証情報が無効です。メールアドレスとパスワードを確認してください"
+          }
+        }
+      }
+    },
+    "message.debug_sign_in_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Debug sign-in failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバッグサインインに失敗しました"
+          }
+        }
+      }
+    },
+    "message.enter_valid_year" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a valid year"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有効な年を入力してください"
+          }
+        }
+      }
+    },
+    "message.failed_to_connect_google_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to connect Google account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleアカウントの接続に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_create_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to create group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループの作成に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_delete_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to delete account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントの削除に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_delete_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to delete group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループの削除に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_delete_photo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to delete photo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真の削除に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_disconnect_google_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to disconnect Google account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleアカウントの接続解除に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_generate_qr_code" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to generate QR code"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QRコードの生成に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_import_from_google_photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to import from Google Photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosからの取り込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_join_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to join group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループへの参加に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_leave_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to leave group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループからの退出に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_load_feed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真の読み込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_load_group_members" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load group members"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループメンバーの読み込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_load_groups" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load groups"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループの読み込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_load_image" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load image"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像の読み込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_load_profile" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load profile"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロフィールの読み込みに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_open_manage_subscriptions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open subscription management"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サブスクリプション管理を開けませんでした"
+          }
+        }
+      }
+    },
+    "message.failed_to_open_privacy_choices" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open privacy choices"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プライバシー設定を開けませんでした"
+          }
+        }
+      }
+    },
+    "message.failed_to_remove_member" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to remove member"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メンバーの削除に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_restore_purchases" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to restore purchases"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入の復元に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_save_profile" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to save profile"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロフィールの保存に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_set_up_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to set up account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントの設定に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_sign_out" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to sign out"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サインアウトに失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_update_favourite" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update favourite"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お気に入りの更新に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_update_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループの更新に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_update_photo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update photo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真の更新に失敗しました"
+          }
+        }
+      }
+    },
+    "message.fill_in_group_name" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill in group name"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループ名を入力してください"
+          }
+        }
+      }
+    },
+    "message.google_account_connected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google account connected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleアカウントを接続しました"
+          }
+        }
+      }
+    },
+    "message.google_account_disconnected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google account disconnected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleアカウントの接続を解除しました"
+          }
+        }
+      }
+    },
+    "message.google_account_mismatch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Google account does not match the linked account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このGoogleアカウントは接続済みのアカウントと一致しません"
+          }
+        }
+      }
+    },
+    "message.google_photos_picker_returned_invalid_link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photos did not return a valid picker link"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosから有効な選択リンクが返されませんでした"
+          }
+        }
+      }
+    },
+    "message.google_photos_picker_timed_out" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photos selection took too long"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosの選択に時間がかかりすぎました"
+          }
+        }
+      }
+    },
+    "message.google_photos_request_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photos request failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosへのリクエストに失敗しました"
+          }
+        }
+      }
+    },
+    "message.google_sign_in_not_configured" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Sign-In is not configured yet"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleサインインがまだ設定されていません"
+          }
+        }
+      }
+    },
+    "message.google_sign_in_returned_incomplete_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Sign-In did not return a valid email address"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleサインインから有効なメールアドレスが返されませんでした"
+          }
+        }
+      }
+    },
+    "message.google_sign_in_returned_invalid_token" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Sign-In did not return a valid token"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Googleサインインから有効なトークンが返されませんでした"
+          }
+        }
+      }
+    },
+    "message.group_created" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group created"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを作成しました"
+          }
+        }
+      }
+    },
+    "message.group_deleted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group deleted"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを削除しました"
+          }
+        }
+      }
+    },
+    "message.group_limit_reached" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ supports up to %lld groups"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@では最大%lld個のグループを作成できます"
+          }
+        }
+      }
+    },
+    "message.group_member_limit_reached" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This group is full. Up to %lld members are supported"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このグループは満員です。最大%lld人まで参加できます"
+          }
+        }
+      }
+    },
+    "message.group_not_found" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group not found"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループが見つかりません"
+          }
+        }
+      }
+    },
+    "message.group_updated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group updated"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを更新しました"
+          }
+        }
+      }
+    },
+    "message.invalid_invite_qr" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid invite QR"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "招待QRコードが無効です"
+          }
+        }
+      }
+    },
+    "message.invite_qr_code_expired" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite QR has expired"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "招待QRコードの有効期限が切れています"
+          }
+        }
+      }
+    },
+    "message.joined_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joined group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループに参加しました"
+          }
+        }
+      }
+    },
+    "message.left_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを退出しました"
+          }
+        }
+      }
+    },
+    "message.member_removed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Member removed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メンバーを削除しました"
+          }
+        }
+      }
+    },
+    "message.name_cannot_be_empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name cannot be empty"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名前を入力してください"
+          }
+        }
+      }
+    },
+    "message.network_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network connection unavailable"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ネットワークに接続できません"
+          }
+        }
+      }
+    },
+    "message.no_active_purchases_found" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No active purchases found"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有効な購入が見つかりませんでした"
+          }
+        }
+      }
+    },
+    "message.no_linked_google_account" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect a Google account in Settings first"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先に設定でGoogleアカウントを接続してください"
+          }
+        }
+      }
+    },
+    "message.no_photos_selected_from_google_photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No photos were selected from Google Photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosで写真が選択されませんでした"
+          }
+        }
+      }
+    },
+    "message.only_owner_can_remove_members" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the group owner can remove members"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メンバーを削除できるのはグループのオーナーだけです"
+          }
+        }
+      }
+    },
+    "message.owner_cannot_be_removed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group owners cannot be removed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループのオーナーは削除できません"
+          }
+        }
+      }
+    },
+    "message.owner_cannot_leave" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group owners cannot leave their group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループのオーナーはグループを退出できません"
+          }
+        }
+      }
+    },
+    "message.photo_already_being_updated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo is already being updated"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この写真はすでに更新中です"
+          }
+        }
+      }
+    },
+    "message.photo_deleted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo deleted"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真を削除しました"
+          }
+        }
+      }
+    },
+    "message.photo_updated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo updated"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真を更新しました"
+          }
+        }
+      }
+    },
+    "message.photos_imported_from_google_photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld photos imported from Google Photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photosから%lld枚の写真を取り込みました"
+          }
+        }
+      }
+    },
+    "message.please_sign_in_first" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in first"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先にサインインしてください"
+          }
+        }
+      }
+    },
+    "message.premium_unlocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium unlocked"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premiumが有効になりました"
+          }
+        }
+      }
+    },
+    "message.profile_updated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profile updated"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プロフィールを更新しました"
+          }
+        }
+      }
+    },
+    "message.purchase_could_not_be_verified" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchase could not be verified"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入を確認できませんでした"
+          }
+        }
+      }
+    },
+    "message.purchase_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchase failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入に失敗しました"
+          }
+        }
+      }
+    },
+    "message.purchase_pending_approval" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchase is pending approval"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入は承認待ちです"
+          }
+        }
+      }
+    },
+    "message.purchases_restored" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchases restored"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入を復元しました"
+          }
+        }
+      }
+    },
+    "message.qr_code_not_found_in_image" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QR code was not found in the image"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像内にQRコードが見つかりませんでした"
+          }
+        }
+      }
+    },
+    "message.recent_login_required" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please sign in again before deleting your account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントを削除する前にもう一度サインインしてください"
+          }
+        }
+      }
+    },
+    "message.removed_from_favourites" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed from favourites"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お気に入りから削除しました"
+          }
+        }
+      }
+    },
+    "message.select_group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを選択してください"
+          }
+        }
+      }
+    },
+    "message.storage_limit_reached" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You've reached your storage limit"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストレージ上限に達しました"
+          }
+        }
+      }
+    },
+    "message.subscription_cancelled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic renewal cancelled"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動更新をキャンセルしました"
+          }
+        }
+      }
+    },
+    "message.subscription_resumed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription resumed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サブスクリプションを再開しました"
+          }
+        }
+      }
+    },
+    "message.subscription_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium subscription is not available right now"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在Premiumサブスクリプションは利用できません"
+          }
+        }
+      }
+    },
+    "message.upload_completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload completed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップロードが完了しました"
+          }
+        }
+      }
+    },
     "photo.created_at.label" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -838,6 +2538,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "作成日時"
+          }
+        }
+      }
+    },
+    "photo.date.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "date"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日付"
+          }
+        }
+      }
+    },
+    "photo.date.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日付"
           }
         }
       }
@@ -1660,6 +3392,7 @@
       }
     },
     "upload.year_placeholder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

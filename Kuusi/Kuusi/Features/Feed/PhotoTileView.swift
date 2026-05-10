@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 import SwiftUI
 
 @MainActor
@@ -201,14 +202,14 @@ struct PhotoTileView: View {
     private var expandedMetaOverlay: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(photo.year.map(String.init) ?? String(localized: "photo.shared_memory"))
+                Text(photo.date.map { Self.dateFormatter.string(from: $0) } ?? String(localized: "photo.shared_memory"))
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(yearOverlayColor)
+                    .foregroundStyle(dateOverlayColor)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
 
                 PhotoAuthorNameView(uid: photo.postedBy)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(yearOverlayColor)
+                    .foregroundStyle(dateOverlayColor)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
             }
 
@@ -242,7 +243,14 @@ struct PhotoTileView: View {
         )
     }
 
-    private var yearOverlayColor: Color {
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private var dateOverlayColor: Color {
         Color.white.opacity(0.72)
     }
 

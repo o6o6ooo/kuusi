@@ -86,9 +86,8 @@ service cloud.firestore {
         && request.resource.data.posted_by == resource.data.posted_by
         && request.resource.data.group_id == resource.data.group_id
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          "year",
           "hashtags",
-          "created_at"
+          "date"
         ]);
 
       allow delete: if false;

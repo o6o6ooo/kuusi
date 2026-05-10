@@ -15,7 +15,7 @@ Users sign in with Apple, join family groups, upload photos, import from Google 
 - Invite-only groups with QR-based join and share flows
 - Group owner tools for viewing members, removing members, and deleting groups
 - Personal profile with emoji icon and background color
-- Photo upload flow for private group sharing, including year and hashtag metadata
+- Photo upload flow for private group sharing, including date and hashtag metadata
 - Feed browsing with grouped access, favourites, photo editing, and photo deletion
 - Optional Google account linking and Google Photos Picker import
 - Push notifications for new photo batches and app announcements

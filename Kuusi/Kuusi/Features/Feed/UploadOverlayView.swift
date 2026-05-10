@@ -38,12 +38,6 @@ private extension GooglePhotosPickerError {
 }
 
 enum UploadOverlayRules {
-    static func parseYear(from text: String) -> Int? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return Int(trimmed)
-    }
-
     static func canUpload(
         selectedImageCount: Int,
         isUploading: Bool,
@@ -51,7 +45,6 @@ enum UploadOverlayRules {
         isEstimatingUploadSize: Bool,
         didFailUploadSizeEstimation: Bool = false,
         selectedGroupID: String?,
-        yearText: String,
         effectiveUsageMB: Double,
         estimatedUploadSizeMB: Double,
         isPremiumActive: Bool
@@ -62,7 +55,6 @@ enum UploadOverlayRules {
         !isEstimatingUploadSize &&
         !didFailUploadSizeEstimation &&
         selectedGroupID != nil &&
-        parseYear(from: yearText) != nil &&
         !PlanAccessPolicy.isStorageLimitReached(
             usageMB: effectiveUsageMB,
             isPremiumActive: isPremiumActive
@@ -77,7 +69,6 @@ enum UploadOverlayRules {
     static func uploadValidationMessageID(
         currentUserID: String?,
         selectedGroupID: String?,
-        yearText: String,
         effectiveUsageMB: Double,
         estimatedUploadSizeMB: Double,
         isPremiumActive: Bool,
@@ -91,7 +82,6 @@ enum UploadOverlayRules {
         }
         guard currentUserID != nil else { return .pleaseSignInFirst }
         guard selectedGroupID != nil else { return .selectGroup }
-        guard parseYear(from: yearText) != nil else { return .enterValidYear }
         guard !didFailUploadSizeEstimation else { return .networkUnavailable }
         guard PlanAccessPolicy.canUpload(
             currentUsageMB: effectiveUsageMB,
@@ -125,13 +115,10 @@ struct UploadOverlayView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var selectedGroupID: String?
-    @State private var yearText = String(Calendar.current.component(.year, from: Date()))
     @State private var hashtagInput = ""
     @State private var hashtags: [String] = []
     @State private var isUploading = false
     @State private var isImportingGooglePhotos = false
-    @State private var isYearPickerPresented = false
-    @State private var yearSelection = Calendar.current.component(.year, from: Date())
     @State private var toastMessage: AppMessage?
     @State private var googlePickerSession: GooglePhotosPickingSession?
     @State private var clearMessageTask: Task<Void, Never>?
@@ -166,18 +153,6 @@ struct UploadOverlayView: View {
         return groupStore.groups.first(where: { $0.id == selectedGroupID })?.name ?? String(localized: "upload.group_placeholder")
     }
 
-    private var yearOptions: [Int] {
-        Array(2000...Calendar.current.component(.year, from: Date()))
-    }
-
-    private var selectedYearLabel: String {
-        parsedYear.map(String.init) ?? String(localized: "upload.year_placeholder")
-    }
-
-    private var parsedYear: Int? {
-        UploadOverlayRules.parseYear(from: yearText)
-    }
-
     private var canUpload: Bool {
         UploadOverlayRules.canUpload(
             selectedImageCount: selectedImages.count,
@@ -186,7 +161,6 @@ struct UploadOverlayView: View {
             isEstimatingUploadSize: isEstimatingUploadSize,
             didFailUploadSizeEstimation: didFailUploadSizeEstimation,
             selectedGroupID: selectedGroupID,
-            yearText: yearText,
             effectiveUsageMB: effectiveUsageMB,
             estimatedUploadSizeMB: estimatedUploadSizeMB,
             isPremiumActive: isPremiumActive
@@ -217,7 +191,6 @@ struct UploadOverlayView: View {
 
                     VStack(spacing: 12) {
                         groupPicker
-                        yearField
                         hashtagsField
                     }
 
@@ -295,9 +268,6 @@ struct UploadOverlayView: View {
             .onChange(of: selectedImages.count) { _, _ in
                 Task { await refreshEstimatedUploadSize() }
             }
-            .onChange(of: yearSelection) { _, newValue in
-                yearText = String(newValue)
-            }
             .onChange(of: toastMessage) { _, newValue in
                 scheduleMessageAutoClear(for: newValue)
             }
@@ -317,14 +287,6 @@ struct UploadOverlayView: View {
             }
             .onChange(of: groupStore.groups.map(\.id)) { _, _ in
                 syncSelectedGroupIfNeeded()
-            }
-            .sheet(isPresented: $isYearPickerPresented) {
-                YearWheelPickerSheet(
-                    years: yearOptions,
-                    selectedYear: $yearSelection
-                )
-                .presentationDetents([.height(300)])
-                .presentationDragIndicator(.visible)
             }
             .sheet(item: $googlePickerSession) { session in
                 SafariSheetView(url: session.pickerURL)
@@ -475,23 +437,6 @@ struct UploadOverlayView: View {
         .buttonStyle(.plain)
     }
 
-    private var yearField: some View {
-        Button {
-            yearSelection = parsedYear ?? Calendar.current.component(.year, from: Date())
-            isYearPickerPresented = true
-        } label: {
-            liftedField {
-                Text(selectedYearLabel)
-                    .foregroundStyle(parsedYear == nil ? .secondary : primaryText)
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
     private var hashtagsField: some View {
         TextField("photo.hashtags.placeholder", text: $hashtagInput)
             .textInputAutocapitalization(.never)
@@ -570,7 +515,6 @@ struct UploadOverlayView: View {
         if let messageID = UploadOverlayRules.uploadValidationMessageID(
             currentUserID: Auth.auth().currentUser?.uid,
             selectedGroupID: selectedGroupID,
-            yearText: yearText,
             effectiveUsageMB: effectiveUsageMB,
             estimatedUploadSizeMB: estimatedUploadSizeMB,
             isPremiumActive: isPremiumActive,
@@ -582,7 +526,6 @@ struct UploadOverlayView: View {
 
         guard let uid = Auth.auth().currentUser?.uid else { return }
         guard let groupID = selectedGroupID else { return }
-        guard let year = parsedYear else { return }
 
         isUploading = true
         defer { isUploading = false }
@@ -592,7 +535,6 @@ struct UploadOverlayView: View {
                 images: selectedImages,
                 userID: uid,
                 groupID: groupID,
-                year: year,
                 hashtags: hashtags,
                 isPremiumActive: isPremiumActive
             )

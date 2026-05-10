@@ -11,13 +11,10 @@ struct EditOverlayView: View {
     let photo: FeedPhoto
     let onSave: @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>
 
-    @State private var yearText: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
-    @State private var isYearPickerPresented = false
-    @State private var yearSelection = Calendar.current.component(.year, from: Date())
-    @State private var isCreatedAtPickerPresented = false
-    @State private var createdAtSelection: Date
+    @State private var isDatePickerPresented = false
+    @State private var dateSelection: Date
     @State private var toastMessage: AppMessage?
     @State private var isSaving = false
     @State private var clearToastTask: Task<Void, Never>?
@@ -25,9 +22,8 @@ struct EditOverlayView: View {
     init(photo: FeedPhoto, onSave: @escaping @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>) {
         self.photo = photo
         self.onSave = onSave
-        _yearText = State(initialValue: photo.year.map(String.init) ?? "")
         _hashtags = State(initialValue: photo.hashtags)
-        _createdAtSelection = State(initialValue: photo.createdAt ?? Date())
+        _dateSelection = State(initialValue: photo.date ?? Date())
     }
 
     private var surfaceBackground: Color {
@@ -35,17 +31,8 @@ struct EditOverlayView: View {
     }
     private var surfaceBorder: Color { AppTheme.cardSurfaceBorder(for: colorScheme) }
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
-    private var yearOptions: [Int] {
-        Array(2000...Calendar.current.component(.year, from: Date()))
-    }
-    private var parsedYear: Int? {
-        Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-    private var selectedYearLabel: String {
-        parsedYear.map(String.init) ?? String(localized: "upload.year_placeholder")
-    }
-    private var selectedCreatedAtLabel: String {
-        Self.createdAtFormatter.string(from: createdAtSelection)
+    private var selectedDateLabel: String {
+        Self.dateFormatter.string(from: dateSelection)
     }
 
     var body: some View {
@@ -63,10 +50,7 @@ struct EditOverlayView: View {
                 }
 
                 VStack(spacing: 12) {
-                    yearField
-                    #if DEBUG
-                    createdAtField
-                    #endif
+                    dateField
                     hashtagsField
                 }
 
@@ -98,9 +82,6 @@ struct EditOverlayView: View {
             .padding(16)
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
-            .onChange(of: yearSelection) { _, newValue in
-                yearText = String(newValue)
-            }
             .onDisappear {
                 clearToastTask?.cancel()
                 clearToastTask = nil
@@ -109,21 +90,11 @@ struct EditOverlayView: View {
                 toastMessage = nil
             }
             .appToastHost()
-            .sheet(isPresented: $isYearPickerPresented) {
-                YearWheelPickerSheet(
-                    years: yearOptions,
-                    selectedYear: $yearSelection
-                )
-                .presentationDetents([.height(300)])
-                .presentationDragIndicator(.visible)
-            }
-            #if DEBUG
-            .sheet(isPresented: $isCreatedAtPickerPresented) {
-                PhotoCreatedAtPickerSheet(selectedDate: $createdAtSelection)
+            .sheet(isPresented: $isDatePickerPresented) {
+                PhotoDatePickerSheet(selectedDate: $dateSelection)
                     .presentationDetents([.height(520)])
                     .presentationDragIndicator(.visible)
             }
-            #endif
         }
     }
 
@@ -149,23 +120,6 @@ struct EditOverlayView: View {
         )
     }
 
-    private var yearField: some View {
-        Button {
-            yearSelection = parsedYear ?? Calendar.current.component(.year, from: Date())
-            isYearPickerPresented = true
-        } label: {
-            liftedField {
-                Text(selectedYearLabel)
-                    .foregroundStyle(parsedYear == nil ? .secondary : primaryText)
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
     private var hashtagsField: some View {
         liftedField {
             TextField("photo.hashtags.placeholder", text: $hashtagInput)
@@ -183,17 +137,16 @@ struct EditOverlayView: View {
             }
     }
 
-    #if DEBUG
-    private var createdAtField: some View {
+    private var dateField: some View {
         Button {
-            isCreatedAtPickerPresented = true
+            isDatePickerPresented = true
         } label: {
             liftedField {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("photo.created_at.label")
+                    Text("photo.date.label")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text(selectedCreatedAtLabel)
+                    Text(selectedDateLabel)
                         .foregroundStyle(primaryText)
                 }
                 Spacer()
@@ -204,7 +157,6 @@ struct EditOverlayView: View {
         }
         .buttonStyle(.plain)
     }
-    #endif
 
     private func addHashtagsFromInput() {
         let separators = CharacterSet(charactersIn: ",\n\t ")
@@ -225,19 +177,12 @@ struct EditOverlayView: View {
 
     @MainActor
     private func save() async {
-        let trimmedYear = yearText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let year = Int(trimmedYear), (1900...3000).contains(year) else {
-            showToastMessage(AppMessage(.enterValidYear, .error))
-            return
-        }
-
         isSaving = true
         defer { isSaving = false }
 
         switch await onSave(FeedPhotoMetadataUpdate(
-            year: year,
-            hashtags: hashtags,
-            createdAt: createdAtForSave
+            date: dateSelection,
+            hashtags: hashtags
         )) {
         case .success:
             dismiss()
@@ -256,15 +201,7 @@ struct EditOverlayView: View {
         )
     }
 
-    private var createdAtForSave: Date? {
-        #if DEBUG
-        createdAtSelection
-        #else
-        nil
-        #endif
-    }
-
-    private static let createdAtFormatter: DateFormatter = {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -272,15 +209,14 @@ struct EditOverlayView: View {
     }()
 }
 
-#if DEBUG
-private struct PhotoCreatedAtPickerSheet: View {
+private struct PhotoDatePickerSheet: View {
     @Binding var selectedDate: Date
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 18) {
                 DatePicker(
-                    String(localized: "photo.created_at.title"),
+                    String(localized: "photo.date.title"),
                     selection: $selectedDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
@@ -288,9 +224,8 @@ private struct PhotoCreatedAtPickerSheet: View {
                 .labelsHidden()
             }
             .padding(16)
-            .navigationTitle("photo.created_at.title")
+            .navigationTitle("photo.date.title")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
-#endif
