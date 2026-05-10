@@ -541,6 +541,22 @@
         }
       }
     },
+    "groups.members.refresh" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh members"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メンバーを更新"
+          }
+        }
+      }
+    },
     "groups.menu.delete" : {
       "localizations" : {
         "en" : {

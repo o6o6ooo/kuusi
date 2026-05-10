@@ -41,9 +41,11 @@ final class GroupService {
     private let db = Firestore.firestore()
     private let functions = Functions.functions(region: GroupService.functionsRegion)
     private static var groupsCacheByUID: [String: [GroupSummary]] = [:]
+    private static var memberListCacheByGroupID: [String: [GroupMemberPreview]] = [:]
     private static let cacheLock = NSLock()
     private static let defaults = UserDefaults.standard
     private static let cacheKeyPrefix = "groups_cache_v1_"
+    private static let memberListCacheKeyPrefix = "group_member_list_cache_v1_"
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {
         let groupID = makeGroupID()
@@ -164,6 +166,7 @@ final class GroupService {
         for memberID in memberIDs {
             removeCachedGroup(groupID: groupID, for: memberID)
         }
+        clearCachedMemberList(for: groupID)
     }
 
     func leaveGroup(groupID: String, uid: String) async throws {
@@ -202,6 +205,7 @@ final class GroupService {
         }
 
         removeCachedGroup(groupID: groupID, for: uid)
+        clearCachedMemberList(for: groupID)
     }
 
     func joinGroup(inviteToken: String) async throws -> JoinGroupResult {
@@ -237,6 +241,7 @@ final class GroupService {
         }
 
         removeCachedGroup(groupID: groupID, for: memberUID)
+        removeCachedMember(memberUID, from: groupID)
     }
 
     func cachedGroups(for uid: String) -> [GroupSummary] {
@@ -271,8 +276,49 @@ final class GroupService {
     func clearCachedGroups(for uid: String) {
         Self.cacheLock.lock()
         defer { Self.cacheLock.unlock() }
+        let groups = Self.groupsCacheByUID[uid] ?? loadPersistedGroupsLocked(for: uid)
+        for group in groups {
+            Self.memberListCacheByGroupID[group.id] = nil
+            Self.defaults.removeObject(forKey: Self.memberListCacheKey(for: group.id))
+        }
         Self.groupsCacheByUID[uid] = nil
         Self.defaults.removeObject(forKey: Self.cacheKey(for: uid))
+    }
+
+    func cachedMemberList(for groupID: String) -> [GroupMemberPreview]? {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        if let cached = Self.memberListCacheByGroupID[groupID] {
+            return cached
+        }
+
+        guard
+            let data = Self.defaults.data(forKey: Self.memberListCacheKey(for: groupID)),
+            let decoded = try? JSONDecoder().decode([CachedMember].self, from: data)
+        else {
+            return nil
+        }
+
+        let members = decoded.map { $0.toPreview() }
+        Self.memberListCacheByGroupID[groupID] = members
+        return members
+    }
+
+    func setCachedMemberList(_ members: [GroupMemberPreview], for groupID: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        Self.memberListCacheByGroupID[groupID] = members
+        let encodable = members.map { cachedMember(from: $0) }
+        if let data = try? JSONEncoder().encode(encodable) {
+            Self.defaults.set(data, forKey: Self.memberListCacheKey(for: groupID))
+        }
+    }
+
+    func clearCachedMemberList(for groupID: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        Self.memberListCacheByGroupID[groupID] = nil
+        Self.defaults.removeObject(forKey: Self.memberListCacheKey(for: groupID))
     }
 
     private func getDocument(_ ref: DocumentReference) async throws -> DocumentSnapshot {
@@ -369,8 +415,23 @@ final class GroupService {
         savePersistedGroupsLocked(groups, for: uid)
     }
 
+    private func removeCachedMember(_ memberUID: String, from groupID: String) {
+        Self.cacheLock.lock()
+        defer { Self.cacheLock.unlock() }
+        guard var members = Self.memberListCacheByGroupID[groupID] ?? loadPersistedMemberListLocked(for: groupID) else {
+            return
+        }
+        members.removeAll { $0.id == memberUID }
+        Self.memberListCacheByGroupID[groupID] = members
+        savePersistedMemberListLocked(members, for: groupID)
+    }
+
     private static func cacheKey(for uid: String) -> String {
         "\(cacheKeyPrefix)\(uid)"
+    }
+
+    private static func memberListCacheKey(for groupID: String) -> String {
+        "\(memberListCacheKeyPrefix)\(groupID)"
     }
 
     private func loadPersistedGroupsLocked(for uid: String) -> [GroupSummary] {
@@ -383,10 +444,27 @@ final class GroupService {
         return decoded.map { $0.toGroupSummary() }
     }
 
+    private func loadPersistedMemberListLocked(for groupID: String) -> [GroupMemberPreview]? {
+        guard
+            let data = Self.defaults.data(forKey: Self.memberListCacheKey(for: groupID)),
+            let decoded = try? JSONDecoder().decode([CachedMember].self, from: data)
+        else {
+            return nil
+        }
+        return decoded.map { $0.toPreview() }
+    }
+
     private func savePersistedGroupsLocked(_ groups: [GroupSummary], for uid: String) {
         let encodable = groups.map { cachedGroup(from: $0) }
         if let data = try? JSONEncoder().encode(encodable) {
             Self.defaults.set(data, forKey: Self.cacheKey(for: uid))
+        }
+    }
+
+    private func savePersistedMemberListLocked(_ members: [GroupMemberPreview], for groupID: String) {
+        let encodable = members.map { cachedMember(from: $0) }
+        if let data = try? JSONEncoder().encode(encodable) {
+            Self.defaults.set(data, forKey: Self.memberListCacheKey(for: groupID))
         }
     }
 
@@ -395,16 +473,18 @@ final class GroupService {
             id: group.id,
             name: group.name,
             ownerUID: group.ownerUID,
-            members: group.members.map {
-                CachedMember(
-                    id: $0.id,
-                    name: $0.name,
-                    icon: $0.icon,
-                    bgColour: $0.bgColour,
-                    isOwner: $0.isOwner
-                )
-            },
+            members: group.members.map { cachedMember(from: $0) },
             totalMemberCount: group.totalMemberCount
+        )
+    }
+
+    private func cachedMember(from member: GroupMemberPreview) -> CachedMember {
+        CachedMember(
+            id: member.id,
+            name: member.name,
+            icon: member.icon,
+            bgColour: member.bgColour,
+            isOwner: member.isOwner
         )
     }
 

@@ -49,6 +49,8 @@ enum GroupInvitePayloadParser {
 protocol SettingsGroupsServicing: GroupStoreServicing {
     func createInvitePayload(groupID: String) async throws -> String
     func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview]
+    func cachedMemberList(for groupID: String) -> [GroupMemberPreview]?
+    func setCachedMemberList(_ members: [GroupMemberPreview], for groupID: String)
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary
     func updateGroupName(groupID: String, name: String) async throws
     func deleteGroup(groupID: String) async throws
@@ -78,6 +80,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isJoiningGroup = false
     @Published private(set) var selectedGroupInvitePayload: String?
     @Published private(set) var removingMemberID: String?
+    @Published private(set) var isRefreshingMembers = false
     @Published private(set) var currentPlan: AppPlan = .free
     @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
@@ -199,9 +202,34 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     func presentMemberList() async {
         guard let selectedGroupID else { return }
-        do {
-            selectedGroupMembers = try await groupService.loadMemberPreviews(groupID: selectedGroupID, limit: nil)
+
+        if let cachedMembers = groupService.cachedMemberList(for: selectedGroupID) {
+            selectedGroupMembers = cachedMembers
+            updateGroupPreviewFromFullMemberList(cachedMembers, groupID: selectedGroupID)
             isMemberListPresented = true
+            return
+        }
+
+        await loadSelectedGroupMembers(groupID: selectedGroupID, presentOnSuccess: true)
+    }
+
+    func refreshSelectedGroupMembers() async {
+        guard let selectedGroupID else { return }
+        await loadSelectedGroupMembers(groupID: selectedGroupID, presentOnSuccess: false)
+    }
+
+    private func loadSelectedGroupMembers(groupID: String, presentOnSuccess: Bool) async {
+        isRefreshingMembers = true
+        defer { isRefreshingMembers = false }
+
+        do {
+            let members = try await groupService.loadMemberPreviews(groupID: groupID, limit: nil)
+            selectedGroupMembers = members
+            groupService.setCachedMemberList(members, for: groupID)
+            updateGroupPreviewFromFullMemberList(members, groupID: groupID)
+            if presentOnSuccess {
+                isMemberListPresented = true
+            }
         } catch let error as GroupServiceError {
             setSaveStatus(AppMessage(error.appMessageID, .error))
         } catch {
@@ -430,16 +458,8 @@ final class SettingsGroupsViewModel: ObservableObject {
             )
 
             selectedGroupMembers.removeAll { $0.id == member.id }
-
-            if let existing = groups.first(where: { $0.id == selectedGroupID }) {
-                groupStore.updateMembers(
-                    groupID: selectedGroupID,
-                    members: existing.members.filter { $0.id != member.id },
-                    totalMemberCount: max(existing.totalMemberCount - 1, 0)
-                )
-            }
-
-            await loadGroupPreviewIfNeeded(for: selectedGroupID, force: true)
+            groupService.setCachedMemberList(selectedGroupMembers, for: selectedGroupID)
+            updateGroupPreviewFromFullMemberList(selectedGroupMembers, groupID: selectedGroupID)
             setSaveStatus(AppMessage(.memberRemoved, .success))
         } catch let error as GroupServiceError {
             setSaveStatus(AppMessage(error.appMessageID, .error))
@@ -489,7 +509,11 @@ final class SettingsGroupsViewModel: ObservableObject {
 
     private func loadAllGroupPreviews(force: Bool) async {
         for group in groups {
-            await loadGroupPreviewIfNeeded(for: group.id, force: force)
+            if force {
+                await loadGroupPreviewIfNeeded(for: group.id, force: true)
+            } else {
+                applyCachedMemberListPreviewIfAvailable(for: group.id)
+            }
         }
     }
 
@@ -500,6 +524,10 @@ final class SettingsGroupsViewModel: ObservableObject {
             previewLoadedGroupIDs.insert(groupID)
             return
         }
+        if !force {
+            applyCachedMemberListPreviewIfAvailable(for: groupID)
+            return
+        }
 
         do {
             let previews = try await groupService.loadMemberPreviews(groupID: groupID, limit: 3)
@@ -508,5 +536,19 @@ final class SettingsGroupsViewModel: ObservableObject {
         } catch {
             previewLoadedGroupIDs.remove(groupID)
         }
+    }
+
+    private func updateGroupPreviewFromFullMemberList(_ members: [GroupMemberPreview], groupID: String) {
+        groupStore.updateMembers(
+            groupID: groupID,
+            members: Array(members.prefix(3)),
+            totalMemberCount: members.count
+        )
+        previewLoadedGroupIDs.insert(groupID)
+    }
+
+    private func applyCachedMemberListPreviewIfAvailable(for groupID: String) {
+        guard let cachedMembers = groupService.cachedMemberList(for: groupID) else { return }
+        updateGroupPreviewFromFullMemberList(cachedMembers, groupID: groupID)
     }
 }

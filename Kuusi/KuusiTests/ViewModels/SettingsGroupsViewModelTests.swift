@@ -84,8 +84,9 @@ struct SettingsGroupsViewModelTests {
         let groupService = SettingsGroupsServiceSpy()
         let cachedMember = GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false)
         groupService.cachedGroups = [
-            GroupSummary(id: "group-1", name: "Family", ownerUID: "owner", members: [cachedMember], totalMemberCount: 1)
+            GroupSummary(id: "group-1", name: "Family", ownerUID: "owner", members: [], totalMemberCount: 1)
         ]
+        groupService.cachedMemberListsByGroupID["group-1"] = [cachedMember]
         groupService.fetchedGroups = [
             makeGroup(id: "group-2", name: "Friends")
         ]
@@ -96,6 +97,23 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.groups.map(\.id) == ["group-1"])
         #expect(viewModel.selectedGroupID == "group-1")
         #expect(viewModel.editableGroupName == "Family")
+        #expect(groupService.fetchGroupsCalls.isEmpty)
+        #expect(groupService.loadMemberPreviewsCalls.isEmpty)
+        #expect(viewModel.groups.first?.members.map(\.id) == ["member-1"])
+    }
+
+    @Test
+    func loadGroupsDoesNotFetchPreviewsWhenCachedMemberListIsMissing() async {
+        let groupService = SettingsGroupsServiceSpy()
+        groupService.cachedGroups = [
+            GroupSummary(id: "group-1", name: "Family", ownerUID: "owner", members: [], totalMemberCount: 1)
+        ]
+        let viewModel = makeViewModel(groupService: groupService)
+
+        await viewModel.loadGroups()
+
+        #expect(viewModel.groups.map(\.id) == ["group-1"])
+        #expect(viewModel.groups.first?.members.isEmpty == true)
         #expect(groupService.fetchGroupsCalls.isEmpty)
         #expect(groupService.loadMemberPreviewsCalls.isEmpty)
     }
@@ -123,6 +141,75 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.groups.first?.members.map(\.id) == ["member-2"])
         #expect(viewModel.selectedGroupID == "group-2")
         #expect(viewModel.editableGroupName == "Friends")
+    }
+
+    @Test
+    func presentMemberListUsesCachedMembersWithoutFetching() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let cachedMember = GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false)
+        groupService.cachedMemberListsByGroupID["group-1"] = [cachedMember]
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [makeGroup(id: "group-1", name: "Family")]
+        viewModel.selectedGroupID = "group-1"
+
+        await viewModel.presentMemberList()
+
+        #expect(viewModel.isMemberListPresented)
+        #expect(viewModel.selectedGroupMembers.map(\.id) == ["member-1"])
+        #expect(groupService.loadMemberPreviewsCalls.isEmpty)
+    }
+
+    @Test
+    func presentMemberListFetchesAndCachesMembersWhenMissing() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let fetchedMembers = [
+            GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false),
+            GroupMemberPreview(id: "member-2", name: "Noah", icon: "🌿", bgColour: "#eee", isOwner: false)
+        ]
+        groupService.memberPreviewsByGroupID["group-1"] = fetchedMembers
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [makeGroup(id: "group-1", name: "Family")]
+        viewModel.selectedGroupID = "group-1"
+
+        await viewModel.presentMemberList()
+
+        #expect(viewModel.isMemberListPresented)
+        #expect(viewModel.selectedGroupMembers.map(\.id) == ["member-1", "member-2"])
+        #expect(groupService.loadMemberPreviewsCalls.count == 1)
+        #expect(groupService.loadMemberPreviewsCalls.first?.groupID == "group-1")
+        #expect(groupService.loadMemberPreviewsCalls.first?.limit == nil)
+        #expect(groupService.cachedMemberListAssignments.last?.groupID == "group-1")
+        #expect(groupService.cachedMemberListAssignments.last?.members.map(\.id) == ["member-1", "member-2"])
+        #expect(viewModel.groups.first?.members.map(\.id) == ["member-1", "member-2"])
+        #expect(viewModel.groups.first?.totalMemberCount == 2)
+    }
+
+    @Test
+    func refreshSelectedGroupMembersFetchesCachesAndUpdatesPreview() async {
+        let groupService = SettingsGroupsServiceSpy()
+        let cachedMember = GroupMemberPreview(id: "old-member", name: "Old", icon: "🌸", bgColour: "#fff", isOwner: false)
+        let refreshedMembers = [
+            GroupMemberPreview(id: "member-1", name: "Mia", icon: "🌸", bgColour: "#fff", isOwner: false),
+            GroupMemberPreview(id: "member-2", name: "Noah", icon: "🌿", bgColour: "#eee", isOwner: false),
+            GroupMemberPreview(id: "member-3", name: "Ava", icon: "🌼", bgColour: "#ddd", isOwner: false),
+            GroupMemberPreview(id: "member-4", name: "Leo", icon: "🍀", bgColour: "#ccc", isOwner: false)
+        ]
+        groupService.cachedMemberListsByGroupID["group-1"] = [cachedMember]
+        groupService.memberPreviewsByGroupID["group-1"] = refreshedMembers
+        let viewModel = makeViewModel(groupService: groupService)
+        viewModel.groups = [makeGroup(id: "group-1", name: "Family")]
+        viewModel.selectedGroupID = "group-1"
+        await viewModel.presentMemberList()
+
+        await viewModel.refreshSelectedGroupMembers()
+
+        #expect(groupService.loadMemberPreviewsCalls.count == 1)
+        #expect(groupService.loadMemberPreviewsCalls.first?.groupID == "group-1")
+        #expect(groupService.loadMemberPreviewsCalls.first?.limit == nil)
+        #expect(viewModel.selectedGroupMembers.map(\.id) == ["member-1", "member-2", "member-3", "member-4"])
+        #expect(groupService.cachedMemberListAssignments.last?.members.map(\.id) == ["member-1", "member-2", "member-3", "member-4"])
+        #expect(viewModel.groups.first?.members.map(\.id) == ["member-1", "member-2", "member-3"])
+        #expect(viewModel.groups.first?.totalMemberCount == 4)
     }
 
     @Test
@@ -173,7 +260,7 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.editableGroupName == "Friends")
         #expect(viewModel.saveStatusMessage?.id == .leftGroup)
         #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-2"])
-        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-2" && $0.limit == 3 })
+        #expect(groupService.loadMemberPreviewsCalls.isEmpty)
     }
 
     @Test
@@ -293,7 +380,7 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.editableGroupName == "Friends")
         #expect(viewModel.saveStatusMessage?.id == .groupDeleted)
         #expect(groupService.cachedGroupsAssignments.last?.groups.map(\.id) == ["group-2"])
-        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-2" && $0.limit == 3 })
+        #expect(groupService.loadMemberPreviewsCalls.isEmpty)
     }
 
     @Test
@@ -326,7 +413,9 @@ struct SettingsGroupsViewModelTests {
         #expect(viewModel.groups.first?.totalMemberCount == 1)
         #expect(viewModel.saveStatusMessage?.id == .memberRemoved)
         #expect(groupService.cachedGroupsAssignments.last?.groups.first?.totalMemberCount == 1)
-        #expect(groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-1" && $0.limit == 3 })
+        #expect(groupService.cachedMemberListAssignments.last?.groupID == "group-1")
+        #expect(groupService.cachedMemberListAssignments.last?.members.map(\.id) == ["member-2"])
+        #expect(!groupService.loadMemberPreviewsCalls.contains { $0.groupID == "group-1" && $0.limit == 3 })
     }
 
     private func makeViewModel(
@@ -372,6 +461,8 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
     var removeMemberCalls: [(groupID: String, memberUID: String, requesterUID: String)] = []
     var cachedGroupsAssignments: [(uid: String, groups: [GroupSummary])] = []
     var memberPreviewsByGroupID: [String: [GroupMemberPreview]] = [:]
+    var cachedMemberListsByGroupID: [String: [GroupMemberPreview]] = [:]
+    var cachedMemberListAssignments: [(groupID: String, members: [GroupMemberPreview])] = []
 
     func cachedGroups(for uid: String) -> [GroupSummary] {
         cachedGroupsAssignments.last(where: { $0.uid == uid })?.groups ?? cachedGroups
@@ -386,6 +477,19 @@ private final class SettingsGroupsServiceSpy: SettingsGroupsServicing {
         if let loadMemberPreviewsError { throw loadMemberPreviewsError }
         loadMemberPreviewsCalls.append((groupID, limit))
         return memberPreviewsByGroupID[groupID] ?? []
+    }
+
+    func cachedMemberList(for groupID: String) -> [GroupMemberPreview]? {
+        cachedMemberListsByGroupID[groupID]
+    }
+
+    func setCachedMemberList(_ members: [GroupMemberPreview], for groupID: String) {
+        cachedMemberListsByGroupID[groupID] = members
+        cachedMemberListAssignments.append((groupID, members))
+    }
+
+    func clearCachedMemberList(for groupID: String) {
+        cachedMemberListsByGroupID[groupID] = nil
     }
 
     func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary {

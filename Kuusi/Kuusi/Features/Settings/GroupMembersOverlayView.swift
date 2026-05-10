@@ -8,6 +8,8 @@ struct GroupMembersOverlayView: View {
     let members: [GroupMemberPreview]
     let currentUserIsOwner: Bool
     let removingMemberID: String?
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
     let onRemoveMember: (GroupMemberPreview) -> Void
 
     private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
@@ -18,9 +20,29 @@ struct GroupMembersOverlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(groupName)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(primaryText)
+                    HStack(spacing: 12) {
+                        Text(groupName)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(primaryText)
+
+                        Spacer()
+
+                        Button(action: onRefresh) {
+                            if isRefreshing {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(primaryText)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(primaryText)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isRefreshing)
+                        .frame(width: 32, height: 32)
+                        .accessibilityLabel(String(localized: "groups.members.refresh"))
+                    }
 
                     ForEach(members) { member in
                         HStack(spacing: 12) {

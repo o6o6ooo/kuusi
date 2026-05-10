@@ -137,6 +137,12 @@ struct SettingsView: View {
                     members: groupsViewModel.selectedGroupMembers,
                     currentUserIsOwner: groupsViewModel.currentUserIsSelectedGroupOwner,
                     removingMemberID: groupsViewModel.removingMemberID,
+                    isRefreshing: groupsViewModel.isRefreshingMembers,
+                    onRefresh: {
+                        Task {
+                            await groupsViewModel.refreshSelectedGroupMembers()
+                        }
+                    },
                     onRemoveMember: { member in
                         Task {
                             await groupsViewModel.removeMemberFromSelectedGroup(member)
