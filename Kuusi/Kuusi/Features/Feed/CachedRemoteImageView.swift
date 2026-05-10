@@ -54,6 +54,12 @@ extension CachedRemoteImageView where Content == Image, Placeholder == ProgressV
     }
 }
 
+enum FeedImageCacheMaintenance {
+    static func clearDiskCache() async {
+        await FeedImageCache.shared.clearDiskCache()
+    }
+}
+
 @MainActor
 private final class Loader: ObservableObject {
     @Published private(set) var image: UIImage?
@@ -120,6 +126,22 @@ private actor FeedImageCache {
 
     func image(for source: FeedImageSource) -> UIImage? {
         memoryCache.object(forKey: source.cacheKey as NSString)
+    }
+
+    func clearDiskCache() {
+        memoryCache.removeAllObjects()
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: cacheDirectoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+
+        for fileURL in files where fileURL.pathExtension == "imgcache" {
+            try? fileManager.removeItem(at: fileURL)
+        }
+        UserDefaults.standard.removeObject(forKey: cleanupDefaultsKey)
     }
 
     func loadImage(from source: FeedImageSource) async throws -> UIImage {

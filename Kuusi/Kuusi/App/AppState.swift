@@ -239,6 +239,9 @@ final class AppState: ObservableObject {
 
             GIDSignIn.sharedInstance.signOut()
             groupService.clearCachedGroups(for: uid)
+            PhotoCollectionViewModel.clearCachedPhotos(for: uid)
+            userService.clearCachedUserProfile(for: uid)
+            await FeedImageCacheMaintenance.clearDiskCache()
             currentUser = nil
             route = .signedOut
             toastMessage = nil

@@ -169,6 +169,12 @@ final class UserService {
         persistProfileCache()
     }
 
+    func clearCachedUserProfile(for uid: String) {
+        loadProfileDefaultsIfNeeded()
+        Self.profileMemoryCache[uid] = nil
+        persistProfileCache()
+    }
+
     func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double) {
         let existing = cachedUser(uid: uid)
         let user = AppUser(
