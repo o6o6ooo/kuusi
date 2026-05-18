@@ -111,6 +111,7 @@ struct UploadOverlayView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var groupStore: GroupStore
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
 
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
@@ -531,12 +532,15 @@ struct UploadOverlayView: View {
         defer { isUploading = false }
 
         do {
+            if isPremiumActive {
+                try await subscriptionStore.syncSubscription()
+            }
+
             let uploadedPhotos = try await uploadService.upload(
                 images: selectedImages,
                 userID: uid,
                 groupID: groupID,
-                hashtags: hashtags,
-                isPremiumActive: isPremiumActive
+                hashtags: hashtags
             )
             onUploadCompleted(uploadedPhotos)
             selectedImages = []
@@ -547,6 +551,8 @@ struct UploadOverlayView: View {
             estimatedUploadSizeMB = 0
             didFailUploadSizeEstimation = false
             toastMessage = AppMessage(.uploadCompleted, .success)
+        } catch SubscriptionStoreError.subscriptionSyncFailed {
+            toastMessage = AppMessage(.failedToVerifyPremiumSubscription, .error)
         } catch {
             toastMessage = AppMessage(.failedToLoadImage, .error)
         }

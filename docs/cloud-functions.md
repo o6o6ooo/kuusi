@@ -9,6 +9,8 @@ Server-side helpers for destructive actions and notification fan-out.
 3. Build once with `npm run build`.
 4. Deploy with `npm run deploy`.
 
+For production App Store subscription verification, set `APP_STORE_APP_APPLE_ID` in the Functions runtime environment. `APP_STORE_BUNDLE_ID` defaults to `com.swallace.kuusi` and only needs setting if the bundle identifier changes.
+
 ## Current functions
 
 Callable functions are deployed in `europe-west2`.
@@ -41,10 +43,15 @@ Callable functions are deployed in `europe-west2`.
 - `commitPhotoUploadBatch`
   - Verifies the caller is signed in and still belongs to the target group
   - Validates the temporary Storage paths uploaded by the iOS app
+  - Reads verified Premium entitlement cache from `users/{uid}.premium_expires_at` for quota checks
   - Copies temporary preview and thumbnail files to final photo Storage paths
   - Creates the `photos` documents and increments `users/{uid}.usage_mb` in a transaction
   - Deletes temporary files after a successful commit
   - Deletes copied final files and temporary files if the commit fails
+- `syncSubscription`
+  - Verifies the caller's StoreKit signed transaction with Apple's signed data verifier
+  - Updates `users/{uid}` with server-owned Premium entitlement fields
+  - Clears the server Premium cache when no active transaction is provided
 - `removeGroupMember`
   - Verifies the caller owns the group
   - Removes the target user from `groups/{groupId}.members`

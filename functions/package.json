@@ -16,6 +16,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^3.1.0",
     "firebase-admin": "^12.1.0",
     "firebase-functions": "^5.0.1"
   },

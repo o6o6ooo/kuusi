@@ -29,8 +29,7 @@ final class UploadService {
         images: [UIImage],
         userID: String,
         groupID: String,
-        hashtags: [String],
-        isPremiumActive: Bool
+        hashtags: [String]
     ) async throws -> [FeedPhoto] {
         let preparedImages = await prepareImagesForUpload(images)
         try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
@@ -47,8 +46,7 @@ final class UploadService {
                 temporaryPhotos: temporaryPhotos,
                 groupID: groupID,
                 hashtags: hashtags,
-                uploadBatchID: uploadBatchID,
-                isPremiumActive: isPremiumActive
+                uploadBatchID: uploadBatchID
             )
         } catch {
             await deleteTemporaryAssets(temporaryPhotos)
@@ -210,14 +208,12 @@ final class UploadService {
         temporaryPhotos: [TemporaryUploadedPhoto],
         groupID: String,
         hashtags: [String],
-        uploadBatchID: String,
-        isPremiumActive: Bool
+        uploadBatchID: String
     ) async throws -> [FeedPhoto] {
         let payload: [String: Any] = [
             "groupId": groupID,
             "hashtags": hashtags,
             "uploadBatchId": uploadBatchID,
-            "isPremiumActive": isPremiumActive,
             "photos": temporaryPhotos.map { $0.commitPayload() }
         ]
         let result = try await functions.httpsCallable("commitPhotoUploadBatch").call(payload)

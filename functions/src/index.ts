@@ -2,6 +2,8 @@ import { initializeApp } from "firebase-admin/app";
 import { getFirestore, DocumentSnapshot, FieldValue, QueryDocumentSnapshot, Timestamp, WriteBatch } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { getStorage } from "firebase-admin/storage";
+import { Environment, SignedDataVerifier, Type } from "@apple/app-store-server-library";
+import type { JWSTransactionDecodedPayload } from "@apple/app-store-server-library";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { randomUUID } from "crypto";
@@ -21,6 +23,23 @@ const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 const freeQuotaMB = 1024;
 const premiumQuotaMB = 51200;
+const premiumProductId = "com.swallace.kuusi.premium.annual";
+const appStoreBundleId = process.env.APP_STORE_BUNDLE_ID ?? "com.swallace.kuusi";
+const appStoreAppAppleId = optionalNumber(process.env.APP_STORE_APP_APPLE_ID);
+const appleRootCAG3 = Buffer.from(
+  "MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwSQXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcNMTQwNDMwMTgxOTA2WhcNMzkwNDMwMTgxOTA2WjBnMRswGQYDVQQDDBJBcHBsZSBSb290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzB2MBAGByqGSM49AgEGBSuBBAAiA2IABJjpLz1AcqTtkyJygRMc3RCV8cWjTnHcFBbZDuWmBSp3ZHtfTjjTuxxEtX/1H7YyYl3J6YRbTzBPEVoA/VhYDKX1DyxNB0cTddqXl5dvMVztK517IDvYuVTZXpmkOlEKMaNCMEAwHQYDVR0OBBYEFLuw3qFYM4iapIqZ3r6966/ayySrMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2gAMGUCMQCD6cHEFl4aXTQY2e3v9GwOAEZLuN+yRhHFD/3meoyhpmvOwgPUnPWTxnS4at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM6BgD56KyKA==",
+  "base64"
+);
+const appStoreVerifiers = [
+  {
+    environment: Environment.SANDBOX,
+    verifier: new SignedDataVerifier([appleRootCAG3], false, Environment.SANDBOX, appStoreBundleId)
+  },
+  ...(appStoreAppAppleId ? [{
+    environment: Environment.PRODUCTION,
+    verifier: new SignedDataVerifier([appleRootCAG3], false, Environment.PRODUCTION, appStoreBundleId, appStoreAppAppleId)
+  }] : [])
+];
 const invalidMessagingTokenCodes = new Set([
   "messaging/invalid-registration-token",
   "messaging/registration-token-not-registered"
@@ -369,6 +388,45 @@ export const removeGroupMember = onCall({ region: callableFunctionRegion }, asyn
   };
 });
 
+export const syncSubscription = onCall({ region: callableFunctionRegion }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  const signedTransactionInfo = normalizeText(request.data?.signedTransactionInfo);
+  const userRef = db.collection("users").doc(uid);
+
+  if (!signedTransactionInfo) {
+    await userRef.update(clearPremiumCachePayload());
+    return { isPremiumActive: false };
+  }
+
+  let transaction: JWSTransactionDecodedPayload;
+  try {
+    transaction = await verifyPremiumTransaction(signedTransactionInfo);
+  } catch (error) {
+    console.warn("Premium subscription transaction verification failed", {
+      uid,
+      error: errorMessage(error)
+    });
+    throw new HttpsError("failed-precondition", "Premium subscription could not be verified");
+  }
+
+  if (!isActivePremiumTransaction(transaction)) {
+    await userRef.update(clearPremiumCachePayload());
+    return { isPremiumActive: false };
+  }
+
+  const expiresDate = transaction.expiresDate as number;
+  await userRef.update(premiumCachePayload(transaction, expiresDate));
+
+  return {
+    isPremiumActive: true,
+    premiumExpiresAt: new Date(expiresDate).toISOString()
+  };
+});
+
 export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -378,7 +436,6 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
   const groupId = normalizeGroupId(request.data?.groupId);
   const uploadBatchId = normalizeUploadBatchId(request.data?.uploadBatchId);
   const hashtags = normalizeHashtags(request.data?.hashtags);
-  const isPremiumActive = request.data?.isPremiumActive === true;
   const inputPhotos: unknown[] = Array.isArray(request.data?.photos) ? request.data.photos : [];
 
   if (!groupId || !uploadBatchId) {
@@ -430,7 +487,6 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
     }
 
     const totalUploadMB = roundMegabytes(committedPhotos.reduce((total, photo) => total + photo.sizeMB, 0));
-    const quotaMB = isPremiumActive ? premiumQuotaMB : freeQuotaMB;
 
     await db.runTransaction(async (transaction) => {
       const freshGroupSnapshot = await transaction.get(db.collection("groups").doc(groupId));
@@ -447,6 +503,7 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
       const userRef = db.collection("users").doc(uid);
       const userSnapshot = await transaction.get(userRef);
       const usageMB = numericValue(userSnapshot.data()?.usage_mb) ?? 0;
+      const quotaMB = isPremiumEntitlementActive(userSnapshot.data()) ? premiumQuotaMB : freeQuotaMB;
       if (usageMB + totalUploadMB > quotaMB) {
         throw new HttpsError("resource-exhausted", "Storage limit reached");
       }
@@ -745,6 +802,68 @@ function numericValue(value: unknown): number | null {
   }
 
   return null;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  const parsed = numericValue(value);
+  return parsed !== null && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+async function verifyPremiumTransaction(signedTransactionInfo: string): Promise<JWSTransactionDecodedPayload> {
+  const errors: string[] = [];
+
+  for (const entry of appStoreVerifiers) {
+    try {
+      return await entry.verifier.verifyAndDecodeTransaction(signedTransactionInfo);
+    } catch (error) {
+      errors.push(`${entry.environment}: ${errorMessage(error)}`);
+    }
+  }
+
+  throw new Error(errors.join("; ") || "No App Store verifier is configured");
+}
+
+function isActivePremiumTransaction(transaction: JWSTransactionDecodedPayload): boolean {
+  const expiresDate = numericValue(transaction.expiresDate);
+  return transaction.productId === premiumProductId
+    && transaction.type === Type.AUTO_RENEWABLE_SUBSCRIPTION
+    && transaction.revocationDate === undefined
+    && expiresDate !== null
+    && expiresDate > Date.now();
+}
+
+function premiumCachePayload(
+  transaction: JWSTransactionDecodedPayload,
+  expiresDate: number
+): FirebaseFirestore.DocumentData {
+  return {
+    premium_expires_at: Timestamp.fromMillis(expiresDate),
+    premium_product_id: transaction.productId,
+    premium_original_transaction_id: transaction.originalTransactionId ?? "",
+    premium_transaction_id: transaction.transactionId ?? "",
+    premium_environment: transaction.environment ?? "",
+    premium_last_verified_at: FieldValue.serverTimestamp()
+  };
+}
+
+function clearPremiumCachePayload(): FirebaseFirestore.DocumentData {
+  return {
+    premium_expires_at: FieldValue.delete(),
+    premium_product_id: FieldValue.delete(),
+    premium_original_transaction_id: FieldValue.delete(),
+    premium_transaction_id: FieldValue.delete(),
+    premium_environment: FieldValue.delete(),
+    premium_last_verified_at: FieldValue.serverTimestamp()
+  };
+}
+
+function isPremiumEntitlementActive(data: FirebaseFirestore.DocumentData | undefined): boolean {
+  const expiresAt = data?.premium_expires_at;
+  if (expiresAt instanceof Timestamp) {
+    return expiresAt.toMillis() > Date.now();
+  }
+
+  return false;
 }
 
 async function storageFileSizeMB(bucket: StorageBucket, path: string): Promise<number> {

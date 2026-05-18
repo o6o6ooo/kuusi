@@ -57,6 +57,7 @@ struct AppMessage: Equatable {
         case failedToUpdateGroup
         case failedToUpdatePhoto
         case failedToUpdateFavourite
+        case failedToVerifyPremiumSubscription
         case fillInGroupName
         case googleAccountConnected
         case googleAccountDisconnected
@@ -210,6 +211,8 @@ extension AppMessage.ID {
             return String(localized: "message.failed_to_update_photo")
         case .failedToUpdateFavourite:
             return String(localized: "message.failed_to_update_favourite")
+        case .failedToVerifyPremiumSubscription:
+            return String(localized: "message.failed_to_verify_premium_subscription")
         case .fillInGroupName:
             return String(localized: "message.fill_in_group_name")
         case .googleAccountConnected:

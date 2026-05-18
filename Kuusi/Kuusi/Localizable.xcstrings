@@ -1644,6 +1644,22 @@
         }
       }
     },
+    "message.failed_to_verify_premium_subscription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not verify Premium. Please try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premiumサブスクリプションを確認できませんでした。もう一度お試しください。"
+          }
+        }
+      }
+    },
     "message.failed_to_save_profile" : {
       "localizations" : {
         "en" : {

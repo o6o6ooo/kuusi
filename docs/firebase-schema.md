@@ -13,6 +13,12 @@ Current Firebase usage in the SwiftUI app.
 - `groups: string[]`
 - `favourites: string[]`
 - `created_at: timestamp`
+- `premium_expires_at: timestamp` (verified server-side Premium cache)
+- `premium_product_id: string`
+- `premium_original_transaction_id: string`
+- `premium_transaction_id: string`
+- `premium_environment: string`
+- `premium_last_verified_at: timestamp`
 
 ### `users/{uid}/devices/{deviceId}`
 - `fcm_token: string`
@@ -88,6 +94,7 @@ This is required for queries that filter photos by `group_id` and order the feed
 - iOS devices store their current FCM token under `users/{uid}/devices/{deviceId}`
 - iOS devices subscribe to the FCM topic `announcements` after notification permission is granted
 - the iOS app uploads temporary Storage files, then calls `commitPhotoUploadBatch` to create `photos/{photoId}` documents and increment `users/{uid}.usage_mb`
+- Premium users sync their current StoreKit transaction through `syncSubscription` before upload so server-side quota checks use verified `users/{uid}.premium_expires_at`
 - each committed upload operation stamps every created `photos/{photoId}` document with the same `upload_batch_id`
 - clients cannot create or delete `photos` documents directly; upload and delete cleanup runs through Cloud Functions
 - `photos/{photoId}` creation triggers a Cloud Function that reserves `photo_notification_batches/{uploadBatchId}` and sends at most one push notification for that upload batch

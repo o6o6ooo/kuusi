@@ -1,4 +1,5 @@
 import Combine
+import FirebaseFunctions
 import Foundation
 import StoreKit
 import UIKit
@@ -9,6 +10,7 @@ enum SubscriptionStoreError: LocalizedError {
     case purchaseCancelled
     case purchaseUnverified
     case manageSubscriptionsUnavailable
+    case subscriptionSyncFailed
     case unknown
 
     var errorDescription: String? {
@@ -23,6 +25,8 @@ enum SubscriptionStoreError: LocalizedError {
             return "Purchase could not be verified."
         case .manageSubscriptionsUnavailable:
             return "Subscriptions can be managed from your Apple account settings."
+        case .subscriptionSyncFailed:
+            return "Premium subscription could not be synced."
         case .unknown:
             return "Purchase failed."
         }
@@ -41,7 +45,9 @@ final class SubscriptionStore: ObservableObject {
 
     private var updatesTask: Task<Void, Never>?
     private var subscriptionStatusUpdatesTask: Task<Void, Never>?
+    private static let functionsRegion = "europe-west2"
     private let premiumProductID = "com.swallace.kuusi.premium.annual"
+    private let functions = Functions.functions(region: SubscriptionStore.functionsRegion)
     nonisolated private static let premiumFallbackPriceLabel = "£24.99 / year"
 
     struct EntitlementSnapshot: Equatable {
@@ -106,6 +112,7 @@ final class SubscriptionStore: ObservableObject {
             let transaction = try verifiedTransaction(from: verification)
             await transaction.finish()
             await refreshEntitlements()
+            try await syncSubscription()
         case .pending:
             throw SubscriptionStoreError.purchasePending
         case .userCancelled:
@@ -122,6 +129,31 @@ final class SubscriptionStore: ObservableObject {
 
         try await AppStore.sync()
         await refreshEntitlements()
+        try await syncSubscription()
+    }
+
+    func syncSubscription() async throws {
+        let signedTransactionInfo = try await currentPremiumTransactionJWS()
+        if isPremiumActive && signedTransactionInfo == nil {
+            throw SubscriptionStoreError.subscriptionSyncFailed
+        }
+
+        var payload: [String: Any] = [:]
+        if let signedTransactionInfo {
+            payload["signedTransactionInfo"] = signedTransactionInfo
+        }
+
+        do {
+            let result = try await functions.httpsCallable("syncSubscription").call(payload)
+            if isPremiumActive {
+                let response = result.data as? [String: Any]
+                guard response?["isPremiumActive"] as? Bool == true else {
+                    throw SubscriptionStoreError.subscriptionSyncFailed
+                }
+            }
+        } catch {
+            throw SubscriptionStoreError.subscriptionSyncFailed
+        }
     }
 
     func openManageSubscriptions() async throws {
@@ -216,6 +248,20 @@ final class SubscriptionStore: ObservableObject {
         case .unverified:
             throw SubscriptionStoreError.purchaseUnverified
         }
+    }
+
+    private func currentPremiumTransactionJWS() async throws -> String? {
+        for await result in Transaction.currentEntitlements {
+            let transaction = try verifiedTransaction(from: result)
+            guard transaction.productID == premiumProductID else { continue }
+            guard transaction.revocationDate == nil else { continue }
+            if let expirationDate = transaction.expirationDate, expirationDate <= Date() {
+                continue
+            }
+            return result.jwsRepresentation
+        }
+
+        return nil
     }
 
     nonisolated static func makePremiumPriceLabel(displayPrice: String?) -> String? {

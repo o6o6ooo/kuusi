@@ -13,6 +13,8 @@ private extension SubscriptionStoreError {
             return .purchaseCouldNotBeVerified
         case .manageSubscriptionsUnavailable:
             return .failedToOpenManageSubscriptions
+        case .subscriptionSyncFailed:
+            return .failedToVerifyPremiumSubscription
         case .unknown:
             return .purchaseFailed
         }
@@ -325,6 +327,8 @@ struct SubscriptionView: View {
         do {
             try await subscriptionStore.restorePurchases()
             billingMessage = currentPlan == .premium ? AppMessage(.purchasesRestored, .success) : AppMessage(.noActivePurchasesFound, .success)
+        } catch let error as SubscriptionStoreError {
+            billingMessage = AppMessage(error.appMessageID ?? .failedToRestorePurchases, .error)
         } catch {
             billingMessage = AppMessage(.failedToRestorePurchases, .error)
         }
