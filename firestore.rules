@@ -21,19 +21,6 @@ service cloud.firestore {
         && request.auth.uid in group.data.members;
     }
 
-    function isJoiningGroup() {
-      return signedIn()
-        && !(request.auth.uid in resource.data.members)
-        && request.auth.uid in request.resource.data.members
-        && request.resource.data.owner_uid == resource.data.owner_uid
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.name == resource.data.name
-        && request.resource.data.created_at == resource.data.created_at
-        && request.resource.data.members is list
-        && request.resource.data.members.size() == resource.data.members.size() + 1
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["members"]);
-    }
-
     function isUserCreate(uid) {
       return isSelf(uid)
         && request.resource.data.usage_mb == 0;
@@ -42,6 +29,16 @@ service cloud.firestore {
     function isUserUpdate(uid) {
       return isSelf(uid)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["usage_mb"]);
+    }
+
+    function isGroupRename() {
+      return signedIn()
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["name"])
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.created_at == resource.data.created_at;
     }
 
     match /users/{uid} {
@@ -64,14 +61,7 @@ service cloud.firestore {
         && request.resource.data.members is list
         && request.auth.uid in request.resource.data.members;
 
-      allow update: if signedIn()
-        && (
-          resource.data.owner_uid == request.auth.uid
-          || request.auth.uid in resource.data.members
-          || isJoiningGroup()
-        )
-        && request.resource.data.owner_uid == resource.data.owner_uid
-        && request.resource.data.id == resource.data.id;
+      allow update: if isGroupRename();
 
       allow delete: if false;
     }

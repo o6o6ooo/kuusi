@@ -170,38 +170,10 @@ final class GroupService {
     }
 
     func leaveGroup(groupID: String, uid: String) async throws {
-        let groupRef = db.collection("groups").document(groupID)
-        let userRef = db.collection("users").document(uid)
-
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.runTransaction({ transaction, errorPointer in
-                do {
-                    let groupSnapshot = try transaction.getDocument(groupRef)
-                    guard groupSnapshot.exists else {
-                        errorPointer?.pointee = GroupServiceError.groupNotFound as NSError
-                        return nil
-                    }
-
-                    let ownerUID = groupSnapshot.data()?["owner_uid"] as? String
-                    if ownerUID == uid {
-                        errorPointer?.pointee = GroupServiceError.ownerCannotLeave as NSError
-                        return nil
-                    }
-                } catch {
-                    errorPointer?.pointee = error as NSError
-                    return nil
-                }
-
-                transaction.updateData(["members": FieldValue.arrayRemove([uid])], forDocument: groupRef)
-                transaction.setData(["groups": FieldValue.arrayRemove([groupID])], forDocument: userRef, merge: true)
-                return nil
-            }, completion: { _, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            })
+        do {
+            _ = try await functions.httpsCallable("leaveGroup").call(["groupId": groupID])
+        } catch {
+            throw mapLeaveGroupError(error)
         }
 
         removeCachedGroup(groupID: groupID, for: uid)
@@ -498,6 +470,22 @@ final class GroupService {
         }
 
         return error
+    }
+
+    private func mapLeaveGroupError(_ error: Error) -> Error {
+        let nsError = error as NSError
+
+        guard nsError.domain == FunctionsErrorDomain,
+              let code = FunctionsErrorCode(rawValue: nsError.code) else {
+            return error
+        }
+
+        switch code {
+        case .notFound:
+            return GroupServiceError.groupNotFound
+        default:
+            return error
+        }
     }
 
     private func mapInviteError(_ error: Error) -> Error {

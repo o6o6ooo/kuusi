@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, QueryDocumentSnapshot, Timestamp, WriteBatch } from "firebase-admin/firestore";
+import { getFirestore, DocumentSnapshot, FieldValue, QueryDocumentSnapshot, Timestamp, WriteBatch } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { getStorage } from "firebase-admin/storage";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -66,6 +66,12 @@ type UploadCommitItem = {
   thumbnailPath: string;
 };
 
+type LeaveGroupResult = {
+  deletedGroup: boolean;
+  deletedPhotoCount: number;
+  newOwnerUid?: string;
+};
+
 type DeviceData = {
   fcm_token?: string;
   notifications_enabled?: boolean;
@@ -110,6 +116,29 @@ export const deleteGroup = onCall({ region: callableFunctionRegion }, async (req
   };
 });
 
+export const leaveGroup = onCall({ region: callableFunctionRegion }, async (request) => {
+  const uid = request.auth?.uid;
+  const groupId = normalizeGroupId(request.data?.groupId);
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+
+  if (!groupId) {
+    throw new HttpsError("invalid-argument", "groupId is required");
+  }
+
+  const result = await leaveGroupForUser(groupId, uid);
+
+  return {
+    groupId,
+    leftUid: uid,
+    deletedGroup: result.deletedGroup,
+    deletedPhotoCount: result.deletedPhotoCount,
+    ...(result.newOwnerUid ? { newOwnerUid: result.newOwnerUid } : {})
+  };
+});
+
 export const deleteCurrentUserData = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
 
@@ -121,25 +150,18 @@ export const deleteCurrentUserData = onCall({ region: callableFunctionRegion }, 
     .where("members", "array-contains", uid)
     .get();
 
-  const ownedGroups = groupsSnapshot.docs.filter((doc) => (doc.data() as GroupData).owner_uid === uid);
-  const joinedGroups = groupsSnapshot.docs.filter((doc) => (doc.data() as GroupData).owner_uid !== uid);
-
   let deletedGroupCount = 0;
+  let transferredGroupCount = 0;
   let deletedPhotoCount = 0;
 
-  for (const groupDoc of ownedGroups) {
-    deletedPhotoCount += await deleteOwnedGroup(groupDoc.id, uid, groupDoc);
-    deletedGroupCount += 1;
-  }
-
-  if (joinedGroups.length > 0) {
-    await commitOperations(
-      joinedGroups.map((groupDoc) => (batch: WriteBatch) =>
-        batch.update(groupDoc.ref, {
-          members: FieldValue.arrayRemove(uid)
-        })
-      )
-    );
+  for (const groupDoc of groupsSnapshot.docs) {
+    const result = await leaveGroupForUser(groupDoc.id, uid, groupDoc);
+    deletedPhotoCount += result.deletedPhotoCount;
+    if (result.deletedGroup) {
+      deletedGroupCount += 1;
+    } else if (result.newOwnerUid) {
+      transferredGroupCount += 1;
+    }
   }
 
   const userPhotosSnapshot = await db.collection("photos")
@@ -158,7 +180,8 @@ export const deleteCurrentUserData = onCall({ region: callableFunctionRegion }, 
   return {
     deletedUserId: uid,
     deletedGroupCount,
-    deletedJoinedGroupCount: joinedGroups.length,
+    transferredGroupCount,
+    leftGroupCount: groupsSnapshot.size - deletedGroupCount,
     deletedPhotoCount
   };
 });
@@ -796,7 +819,7 @@ async function reservePhotoBatchNotification(
 async function deleteOwnedGroup(
   groupId: string,
   requesterUID: string,
-  existingSnapshot?: QueryDocumentSnapshot
+  existingSnapshot?: DocumentSnapshot
 ): Promise<number> {
   const groupRef = db.collection("groups").doc(groupId);
   const groupSnapshot = existingSnapshot ?? await groupRef.get();
@@ -829,6 +852,78 @@ async function deleteOwnedGroup(
   ]);
 
   return deletedPhotoCount;
+}
+
+async function leaveGroupForUser(
+  groupId: string,
+  uid: string,
+  existingSnapshot?: DocumentSnapshot
+): Promise<LeaveGroupResult> {
+  const groupRef = db.collection("groups").doc(groupId);
+  const groupSnapshot = existingSnapshot ?? await groupRef.get();
+
+  if (!groupSnapshot.exists) {
+    throw new HttpsError("not-found", "Group not found");
+  }
+
+  const groupData = groupSnapshot.data() as GroupData;
+  const memberIDs = Array.isArray(groupData.members) ? groupData.members : [];
+
+  if (!memberIDs.includes(uid)) {
+    throw new HttpsError("permission-denied", "Only group members can leave this group");
+  }
+
+  if (groupData.owner_uid === uid && memberIDs.filter((memberID) => memberID !== uid).length === 0) {
+    const deletedPhotoCount = await deleteOwnedGroup(groupId, uid, groupSnapshot);
+    return {
+      deletedGroup: true,
+      deletedPhotoCount
+    };
+  }
+
+  let newOwnerUid: string | undefined;
+
+  await db.runTransaction(async (transaction) => {
+    const freshGroupSnapshot = await transaction.get(groupRef);
+    if (!freshGroupSnapshot.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+
+    const freshGroupData = freshGroupSnapshot.data() as GroupData;
+    const freshMemberIDs = Array.isArray(freshGroupData.members) ? freshGroupData.members : [];
+    if (!freshMemberIDs.includes(uid)) {
+      throw new HttpsError("permission-denied", "Only group members can leave this group");
+    }
+
+    const remainingMemberIDs = freshMemberIDs.filter((memberID) => memberID !== uid);
+    if (freshGroupData.owner_uid === uid) {
+      const nextOwnerUid = remainingMemberIDs[0];
+      if (!nextOwnerUid) {
+        throw new HttpsError("failed-precondition", "The final owner cannot leave during ownership transfer");
+      }
+      newOwnerUid = nextOwnerUid;
+      transaction.update(groupRef, {
+        members: remainingMemberIDs,
+        owner_uid: nextOwnerUid
+      });
+    } else {
+      transaction.update(groupRef, {
+        members: FieldValue.arrayRemove(uid)
+      });
+    }
+
+    transaction.set(
+      db.collection("users").doc(uid),
+      { groups: FieldValue.arrayRemove(groupId) },
+      { merge: true }
+    );
+  });
+
+  return {
+    deletedGroup: false,
+    deletedPhotoCount: 0,
+    ...(newOwnerUid ? { newOwnerUid } : {})
+  };
 }
 
 async function deletePhotosAndCleanup(

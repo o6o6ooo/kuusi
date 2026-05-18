@@ -227,16 +227,16 @@ struct SettingsGroupsViewModelTests {
     }
 
     @Test
-    func leaveSelectedGroupMapsOwnerCannotLeaveError() async {
+    func ownerLeaveConfirmationUsesTransferMessage() async {
         let groupService = SettingsGroupsServiceSpy()
-        groupService.leaveGroupError = GroupServiceError.ownerCannotLeave
         let viewModel = makeViewModel(groupService: groupService)
-        viewModel.groups = [makeGroup(id: "group-1", name: "Family")]
+        viewModel.groups = [makeGroup(id: "group-1", name: "Family", ownerUID: "user-1")]
         viewModel.selectedGroupID = "group-1"
+        viewModel.selectedDestructiveAction = .leave
 
-        await viewModel.leaveSelectedGroup()
-
-        #expect(viewModel.saveStatusMessage?.id == .ownerCannotLeave)
+        #expect(viewModel.destructiveActionTitle == String(localized: "alert.leave_group.title"))
+        #expect(viewModel.destructiveActionMessage == String(localized: "alert.leave_owned_group.message"))
+        #expect(viewModel.destructiveActionButtonTitle == String(localized: "alert.leave_group.confirm"))
     }
 
     @Test
@@ -434,8 +434,8 @@ struct SettingsGroupsViewModelTests {
         )
     }
 
-    private func makeGroup(id: String, name: String) -> GroupSummary {
-        GroupSummary(id: id, name: name, ownerUID: "owner", members: [], totalMemberCount: 1)
+    private func makeGroup(id: String, name: String, ownerUID: String = "owner") -> GroupSummary {
+        GroupSummary(id: id, name: name, ownerUID: ownerUID, members: [], totalMemberCount: 1)
     }
 }
 

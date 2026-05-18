@@ -46,6 +46,11 @@ enum GroupInvitePayloadParser {
     }
 }
 
+enum GroupDestructiveAction {
+    case delete
+    case leave
+}
+
 protocol SettingsGroupsServicing: GroupStoreServicing {
     func createInvitePayload(groupID: String) async throws -> String
     func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview]
@@ -72,6 +77,7 @@ final class SettingsGroupsViewModel: ObservableObject {
     @Published var isSavingGroupName = false
     @Published var isDeletingGroup = false
     @Published var isDeleteConfirmPresented = false
+    @Published var selectedDestructiveAction: GroupDestructiveAction?
     @Published var isPhotoPickerPresented = false
     @Published var isQRCodeScannerPresented = false
     @Published var isGroupQRCodeOverlayPresented = false
@@ -145,17 +151,25 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     var destructiveActionTitle: String {
-        currentUserIsSelectedGroupOwner ? String(localized: "alert.delete_group.title") : String(localized: "alert.leave_group.title")
+        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.title") : String(localized: "alert.leave_group.title")
     }
 
     var destructiveActionMessage: String {
-        currentUserIsSelectedGroupOwner
-            ? String(localized: "alert.delete_group.message")
-            : String(localized: "alert.leave_group.message")
+        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.message") : leaveGroupMessage
     }
 
     var destructiveActionButtonTitle: String {
-        currentUserIsSelectedGroupOwner ? String(localized: "alert.delete_group.confirm") : String(localized: "alert.leave_group.confirm")
+        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.confirm") : String(localized: "alert.leave_group.confirm")
+    }
+
+    var selectedOrDefaultDestructiveAction: GroupDestructiveAction {
+        selectedDestructiveAction ?? (currentUserIsSelectedGroupOwner ? .delete : .leave)
+    }
+
+    private var leaveGroupMessage: String {
+        currentUserIsSelectedGroupOwner
+            ? String(localized: "alert.leave_owned_group.message")
+            : String(localized: "alert.leave_group.message")
     }
 
     let appShareURL = URL(string: "https://apps.apple.com/app/id1234567890")!
@@ -347,6 +361,7 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             try await groupService.deleteGroup(groupID: selectedGroupID)
             groupStore.removeGroup(id: selectedGroupID)
+            selectedDestructiveAction = nil
             previewLoadedGroupIDs.remove(selectedGroupID)
             editableGroupName = groups.first?.name ?? ""
             if let nextGroupID = self.selectedGroupID {
@@ -374,6 +389,7 @@ final class SettingsGroupsViewModel: ObservableObject {
         do {
             try await groupService.leaveGroup(groupID: selectedGroupID, uid: uid)
             groupStore.removeGroup(id: selectedGroupID)
+            selectedDestructiveAction = nil
             previewLoadedGroupIDs.remove(selectedGroupID)
             editableGroupName = groups.first?.name ?? ""
             if let nextGroupID = self.selectedGroupID {

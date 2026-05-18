@@ -162,7 +162,7 @@ struct SettingsView: View {
                     )
                 ) {
                     Task {
-                        if groupsViewModel.currentUserIsSelectedGroupOwner {
+                        if groupsViewModel.selectedOrDefaultDestructiveAction == .delete {
                             await groupsViewModel.deleteSelectedGroup()
                         } else {
                             await groupsViewModel.leaveSelectedGroup()
@@ -170,6 +170,7 @@ struct SettingsView: View {
                     }
                 } onCancel: {
                     groupsViewModel.isDeleteConfirmPresented = false
+                    groupsViewModel.selectedDestructiveAction = nil
                 }
                 groupsViewModel.isDeleteConfirmPresented = false
             }

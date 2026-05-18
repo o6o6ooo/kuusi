@@ -21,11 +21,18 @@ Callable functions are deployed in `europe-west2`.
   - Cleans `favourites` and decrements `usage_mb`
   - Deletes the `groups/{groupId}` document
 - `deleteCurrentUserData`
-  - Deletes groups owned by the current user using the same server-side cleanup path
-  - Removes the current user from groups they joined
+  - Leaves every group the current user belongs to using the same server-side ownership-transfer path as `leaveGroup`
+  - Deletes owned groups only when the current user is the final remaining member
+  - Transfers owned groups to the next remaining member before removing the current user
   - Deletes the current user's remaining posted photos and related favourites/usage cleanup
   - Deletes the user's `devices` subcollection and Firestore document
   - Leaves Firebase Auth account deletion to the client so recent-login checks still apply
+- `leaveGroup`
+  - Verifies the caller is signed in and belongs to the group
+  - Removes the caller from `groups/{groupId}.members`
+  - Removes the `groupId` from the caller's `users/{uid}.groups`
+  - Transfers ownership to the next remaining member when the caller owns the group
+  - Deletes the group using the normal group cleanup path when the owner is the final member
 - `deletePhoto`
   - Verifies the current user is the uploader
   - Deletes the photo's Storage files

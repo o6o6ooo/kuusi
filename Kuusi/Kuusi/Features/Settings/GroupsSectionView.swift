@@ -197,10 +197,22 @@ struct GroupsSectionView: View {
                 }
             }
 
-            Button(viewModel.selectedGroupID == group.id ? viewModel.destructiveActionButtonTitle : destructiveLabel(for: group), systemImage: destructiveSymbol(for: group), role: .destructive) {
-                viewModel.selectedGroupID = group.id
-                viewModel.editableGroupName = group.name
-                viewModel.isDeleteConfirmPresented = true
+            if currentUserOwns(group) && group.totalMemberCount <= 1 {
+                Button("groups.menu.delete", systemImage: "trash", role: .destructive) {
+                    presentDestructiveConfirmation(for: group, action: .delete)
+                }
+            } else if currentUserOwns(group) {
+                Button("groups.menu.delete", systemImage: "trash", role: .destructive) {
+                    presentDestructiveConfirmation(for: group, action: .delete)
+                }
+
+                Button("groups.menu.leave", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                    presentDestructiveConfirmation(for: group, action: .leave)
+                }
+            } else {
+                Button("groups.menu.leave", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                    presentDestructiveConfirmation(for: group, action: .leave)
+                }
             }
 
             Button("groups.menu.qr_code", systemImage: "qrcode") {
@@ -217,14 +229,16 @@ struct GroupsSectionView: View {
         .buttonStyle(.plain)
     }
 
-    private func destructiveLabel(for group: GroupSummary) -> String {
-        guard let uid = Auth.auth().currentUser?.uid else { return String(localized: "groups.menu.leave") }
-        return group.ownerUID == uid ? String(localized: "groups.menu.delete") : String(localized: "groups.menu.leave")
+    private func currentUserOwns(_ group: GroupSummary) -> Bool {
+        guard let uid = Auth.auth().currentUser?.uid else { return false }
+        return group.ownerUID == uid
     }
 
-    private func destructiveSymbol(for group: GroupSummary) -> String {
-        guard let uid = Auth.auth().currentUser?.uid else { return "rectangle.portrait.and.arrow.right" }
-        return group.ownerUID == uid ? "trash" : "rectangle.portrait.and.arrow.right"
+    private func presentDestructiveConfirmation(for group: GroupSummary, action: GroupDestructiveAction) {
+        viewModel.selectedGroupID = group.id
+        viewModel.editableGroupName = group.name
+        viewModel.selectedDestructiveAction = action
+        viewModel.isDeleteConfirmPresented = true
     }
 
     private var groupActionLinks: some View {
