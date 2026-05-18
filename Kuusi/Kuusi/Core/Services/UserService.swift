@@ -11,7 +11,6 @@ private struct CachedAuthorName: Codable {
 private struct CachedAppUser: Codable {
     let id: String
     let name: String
-    let email: String
     let icon: String
     let bgColour: String
     let usageMB: Double
@@ -21,7 +20,6 @@ private struct CachedAppUser: Codable {
     init(user: AppUser, cachedAt: Date = Date()) {
         id = user.id
         name = user.name
-        email = user.email
         icon = user.icon
         bgColour = user.bgColour
         usageMB = user.usageMB
@@ -33,7 +31,6 @@ private struct CachedAppUser: Codable {
         AppUser(
             id: id,
             name: name,
-            email: email,
             icon: icon,
             bgColour: bgColour,
             usageMB: usageMB,
@@ -57,7 +54,7 @@ final class UserService {
     private static var profileMemoryCache: [String: CachedAppUser] = [:]
     private static var didLoadProfileDefaults = false
 
-    func ensureUserDocument(for user: User, suggestedName: String?, suggestedEmail: String? = nil) async throws {
+    func ensureUserDocument(for user: User, suggestedName: String?) async throws {
         let ref = db.collection("users").document(user.uid)
         let snapshot = try await getDocument(ref)
 
@@ -74,10 +71,8 @@ final class UserService {
             name = "Kuusi User"
         }
 
-        let email = suggestedEmail ?? user.email ?? ""
         let payload: [String: Any] = [
             "name": name,
-            "email": email,
             "icon": "🌸",
             "bgColour": "#A5C3DE",
             "usage_mb": 0.0,
@@ -180,7 +175,6 @@ final class UserService {
         let user = AppUser(
             id: uid,
             name: name,
-            email: existing?.email ?? "",
             icon: icon,
             bgColour: bgColour,
             usageMB: usageMB,

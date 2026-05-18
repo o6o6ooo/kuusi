@@ -3,12 +3,12 @@ import Testing
 
 struct AppUserTests {
     @Test
-    func initRequiresNameAndEmail() {
+    func initRequiresName() {
         let missingName = AppUser(id: "user-1", data: ["email": "sakura@example.com"])
-        let missingEmail = AppUser(id: "user-1", data: ["name": "Sakura"])
+        let withoutEmail = AppUser(id: "user-1", data: ["name": "Sakura"])
 
         #expect(missingName == nil)
-        #expect(missingEmail == nil)
+        #expect(withoutEmail != nil)
     }
 
     @Test
@@ -17,7 +17,6 @@ struct AppUserTests {
             id: "user-1",
             data: [
                 "name": "Sakura",
-                "email": "sakura@example.com",
                 "icon": "🌲",
                 "bgColour": "#123456",
                 "usage_mb": 42.5,
@@ -27,7 +26,6 @@ struct AppUserTests {
 
         #expect(user?.id == "user-1")
         #expect(user?.name == "Sakura")
-        #expect(user?.email == "sakura@example.com")
         #expect(user?.icon == "🌲")
         #expect(user?.bgColour == "#123456")
         #expect(user?.usageMB == 42.5)
@@ -39,8 +37,7 @@ struct AppUserTests {
         let user = AppUser(
             id: "user-1",
             data: [
-                "name": "Sakura",
-                "email": "sakura@example.com"
+                "name": "Sakura"
             ]
         )
 

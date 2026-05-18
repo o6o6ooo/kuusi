@@ -546,11 +546,9 @@ final class AppState: ObservableObject {
 
     private func ensureUserDocumentIfNeeded(for user: User) async throws {
         let suggestedName = user.displayName?.isEmpty == false ? user.displayName : nil
-        let suggestedEmail = user.email ?? (user.isAnonymous ? "sakura.wallace@kuusi.local" : nil)
         try await userService.ensureUserDocument(
             for: user,
-            suggestedName: suggestedName,
-            suggestedEmail: suggestedEmail
+            suggestedName: suggestedName
         )
     }
 

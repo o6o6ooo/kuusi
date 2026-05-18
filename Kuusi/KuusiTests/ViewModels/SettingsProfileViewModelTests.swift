@@ -11,7 +11,6 @@ struct SettingsProfileViewModelTests {
         userService.fetchedUser = AppUser(
             id: "user-1",
             name: "Sakura",
-            email: "sakura@example.com",
             icon: "🌲",
             bgColour: "#123456",
             usageMB: 42.5,

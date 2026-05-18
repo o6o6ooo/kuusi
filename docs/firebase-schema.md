@@ -6,7 +6,6 @@ Current Firebase usage in the SwiftUI app.
 
 ### `users/{uid}`
 - `name: string`
-- `email: string`
 - `icon: string`
 - `bgColour: string`
 - `usage_mb: number`
