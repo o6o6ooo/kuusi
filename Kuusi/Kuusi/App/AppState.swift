@@ -25,8 +25,37 @@ enum DebugCredentialsError: LocalizedError {
 private extension AuthServiceError {
     var appMessageID: AppMessage.ID {
         switch self {
-        case .missingResult:
+        case .missingResult, .missingCurrentUser:
             return .appleSignInFailed
+        }
+    }
+}
+
+protocol AccountDeletionServicing {
+    func deleteCurrentUserData() async throws
+    func deleteAuthCurrentUser() async throws
+}
+
+final class AccountDeletionService: AccountDeletionServicing {
+    private let userService = UserService()
+
+    func deleteCurrentUserData() async throws {
+        try await userService.deleteCurrentUserData()
+    }
+
+    func deleteAuthCurrentUser() async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw AuthServiceError.missingCurrentUser
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.delete { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: ())
+            }
         }
     }
 }
@@ -82,10 +111,11 @@ final class AppState: ObservableObject {
     @Published var selectedDebugAccountID: String?
 #endif
 
-    private let authService = AppleAuthService()
+    private let authService: AppleAuthServicing
     private let userService = UserService()
     private let biometricAuthService: BiometricAuthServicing
     private let notificationService: NotificationServicing
+    private let accountDeletionService: AccountDeletionServicing
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
@@ -105,10 +135,14 @@ final class AppState: ObservableObject {
         shouldObserveAuthState: Bool,
         now: @escaping () -> Date = Date.init,
         relockInterval: TimeInterval? = nil,
-        notificationService: NotificationServicing
+        notificationService: NotificationServicing,
+        authService: AppleAuthServicing? = nil,
+        accountDeletionService: AccountDeletionServicing? = nil
     ) {
+        self.authService = authService ?? AppleAuthService()
         self.biometricAuthService = biometricAuthService
         self.notificationService = notificationService
+        self.accountDeletionService = accountDeletionService ?? AccountDeletionService()
         self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
         self.now = now
         self.relockInterval = relockInterval ?? 5 * 60
@@ -145,6 +179,41 @@ final class AppState: ObservableObject {
     deinit {
         if let authHandle {
             Auth.auth().removeStateDidChangeListener(authHandle)
+        }
+    }
+
+    @discardableResult
+    func reauthenticateWithAppleAndDelete(credential: ASAuthorizationAppleIDCredential, rawNonce: String) async -> Bool {
+        guard
+            let tokenData = credential.identityToken,
+            let tokenString = String(data: tokenData, encoding: .utf8)
+        else {
+            toastMessage = AppMessage(.failedToDeleteAccount, .error)
+            return false
+        }
+
+        let payload = AppleSignInPayload(
+            idToken: tokenString,
+            rawNonce: rawNonce,
+            fullName: nil
+        )
+        return await reauthenticateWithAppleAndDelete(payload: payload)
+    }
+
+    @discardableResult
+    func reauthenticateWithAppleAndDelete(payload: AppleSignInPayload) async -> Bool {
+        do {
+            let uid = try await authService.reauthenticateCurrentUser(payload: payload)
+            try await finishDeletingCurrentUserAccount(uid: uid)
+            return true
+        } catch let nsError as NSError
+            where nsError.domain == AuthErrorDomain &&
+                  nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
+            toastMessage = AppMessage(.recentLoginRequired, .error)
+            return false
+        } catch {
+            toastMessage = AppMessage(.failedToDeleteAccount, .error)
+            return false
         }
     }
 
@@ -225,28 +294,13 @@ final class AppState: ObservableObject {
     }
 
     func deleteCurrentUserAccount() async {
-        guard let user = currentUser ?? Auth.auth().currentUser else {
+        guard let uid = currentUser?.uid ?? Auth.auth().currentUser?.uid else {
             toastMessage = AppMessage(.pleaseSignInFirst, .error)
             return
         }
 
-        let uid = user.uid
-
         do {
-            await notificationService.handleSignedOutUser(uid)
-            try await userService.deleteCurrentUserData()
-            try await deleteAuthUser(user)
-
-            GIDSignIn.sharedInstance.signOut()
-            groupService.clearCachedGroups(for: uid)
-            PhotoCollectionViewModel.clearCachedPhotos(for: uid)
-            userService.clearCachedUserProfile(for: uid)
-            await FeedImageCacheMaintenance.clearDiskCache()
-            currentUser = nil
-            route = .signedOut
-            toastMessage = nil
-            prefetchedGroupsUID = nil
-            backgroundEnteredAt = nil
+            try await finishDeletingCurrentUserAccount(uid: uid)
         } catch let nsError as NSError
             where nsError.domain == AuthErrorDomain &&
                   nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
@@ -254,6 +308,23 @@ final class AppState: ObservableObject {
         } catch {
             toastMessage = AppMessage(.failedToDeleteAccount, .error)
         }
+    }
+
+    private func finishDeletingCurrentUserAccount(uid: String) async throws {
+        await notificationService.handleSignedOutUser(uid)
+        try await accountDeletionService.deleteCurrentUserData()
+        try await accountDeletionService.deleteAuthCurrentUser()
+
+        GIDSignIn.sharedInstance.signOut()
+        groupService.clearCachedGroups(for: uid)
+        PhotoCollectionViewModel.clearCachedPhotos(for: uid)
+        userService.clearCachedUserProfile(for: uid)
+        await FeedImageCacheMaintenance.clearDiskCache()
+        currentUser = nil
+        route = .signedOut
+        toastMessage = nil
+        prefetchedGroupsUID = nil
+        backgroundEnteredAt = nil
     }
 
 #if DEBUG
@@ -464,18 +535,6 @@ final class AppState: ObservableObject {
         await withCheckedContinuation { continuation in
             user.getIDTokenForcingRefresh(true) { _, error in
                 continuation.resume(returning: error == nil)
-            }
-        }
-    }
-
-    private func deleteAuthUser(_ user: User) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            user.delete { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
             }
         }
     }

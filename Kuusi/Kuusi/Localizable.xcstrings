@@ -76,13 +76,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This will permanently delete your account and photos. Groups you own may be transferred to another member."
+            "value" : "This will permanently delete your account and photos. Groups you own may be transferred to another member. You may need to sign in with Apple again to confirm it is you."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アカウントとあなたの写真が完全に削除されます。あなたがオーナーのグループは、他のメンバーに引き継がれる場合があります。"
+            "value" : "アカウントとあなたの写真が完全に削除されます。あなたがオーナーのグループは、他のメンバーに引き継がれる場合があります。本人確認のため、もう一度Appleでサインインが必要になる場合があります。"
           }
         }
       }
@@ -3117,6 +3117,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "利用規約"
+          }
+        }
+      }
+    },
+    "settings.delete_account.reauth.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with Apple to confirm account deletion. Your data will only be deleted after this check succeeds."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウント削除を確定するため、Appleでサインインしてください。この確認が成功するまでデータは削除されません。"
+          }
+        }
+      }
+    },
+    "settings.delete_account.reauth.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm your identity"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本人確認"
           }
         }
       }

@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import PhotosUI
 import SwiftUI
@@ -12,6 +13,7 @@ struct SettingsView: View {
     @State private var hasLoaded = false
     @State private var selectedQRCodePhoto: PhotosPickerItem?
     @State private var appAlert: AppAlert?
+    @State private var isDeleteAccountReauthenticationPresented = false
     @State private var privacyMessage: AppMessage?
     @StateObject private var groupsViewModel = SettingsGroupsViewModel()
     @StateObject private var profileViewModel = SettingsProfileViewModel()
@@ -49,9 +51,7 @@ struct SettingsView: View {
                         },
                         onDeleteAccount: {
                             appAlert = AppAlert(.deleteAccountConfirm) {
-                                Task {
-                                    await appState.deleteCurrentUserAccount()
-                                }
+                                isDeleteAccountReauthenticationPresented = true
                             }
                         }
                     )
@@ -152,6 +152,13 @@ struct SettingsView: View {
                     .presentationDetents([.height(280), .medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $isDeleteAccountReauthenticationPresented) {
+                DeleteAccountReauthenticationView {
+                    isDeleteAccountReauthenticationPresented = false
+                }
+                .presentationDetents([.height(260)])
+                .presentationDragIndicator(.visible)
+            }
             .onChange(of: groupsViewModel.isDeleteConfirmPresented) { _, isPresented in
                 guard isPresented else { return }
                 appAlert = AppAlert(
@@ -204,6 +211,76 @@ struct SettingsView: View {
         } catch {
             privacyMessage = AppMessage(.failedToOpenPrivacyChoices, .error)
         }
+    }
+}
+
+private struct DeleteAccountReauthenticationView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var currentNonce: String?
+
+    let onFinished: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("settings.delete_account.reauth.title")
+                .font(.headline)
+
+            Text("settings.delete_account.reauth.message")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            SignInWithAppleButton(.continue, onRequest: { request in
+                let nonce = CryptoNonce.randomNonceString()
+                currentNonce = nonce
+                request.nonce = CryptoNonce.sha256(nonce)
+            }, onCompletion: { result in
+                handleAuthorizationResult(result)
+            })
+            .signInWithAppleButtonStyle(.whiteOutline)
+            .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
+            .accessibilityIdentifier("delete-account-reauthenticate-button")
+
+            Button("common.cancel") {
+                onFinished()
+            }
+            .buttonStyle(.plain)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .appOverlayTheme()
+    }
+
+    private func handleAuthorizationResult(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case let .success(authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let nonce = currentNonce
+            else {
+                appState.toastMessage = AppMessage(.failedToDeleteAccount, .error)
+                onFinished()
+                return
+            }
+
+            Task {
+                await appState.reauthenticateWithAppleAndDelete(credential: credential, rawNonce: nonce)
+                onFinished()
+            }
+        case let .failure(error):
+            if !Self.isCancellation(error) {
+                appState.toastMessage = AppMessage(.failedToDeleteAccount, .error)
+            }
+            onFinished()
+        }
+    }
+
+    private static func isCancellation(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == ASAuthorizationError.errorDomain
+            && nsError.code == ASAuthorizationError.canceled.rawValue
     }
 }
 

@@ -10,9 +10,15 @@ struct AppleSignInPayload {
 
 enum AuthServiceError: Error {
     case missingResult
+    case missingCurrentUser
 }
 
-final class AppleAuthService {
+protocol AppleAuthServicing {
+    func signIn(payload: AppleSignInPayload) async throws -> User
+    func reauthenticateCurrentUser(payload: AppleSignInPayload) async throws -> String
+}
+
+final class AppleAuthService: AppleAuthServicing {
     func signIn(payload: AppleSignInPayload) async throws -> User {
         let credential = OAuthProvider.appleCredential(
             withIDToken: payload.idToken,
@@ -53,5 +59,33 @@ final class AppleAuthService {
         }
 
         return authResult.user
+    }
+
+    func reauthenticateCurrentUser(payload: AppleSignInPayload) async throws -> String {
+        guard let user = Auth.auth().currentUser else {
+            throw AuthServiceError.missingCurrentUser
+        }
+
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: payload.idToken,
+            rawNonce: payload.rawNonce,
+            fullName: nil
+        )
+
+        let authResult = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AuthDataResult, Error>) in
+            user.reauthenticate(with: credential) { result, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let result else {
+                    continuation.resume(throwing: AuthServiceError.missingResult)
+                    return
+                }
+                continuation.resume(returning: result)
+            }
+        }
+
+        return authResult.user.uid
     }
 }
