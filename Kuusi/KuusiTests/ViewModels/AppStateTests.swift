@@ -199,6 +199,7 @@ struct AppStateTests {
         #expect(accountDeletionService.deleteCurrentUserDataCallCount == 1)
         #expect(accountDeletionService.deleteAuthCurrentUserCallCount == 1)
         #expect(notificationService.signedOutUIDs == ["user-1"])
+        #expect(appState.isDeletingAccount == false)
     }
 
     @Test
@@ -223,6 +224,7 @@ struct AppStateTests {
         #expect(authService.reauthenticateCallCount == 1)
         #expect(accountDeletionService.deleteCurrentUserDataCallCount == 0)
         #expect(accountDeletionService.deleteAuthCurrentUserCallCount == 0)
+        #expect(appState.isDeletingAccount == false)
     }
 }
 

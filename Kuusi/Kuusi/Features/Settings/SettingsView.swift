@@ -79,6 +79,8 @@ struct SettingsView: View {
             .overlay {
                 if let messageKey = groupLoadingMessageKey {
                     SettingsLoadingOverlay(messageKey: messageKey)
+                } else if appState.isDeletingAccount {
+                    SettingsLoadingOverlay(messageKey: "settings.delete_account.deleting")
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -266,8 +268,8 @@ private struct DeleteAccountReauthenticationView: View {
             }
 
             Task {
-                await appState.reauthenticateWithAppleAndDelete(credential: credential, rawNonce: nonce)
                 onFinished()
+                await appState.reauthenticateWithAppleAndDelete(credential: credential, rawNonce: nonce)
             }
         case let .failure(error):
             if !Self.isCancellation(error) {

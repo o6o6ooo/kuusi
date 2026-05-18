@@ -104,6 +104,7 @@ final class AppState: ObservableObject {
 
     @Published var route: Route = .signedOut
     @Published var toastMessage: AppMessage?
+    @Published private(set) var isDeletingAccount = false
     @Published private(set) var currentUser: User?
     @Published private(set) var signedInContentResetToken = 0
 #if DEBUG
@@ -202,6 +203,10 @@ final class AppState: ObservableObject {
 
     @discardableResult
     func reauthenticateWithAppleAndDelete(payload: AppleSignInPayload) async -> Bool {
+        guard !isDeletingAccount else { return false }
+        isDeletingAccount = true
+        defer { isDeletingAccount = false }
+
         do {
             let uid = try await authService.reauthenticateCurrentUser(payload: payload)
             try await finishDeletingCurrentUserAccount(uid: uid)

@@ -3137,6 +3137,22 @@
         }
       }
     },
+    "settings.delete_account.deleting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting account..."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントを削除中..."
+          }
+        }
+      }
+    },
     "settings.delete_account.reauth.title" : {
       "localizations" : {
         "en" : {
