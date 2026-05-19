@@ -11,6 +11,10 @@ Server-side helpers for destructive actions and notification fan-out.
 
 For production App Store subscription verification, set `APP_STORE_APP_APPLE_ID` in the Functions runtime environment. `APP_STORE_BUNDLE_ID` defaults to `com.swallace.kuusi` and only needs setting if the bundle identifier changes.
 
+For Resend transactional email delivery, store the API key in Secret Manager:
+
+- `firebase functions:secrets:set RESEND_API_KEY`
+
 ## Current functions
 
 Callable functions are deployed in `europe-west2`.
@@ -50,8 +54,16 @@ Callable functions are deployed in `europe-west2`.
   - Deletes copied final files and temporary files if the commit fails
 - `syncSubscription`
   - Verifies the caller's StoreKit signed transaction with Apple's signed data verifier
+  - Verifies StoreKit renewal info when the client provides it
   - Updates `users/{uid}` with server-owned Premium entitlement fields
   - Clears the server Premium cache when no active transaction is provided
+  - Sends deduplicated Resend emails for Premium purchase, cancellation, and expiry transitions
+- `sendPremiumExpiryEmails`
+  - Runs daily at 09:00 Europe/London
+  - Sends `premium_expiring` emails for cancelled Premium subscriptions ending within 7 days
+  - Sends `premium_expired` emails for expired Premium subscriptions
+  - Uses `email_logs` to prevent duplicate sends
+  - Records `accepted` when Resend accepts an email; final delivery, bounce, or suppression status remains in Resend logs
 - `removeGroupMember`
   - Verifies the caller owns the group
   - Removes the target user from `groups/{groupId}.members`
@@ -69,6 +81,11 @@ Callable functions are deployed in `europe-west2`.
   - Supports `target = "all"` only
   - Sends maintenance or announcement pushes to the FCM topic `announcements`
   - Writes topic delivery metadata plus `status = sent` or `status = failed`
+- `onLegalAnnouncementCreated`
+  - Triggers when `legal_announcements/{announcementId}` is created in `europe-west2`
+  - Sends the announcement body as a legal update email through Resend
+  - Sends at most 100 users per announcement for the current free-plan sending limit
+  - Uses `email_logs` with the announcement ID as the dedupe key
 
 ## Admin notification authoring
 
@@ -87,6 +104,25 @@ Optional fields:
   - Omit it, or use any non-draft value, to send immediately on create
 
 If `target` is set to anything other than `"all"`, the function marks the document as failed with `failure_reason = "unsupported_target"`.
+
+## Legal announcement email authoring
+
+Create a Firestore document in `legal_announcements` with at least:
+
+- `body`
+
+Optional fields:
+
+- `title`
+  - Defaults to `"Important update to Kuusi terms"`
+- `effective_at`
+- `terms_url`
+- `privacy_url`
+- `status`
+  - Use `"draft"` to save without sending
+  - Omit it, or use any non-draft value, to send immediately on create
+
+The first implementation sends up to 100 users per announcement to stay within the Resend free daily sending limit. Revisit this with a queued batch flow once the user base is larger.
 
 ## Follow-up
 

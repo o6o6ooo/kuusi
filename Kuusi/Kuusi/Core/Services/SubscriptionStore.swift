@@ -142,6 +142,9 @@ final class SubscriptionStore: ObservableObject {
         if let signedTransactionInfo {
             payload["signedTransactionInfo"] = signedTransactionInfo
         }
+        if let signedRenewalInfo = try? await currentPremiumRenewalInfoJWS() {
+            payload["signedRenewalInfo"] = signedRenewalInfo
+        }
 
         do {
             let result = try await functions.httpsCallable("syncSubscription").call(payload)
@@ -165,6 +168,7 @@ final class SubscriptionStore: ObservableObject {
 
         try await AppStore.showManageSubscriptions(in: windowScene)
         await refreshEntitlements()
+        try? await syncSubscription()
     }
 
     var premiumPriceLabel: String? {
@@ -229,6 +233,7 @@ final class SubscriptionStore: ObservableObject {
                 guard let transaction = try? verifiedTransaction(from: result) else { continue }
                 await transaction.finish()
                 await refreshEntitlements()
+                try? await syncSubscription()
             }
         }
     }
@@ -237,6 +242,7 @@ final class SubscriptionStore: ObservableObject {
         Task {
             for await _ in Product.SubscriptionInfo.Status.updates {
                 await refreshEntitlements()
+                try? await syncSubscription()
             }
         }
     }
@@ -259,6 +265,21 @@ final class SubscriptionStore: ObservableObject {
                 continue
             }
             return result.jwsRepresentation
+        }
+
+        return nil
+    }
+
+    private func currentPremiumRenewalInfoJWS() async throws -> String? {
+        guard let subscription = premiumProduct?.subscription else {
+            return nil
+        }
+
+        let statuses = try await subscription.status
+        for status in statuses {
+            let transaction = try? verifiedTransaction(from: status.transaction)
+            guard transaction?.productID == premiumProductID else { continue }
+            return status.renewalInfo.jwsRepresentation
         }
 
         return nil

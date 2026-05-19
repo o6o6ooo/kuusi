@@ -1,11 +1,14 @@
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore, DocumentSnapshot, FieldValue, QueryDocumentSnapshot, Timestamp, WriteBatch } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { getStorage } from "firebase-admin/storage";
-import { Environment, SignedDataVerifier, Type } from "@apple/app-store-server-library";
-import type { JWSTransactionDecodedPayload } from "@apple/app-store-server-library";
+import { AutoRenewStatus, Environment, SignedDataVerifier, Type } from "@apple/app-store-server-library";
+import type { JWSRenewalInfoDecodedPayload, JWSTransactionDecodedPayload } from "@apple/app-store-server-library";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { randomUUID } from "crypto";
 
 initializeApp();
@@ -18,12 +21,18 @@ const maxMessagingBatchSize = 500;
 const maxUploadBatchPhotoCount = 10;
 const callableFunctionRegion = "europe-west2";
 const notificationFunctionRegion = "europe-west2";
+const emailFunctionRegion = "europe-west2";
 const announcementsTopic = "announcements";
 const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 const freeQuotaMB = 1024;
 const premiumQuotaMB = 51200;
 const premiumProductId = "com.swallace.kuusi.premium.annual";
+const premiumExpiryNoticeDays = 7;
+const emailBatchLimit = 100;
+const emailFrom = "Kuusi <hi@kuusi.app>";
+const supportEmail = "hi@kuusi.app";
+const resendApiKey = defineSecret("RESEND_API_KEY");
 const appStoreBundleId = process.env.APP_STORE_BUNDLE_ID ?? "com.swallace.kuusi";
 const appStoreAppAppleId = optionalNumber(process.env.APP_STORE_APP_APPLE_ID);
 const appleRootCAG3 = Buffer.from(
@@ -113,6 +122,27 @@ type AdminNotificationData = {
   target?: string;
   deep_link?: string;
   status?: string;
+};
+
+type LegalAnnouncementData = {
+  title?: string;
+  body?: string;
+  effective_at?: Timestamp;
+  privacy_url?: string;
+  status?: string;
+  terms_url?: string;
+};
+
+type EmailType =
+  | "premium_purchased"
+  | "premium_cancelled"
+  | "premium_expiring"
+  | "premium_expired"
+  | "legal_updated";
+
+type EmailPayload = {
+  subject: string;
+  text: string;
 };
 
 export const deleteGroup = onCall({ region: callableFunctionRegion }, async (request) => {
@@ -388,17 +418,26 @@ export const removeGroupMember = onCall({ region: callableFunctionRegion }, asyn
   };
 });
 
-export const syncSubscription = onCall({ region: callableFunctionRegion }, async (request) => {
+export const syncSubscription = onCall({ region: callableFunctionRegion, secrets: [resendApiKey] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new HttpsError("unauthenticated", "Sign-in required");
   }
 
   const signedTransactionInfo = normalizeText(request.data?.signedTransactionInfo);
+  const signedRenewalInfo = normalizeText(request.data?.signedRenewalInfo);
   const userRef = db.collection("users").doc(uid);
+  const previousUserSnapshot = await userRef.get();
+  const previousUserData = previousUserSnapshot.data();
+  const wasPremiumActive = isPremiumEntitlementActive(previousUserData);
 
   if (!signedTransactionInfo) {
     await userRef.update(clearPremiumCachePayload());
+    if (wasPremiumActive) {
+      await sendUserEmail(uid, "premium_expired", premiumExpiredEmail(), {
+        dedupeKey: expirationDedupeKey(previousUserData?.premium_expires_at)
+      });
+    }
     return { isPremiumActive: false };
   }
 
@@ -413,13 +452,42 @@ export const syncSubscription = onCall({ region: callableFunctionRegion }, async
     throw new HttpsError("failed-precondition", "Premium subscription could not be verified");
   }
 
+  let renewalInfo: JWSRenewalInfoDecodedPayload | null = null;
+  if (signedRenewalInfo) {
+    try {
+      renewalInfo = await verifyPremiumRenewalInfo(signedRenewalInfo);
+    } catch (error) {
+      console.warn("Premium subscription renewal info verification failed", {
+        uid,
+        error: errorMessage(error)
+      });
+    }
+  }
+
   if (!isActivePremiumTransaction(transaction)) {
     await userRef.update(clearPremiumCachePayload());
+    if (wasPremiumActive) {
+      await sendUserEmail(uid, "premium_expired", premiumExpiredEmail(), {
+        dedupeKey: expirationDedupeKey(previousUserData?.premium_expires_at)
+      });
+    }
     return { isPremiumActive: false };
   }
 
   const expiresDate = transaction.expiresDate as number;
-  await userRef.update(premiumCachePayload(transaction, expiresDate));
+  const willAutoRenew = renewalInfo?.autoRenewStatus === AutoRenewStatus.ON
+    || (renewalInfo?.autoRenewStatus !== AutoRenewStatus.OFF && previousUserData?.premium_will_auto_renew === true);
+  await userRef.update(premiumCachePayload(transaction, expiresDate, willAutoRenew));
+
+  if (!wasPremiumActive) {
+    await sendUserEmail(uid, "premium_purchased", premiumPurchasedEmail(expiresDate), {
+      dedupeKey: currentTransactionDedupeKey(transaction)
+    });
+  } else if (previousUserData?.premium_will_auto_renew === true && !willAutoRenew) {
+    await sendUserEmail(uid, "premium_cancelled", premiumCancelledEmail(expiresDate), {
+      dedupeKey: currentTransactionDedupeKey(transaction, "cancelled")
+    });
+  }
 
   return {
     isPremiumActive: true,
@@ -715,6 +783,111 @@ export const onAdminNotificationCreated = onDocumentCreated({
   }
 });
 
+export const sendPremiumExpiryEmails = onSchedule({
+  schedule: "every day 09:00",
+  timeZone: "Europe/London",
+  region: emailFunctionRegion,
+  secrets: [resendApiKey]
+}, async () => {
+  const now = Date.now();
+  const expiringEnd = Timestamp.fromMillis(now + premiumExpiryNoticeDays * 24 * 60 * 60 * 1000);
+  const nowTimestamp = Timestamp.fromMillis(now);
+
+  const expiringSnapshot = await db.collection("users")
+    .where("premium_expires_at", ">", nowTimestamp)
+    .where("premium_expires_at", "<=", expiringEnd)
+    .where("premium_will_auto_renew", "==", false)
+    .limit(emailBatchLimit)
+    .get();
+
+  for (const userDocument of expiringSnapshot.docs) {
+    const expiresAt = userDocument.data().premium_expires_at;
+    if (!(expiresAt instanceof Timestamp)) {
+      continue;
+    }
+    await sendUserEmail(userDocument.id, "premium_expiring", premiumExpiringEmail(expiresAt.toMillis()), {
+      dedupeKey: expirationDedupeKey(expiresAt)
+    });
+  }
+
+  const expiredSnapshot = await db.collection("users")
+    .where("premium_expires_at", "<=", nowTimestamp)
+    .limit(emailBatchLimit)
+    .get();
+
+  for (const userDocument of expiredSnapshot.docs) {
+    const expiresAt = userDocument.data().premium_expires_at;
+    if (!(expiresAt instanceof Timestamp)) {
+      continue;
+    }
+    await sendUserEmail(userDocument.id, "premium_expired", premiumExpiredEmail(), {
+      dedupeKey: expirationDedupeKey(expiresAt)
+    });
+    await userDocument.ref.update(clearPremiumCachePayload());
+  }
+});
+
+export const onLegalAnnouncementCreated = onDocumentCreated({
+  document: "legal_announcements/{announcementId}",
+  region: emailFunctionRegion,
+  secrets: [resendApiKey]
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) {
+    return;
+  }
+
+  const announcementId = normalizeText(event.params.announcementId);
+  if (!announcementId) {
+    return;
+  }
+
+  const announcementRef = snapshot.ref;
+  const announcementData = snapshot.data() as LegalAnnouncementData;
+  if (announcementData.status === "draft") {
+    return;
+  }
+
+  const title = normalizeText(announcementData.title) ?? "Important update to Kuusi terms";
+  const body = normalizeText(announcementData.body);
+  if (!body) {
+    await announcementRef.set({
+      status: "failed",
+      failure_reason: "body_required",
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return;
+  }
+
+  const usersSnapshot = await db.collection("users")
+    .orderBy("__name__")
+    .limit(emailBatchLimit)
+    .get();
+  let sentCount = 0;
+
+  for (const userDocument of usersSnapshot.docs) {
+    const didSend = await sendUserEmail(userDocument.id, "legal_updated", legalUpdatedEmail({
+      body,
+      effectiveAt: announcementData.effective_at,
+      privacyURL: normalizeText(announcementData.privacy_url),
+      termsURL: normalizeText(announcementData.terms_url),
+      title
+    }), {
+      dedupeKey: announcementId
+    });
+    if (didSend) {
+      sentCount += 1;
+    }
+  }
+
+  await announcementRef.set({
+    status: "sent",
+    sent_at: FieldValue.serverTimestamp(),
+    sent_count: sentCount,
+    updated_at: FieldValue.serverTimestamp()
+  }, { merge: true });
+});
+
 function normalizeGroupId(value: unknown): string | null {
   return normalizeText(value);
 }
@@ -823,6 +996,20 @@ async function verifyPremiumTransaction(signedTransactionInfo: string): Promise<
   throw new Error(errors.join("; ") || "No App Store verifier is configured");
 }
 
+async function verifyPremiumRenewalInfo(signedRenewalInfo: string): Promise<JWSRenewalInfoDecodedPayload> {
+  const errors: string[] = [];
+
+  for (const entry of appStoreVerifiers) {
+    try {
+      return await entry.verifier.verifyAndDecodeRenewalInfo(signedRenewalInfo);
+    } catch (error) {
+      errors.push(`${entry.environment}: ${errorMessage(error)}`);
+    }
+  }
+
+  throw new Error(errors.join("; ") || "No App Store verifier is configured");
+}
+
 function isActivePremiumTransaction(transaction: JWSTransactionDecodedPayload): boolean {
   const expiresDate = numericValue(transaction.expiresDate);
   return transaction.productId === premiumProductId
@@ -834,7 +1021,8 @@ function isActivePremiumTransaction(transaction: JWSTransactionDecodedPayload): 
 
 function premiumCachePayload(
   transaction: JWSTransactionDecodedPayload,
-  expiresDate: number
+  expiresDate: number,
+  willAutoRenew: boolean
 ): FirebaseFirestore.DocumentData {
   return {
     premium_expires_at: Timestamp.fromMillis(expiresDate),
@@ -842,6 +1030,7 @@ function premiumCachePayload(
     premium_original_transaction_id: transaction.originalTransactionId ?? "",
     premium_transaction_id: transaction.transactionId ?? "",
     premium_environment: transaction.environment ?? "",
+    premium_will_auto_renew: willAutoRenew,
     premium_last_verified_at: FieldValue.serverTimestamp()
   };
 }
@@ -853,6 +1042,7 @@ function clearPremiumCachePayload(): FirebaseFirestore.DocumentData {
     premium_original_transaction_id: FieldValue.delete(),
     premium_transaction_id: FieldValue.delete(),
     premium_environment: FieldValue.delete(),
+    premium_will_auto_renew: FieldValue.delete(),
     premium_last_verified_at: FieldValue.serverTimestamp()
   };
 }
@@ -864,6 +1054,228 @@ function isPremiumEntitlementActive(data: FirebaseFirestore.DocumentData | undef
   }
 
   return false;
+}
+
+async function sendUserEmail(
+  uid: string,
+  type: EmailType,
+  payload: EmailPayload,
+  options: { dedupeKey: string }
+): Promise<boolean> {
+  const recipient = await loadUserEmail(uid);
+  const logRef = db.collection("email_logs").doc(emailLogId(uid, type, options.dedupeKey));
+
+  try {
+    await logRef.create({
+      user_id: uid,
+      email: recipient ?? "",
+      type,
+      dedupe_key: options.dedupeKey,
+      status: recipient ? "pending" : "skipped",
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
+      ...(recipient ? {} : { failure_reason: "missing_email" })
+    });
+  } catch (error) {
+    if (isAlreadyExistsError(error)) {
+      return false;
+    }
+    throw error;
+  }
+
+  if (!recipient) {
+    return false;
+  }
+
+  try {
+    const providerMessageId = await sendEmail(recipient, payload);
+    await logRef.set({
+      status: "accepted",
+      provider: "resend",
+      provider_message_id: providerMessageId,
+      accepted_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    await logRef.set({
+      status: "failed",
+      failure_reason: errorMessage(error),
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.warn("Email delivery failed", {
+      uid,
+      type,
+      error: errorMessage(error)
+    });
+    return false;
+  }
+}
+
+async function loadUserEmail(uid: string): Promise<string | null> {
+  try {
+    const userRecord = await getAuth().getUser(uid);
+    return normalizeEmail(userRecord.email);
+  } catch (error) {
+    console.warn("Failed to load user email", {
+      uid,
+      error: errorMessage(error)
+    });
+    return null;
+  }
+}
+
+function normalizeEmail(value: unknown): string | null {
+  const text = normalizeText(value);
+  return text && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text) ? text : null;
+}
+
+async function sendEmail(to: string, payload: EmailPayload): Promise<string> {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: emailFrom,
+      to: [to],
+      subject: payload.subject,
+      text: payload.text
+    })
+  });
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    throw new Error(`resend_${response.status}: ${responseText}`);
+  }
+
+  try {
+    const data = JSON.parse(responseText) as { id?: unknown };
+    const id = normalizeText(data.id);
+    return id ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function premiumPurchasedEmail(expiresDate: number): EmailPayload {
+  const expiresLabel = formatDate(expiresDate);
+  return {
+    subject: "Your Kuusi Premium purchase is confirmed",
+    text: [
+      "Thank you for purchasing Kuusi Premium.",
+      "",
+      `Your Premium access is active until ${expiresLabel}.`,
+      "",
+      "You can manage or cancel your subscription from your Apple account settings.",
+      "",
+      `If you have any questions, reply to this email or contact ${supportEmail}.`,
+      "",
+      "This is an important account email about your Kuusi subscription."
+    ].join("\n")
+  };
+}
+
+function premiumCancelledEmail(expiresDate: number): EmailPayload {
+  const expiresLabel = formatDate(expiresDate);
+  return {
+    subject: "Your Kuusi Premium cancellation is confirmed",
+    text: [
+      "Your Kuusi Premium subscription has been cancelled.",
+      "",
+      `You can continue using Premium until ${expiresLabel}. After that, your account will return to the free plan unless you renew.`,
+      "",
+      `If you have any questions, reply to this email or contact ${supportEmail}.`,
+      "",
+      "This is an important account email about your Kuusi subscription."
+    ].join("\n")
+  };
+}
+
+function premiumExpiringEmail(expiresDate: number): EmailPayload {
+  const expiresLabel = formatDate(expiresDate);
+  return {
+    subject: "Your Kuusi Premium access is ending soon",
+    text: [
+      "Your Kuusi Premium access is ending soon.",
+      "",
+      `Your current Premium access ends on ${expiresLabel}. After that, your account will return to the free plan unless you renew.`,
+      "",
+      `If you have any questions, reply to this email or contact ${supportEmail}.`,
+      "",
+      "This is an important account email about your Kuusi subscription."
+    ].join("\n")
+  };
+}
+
+function premiumExpiredEmail(): EmailPayload {
+  return {
+    subject: "Your Kuusi Premium access has ended",
+    text: [
+      "Your Kuusi Premium access has ended.",
+      "",
+      "Your account has returned to the free plan. You can renew Premium from the Kuusi app at any time.",
+      "",
+      `If you have any questions, reply to this email or contact ${supportEmail}.`,
+      "",
+      "This is an important account email about your Kuusi subscription."
+    ].join("\n")
+  };
+}
+
+function legalUpdatedEmail(input: {
+  body: string;
+  effectiveAt?: Timestamp;
+  privacyURL: string | null;
+  termsURL: string | null;
+  title: string;
+}): EmailPayload {
+  const links = [
+    input.termsURL ? `Terms: ${input.termsURL}` : null,
+    input.privacyURL ? `Privacy Policy: ${input.privacyURL}` : null
+  ].filter((line): line is string => line !== null);
+
+  return {
+    subject: input.title,
+    text: [
+      input.body,
+      "",
+      ...(input.effectiveAt ? [`Effective date: ${formatDate(input.effectiveAt.toMillis())}`, ""] : []),
+      ...(links.length > 0 ? [...links, ""] : []),
+      `If you have any questions, reply to this email or contact ${supportEmail}.`,
+      "",
+      "This is an important legal update about Kuusi."
+    ].join("\n")
+  };
+}
+
+function formatDate(value: number): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "long",
+    timeZone: "Europe/London"
+  }).format(new Date(value));
+}
+
+function currentTransactionDedupeKey(transaction: JWSTransactionDecodedPayload, suffix?: string): string {
+  const base = normalizeText(transaction.transactionId)
+    ?? normalizeText(transaction.originalTransactionId)
+    ?? "unknown_transaction";
+  return suffix ? `${base}_${suffix}` : base;
+}
+
+function expirationDedupeKey(value: unknown): string {
+  if (value instanceof Timestamp) {
+    return formatDate(value.toMillis());
+  }
+  return "unknown_expiration";
+}
+
+function emailLogId(uid: string, type: EmailType, dedupeKey: string): string {
+  return [uid, type, dedupeKey]
+    .join("_")
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .slice(0, 140);
 }
 
 async function storageFileSizeMB(bucket: StorageBucket, path: string): Promise<number> {
@@ -1267,6 +1679,17 @@ function isObjectNotFoundError(error: unknown): boolean {
 
   const maybeCode = error as Error & { code?: number | string };
   return maybeCode.code === 404 || maybeCode.code === "storage/object-not-found";
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const maybeCode = error as Error & { code?: number | string };
+  return maybeCode.code === 6
+    || maybeCode.code === "already-exists"
+    || maybeCode.code === "firestore/already-exists";
 }
 
 async function commitOperations(

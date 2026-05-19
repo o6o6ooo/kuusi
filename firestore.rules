@@ -28,6 +28,7 @@ service cloud.firestore {
         "premium_original_transaction_id",
         "premium_transaction_id",
         "premium_environment",
+        "premium_will_auto_renew",
         "premium_last_verified_at"
       ];
     }
@@ -47,6 +48,7 @@ service cloud.firestore {
           "premium_original_transaction_id",
           "premium_transaction_id",
           "premium_environment",
+          "premium_will_auto_renew",
           "premium_last_verified_at"
         ]);
     }

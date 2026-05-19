@@ -17,6 +17,7 @@ Current Firebase usage in the SwiftUI app.
 - `premium_original_transaction_id: string`
 - `premium_transaction_id: string`
 - `premium_environment: string`
+- `premium_will_auto_renew: boolean`
 - `premium_last_verified_at: timestamp`
 
 ### `users/{uid}/devices/{deviceId}`
@@ -68,6 +69,31 @@ Current Firebase usage in the SwiftUI app.
 - `delivery.topic: "announcements"`
 - `delivery.message_id: string`
 
+### `email_logs/{logId}`
+- `user_id: string`
+- `email: string`
+- `type: "premium_purchased" | "premium_cancelled" | "premium_expiring" | "premium_expired" | "legal_updated"`
+- `dedupe_key: string`
+- `status: "pending" | "accepted" | "failed" | "skipped"`
+- `provider: "resend"`
+- `provider_message_id: string`
+- `failure_reason: string`
+- `created_at: timestamp`
+- `accepted_at: timestamp`
+- `updated_at: timestamp`
+
+### `legal_announcements/{announcementId}`
+- `title: string`
+- `body: string`
+- `effective_at: timestamp`
+- `terms_url: string`
+- `privacy_url: string`
+- `status: "draft" | "sent" | "failed"`
+- `failure_reason: string`
+- `sent_count: number`
+- `sent_at: timestamp`
+- `updated_at: timestamp`
+
 ## Storage
 
 ### Uploaded photo assets
@@ -94,6 +120,9 @@ This is required for queries that filter photos by `group_id` and order the feed
 - iOS devices subscribe to the FCM topic `announcements` after notification permission is granted
 - the iOS app uploads temporary Storage files, then calls `commitPhotoUploadBatch` to create `photos/{photoId}` documents and increment `users/{uid}.usage_mb`
 - Premium users sync their current StoreKit transaction through `syncSubscription` before upload so server-side quota checks use verified `users/{uid}.premium_expires_at`
+- Premium subscription sync also stores the verified auto-renew status and sends Resend emails for purchase, cancellation, and expiry events
+- `sendPremiumExpiryEmails` runs daily and sends expiring/expired Premium emails with `email_logs` deduplication
+- `legal_announcements/{announcementId}` creation triggers a legal update email batch
 - each committed upload operation stamps every created `photos/{photoId}` document with the same `upload_batch_id`
 - clients cannot create or delete `photos` documents directly; upload and delete cleanup runs through Cloud Functions
 - `photos/{photoId}` creation triggers a Cloud Function that reserves `photo_notification_batches/{uploadBatchId}` and sends at most one push notification for that upload batch
