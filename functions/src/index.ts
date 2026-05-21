@@ -10,6 +10,14 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { randomUUID } from "crypto";
+import {
+  EmailPayload,
+  legalUpdatedEmail,
+  premiumCancelledEmail,
+  premiumExpiredEmail,
+  premiumExpiringEmail,
+  premiumPurchasedEmail
+} from "./emailTemplates.js";
 
 initializeApp();
 
@@ -31,7 +39,6 @@ const premiumProductId = "com.swallace.kuusi.premium.annual";
 const premiumExpiryNoticeDays = 7;
 const emailBatchLimit = 100;
 const emailFrom = "Kuusi <hi@kuusi.app>";
-const supportEmail = "hi@kuusi.app";
 const resendApiKey = defineSecret("RESEND_API_KEY");
 const appStoreBundleId = process.env.APP_STORE_BUNDLE_ID ?? "com.swallace.kuusi";
 const appStoreAppAppleId = optionalNumber(process.env.APP_STORE_APP_APPLE_ID);
@@ -139,11 +146,6 @@ type EmailType =
   | "premium_expiring"
   | "premium_expired"
   | "legal_updated";
-
-type EmailPayload = {
-  subject: string;
-  text: string;
-};
 
 export const deleteGroup = onCall({ region: callableFunctionRegion }, async (request) => {
   const uid = request.auth?.uid;
@@ -1141,6 +1143,7 @@ async function sendEmail(to: string, payload: EmailPayload): Promise<string> {
       from: emailFrom,
       to: [to],
       subject: payload.subject,
+      html: payload.html,
       text: payload.text
     })
   });
@@ -1159,104 +1162,6 @@ async function sendEmail(to: string, payload: EmailPayload): Promise<string> {
   }
 }
 
-function premiumPurchasedEmail(expiresDate: number): EmailPayload {
-  const expiresLabel = formatDate(expiresDate);
-  return {
-    subject: "Your Kuusi Premium purchase is confirmed",
-    text: [
-      "Thank you for purchasing Kuusi Premium.",
-      "",
-      `Your Premium access is active until ${expiresLabel}.`,
-      "",
-      "You can manage or cancel your subscription from your Apple account settings.",
-      "",
-      `If you have any questions, reply to this email or contact ${supportEmail}.`,
-      "",
-      "This is an important account email about your Kuusi subscription."
-    ].join("\n")
-  };
-}
-
-function premiumCancelledEmail(expiresDate: number): EmailPayload {
-  const expiresLabel = formatDate(expiresDate);
-  return {
-    subject: "Your Kuusi Premium cancellation is confirmed",
-    text: [
-      "Your Kuusi Premium subscription has been cancelled.",
-      "",
-      `You can continue using Premium until ${expiresLabel}. After that, your account will return to the free plan unless you renew.`,
-      "",
-      `If you have any questions, reply to this email or contact ${supportEmail}.`,
-      "",
-      "This is an important account email about your Kuusi subscription."
-    ].join("\n")
-  };
-}
-
-function premiumExpiringEmail(expiresDate: number): EmailPayload {
-  const expiresLabel = formatDate(expiresDate);
-  return {
-    subject: "Your Kuusi Premium access is ending soon",
-    text: [
-      "Your Kuusi Premium access is ending soon.",
-      "",
-      `Your current Premium access ends on ${expiresLabel}. After that, your account will return to the free plan unless you renew.`,
-      "",
-      `If you have any questions, reply to this email or contact ${supportEmail}.`,
-      "",
-      "This is an important account email about your Kuusi subscription."
-    ].join("\n")
-  };
-}
-
-function premiumExpiredEmail(): EmailPayload {
-  return {
-    subject: "Your Kuusi Premium access has ended",
-    text: [
-      "Your Kuusi Premium access has ended.",
-      "",
-      "Your account has returned to the free plan. You can renew Premium from the Kuusi app at any time.",
-      "",
-      `If you have any questions, reply to this email or contact ${supportEmail}.`,
-      "",
-      "This is an important account email about your Kuusi subscription."
-    ].join("\n")
-  };
-}
-
-function legalUpdatedEmail(input: {
-  body: string;
-  effectiveAt?: Timestamp;
-  privacyURL: string | null;
-  termsURL: string | null;
-  title: string;
-}): EmailPayload {
-  const links = [
-    input.termsURL ? `Terms: ${input.termsURL}` : null,
-    input.privacyURL ? `Privacy Policy: ${input.privacyURL}` : null
-  ].filter((line): line is string => line !== null);
-
-  return {
-    subject: input.title,
-    text: [
-      input.body,
-      "",
-      ...(input.effectiveAt ? [`Effective date: ${formatDate(input.effectiveAt.toMillis())}`, ""] : []),
-      ...(links.length > 0 ? [...links, ""] : []),
-      `If you have any questions, reply to this email or contact ${supportEmail}.`,
-      "",
-      "This is an important legal update about Kuusi."
-    ].join("\n")
-  };
-}
-
-function formatDate(value: number): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "long",
-    timeZone: "Europe/London"
-  }).format(new Date(value));
-}
-
 function currentTransactionDedupeKey(transaction: JWSTransactionDecodedPayload, suffix?: string): string {
   const base = normalizeText(transaction.transactionId)
     ?? normalizeText(transaction.originalTransactionId)
@@ -1266,7 +1171,7 @@ function currentTransactionDedupeKey(transaction: JWSTransactionDecodedPayload, 
 
 function expirationDedupeKey(value: unknown): string {
   if (value instanceof Timestamp) {
-    return formatDate(value.toMillis());
+    return value.toDate().toISOString().slice(0, 10);
   }
   return "unknown_expiration";
 }
