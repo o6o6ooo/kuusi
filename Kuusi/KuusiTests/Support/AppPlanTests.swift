@@ -20,13 +20,13 @@ struct AppPlanTests {
 
     @Test
     func premiumPlanMatchesExpectedProductShape() {
-        #expect(AppPlan.premium.quotaMB == 51200.0)
+        #expect(AppPlan.premium.quotaMB == 30720.0)
         #expect(AppPlan.premium.maxGroups == 10)
         #expect(AppPlan.premium.title == "Premium")
         #expect(AppPlan.premium.priceLabel == "£24.99 / year")
         #expect(AppPlan.premium.productID == "com.swallace.kuusi.premium.annual")
         #expect(AppPlan.premium.featureLines == [
-            "50GB storage",
+            "30GB storage",
             "Full previews",
             "Up to 10 groups",
             "No ads"

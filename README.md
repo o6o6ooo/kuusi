@@ -47,7 +47,7 @@ Kuusi has Free and Premium plans.
   - Older photo previews become thumbnail-only after 2 years
   - Feed ads are shown
 - Premium:
-  - 50 GB storage quota
+  - 30 GB storage quota
   - Up to 10 groups
   - Full photo previews remain available
   - Feed ads are hidden

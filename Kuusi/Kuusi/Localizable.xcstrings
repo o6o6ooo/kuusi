@@ -2819,13 +2819,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "50GB storage"
+            "value" : "30GB storage"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "50GBストレージ"
+            "value" : "30GBストレージ"
           }
         }
       }

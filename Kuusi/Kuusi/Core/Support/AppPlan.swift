@@ -9,7 +9,7 @@ enum AppPlan: String {
         case .free:
             return 1024.0
         case .premium:
-            return 51200.0
+            return 30720.0
         }
     }
 
