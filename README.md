@@ -13,13 +13,14 @@ Users sign in with Apple, join family groups, upload photos, import from Google 
 - Sign in with Apple for primary authentication
 - Biometric app locking after sign-in
 - Invite-only groups with QR-based join and share flows
-- Group owner tools for viewing members, removing members, and deleting groups
+- Group tools for viewing members, leaving groups, owner transfer, removing members, and deleting groups
 - Personal profile with emoji icon and background color
 - Photo upload flow for private group sharing, including date and hashtag metadata
 - Feed browsing with grouped access, favourites, photo editing, and photo deletion
 - Optional Google account linking and Google Photos Picker import
 - Push notifications for new photo batches and app announcements
-- Free and Premium plan handling with StoreKit subscriptions
+- Free and Premium plan handling with StoreKit subscriptions and server-side entitlement verification
+- Transactional email for Premium and legal account updates
 - Native feed advertising for free users
 - iPhone and iPad support through SwiftUI
 
@@ -30,10 +31,11 @@ Users sign in with Apple, join family groups, upload photos, import from Google 
 - Backend services:
   - Cloud Firestore for app data
   - Firebase Storage for uploaded photos
-  - Firebase Cloud Functions for destructive cleanup and notification fan-out
+  - Firebase Cloud Functions for upload commits, destructive cleanup, subscription verification, notification fan-out, and transactional email
   - Firebase Cloud Messaging for device and announcement notifications
   - Firebase App Check for Firebase request protection
-- User profile data includes display name, emoji icon, background color, group membership, and usage metadata
+- User profile data includes display name, emoji icon, background color, group membership, usage metadata, and server-owned Premium entitlement fields
+- User email addresses are not stored in Firestore user profile documents
 
 ## Plans And Limits
 
@@ -54,14 +56,17 @@ Premium is configured as an annual StoreKit product:
 
 - `com.swallace.kuusi.premium.annual`
 
+The iOS app syncs StoreKit signed transaction and renewal data to Cloud Functions. Functions verify Premium entitlement state server-side and use that cache for upload quota checks.
+
 ## Privacy Notes
 
 Kuusi handles personal photos and account data, so privacy-related documentation should stay easy to find.
 
 - Explain clearly what user data is stored and why
 - Keep your App Store privacy details aligned with actual app behavior
-- Link your Privacy Policy and Terms of Use here once they are public
+- Keep Privacy Policy and Terms of Use links aligned with `kuusi.app`
 - Treat Google account linking as optional and separate from primary app authentication
+- Treat transactional subscription and legal emails as account/service emails, not marketing emails
 
 ## Status
 
@@ -80,7 +85,7 @@ Current implemented areas include:
 - Native ad placement
 - Push notification registration and handling
 - Optional Google account linking for Google Photos import
-- Cloud Functions for account, group, photo, and notification operations
+- Cloud Functions for account, group, photo, subscription, notification, and email operations
 
 ## Tech Stack
 
@@ -97,6 +102,7 @@ Current implemented areas include:
 - Subscriptions: StoreKit
 - Ads: Google Mobile Ads
 - Google photo import: Google Photos Picker API
+- Transactional email: Resend
 
 ## Project Structure
 
@@ -133,6 +139,7 @@ kuusi/
 - Apple Developer account capabilities for Sign in with Apple, Push Notifications, and In-App Purchase
 - AdMob app and native ad unit configuration for release ads
 - Firebase CLI and Node.js if deploying Cloud Functions
+- Resend account and API key if sending transactional email
 
 ## Getting Started
 
@@ -165,18 +172,28 @@ Open `Kuusi/Kuusi.xcodeproj` in Xcode.
 
 - Create the annual Premium StoreKit product with product ID `com.swallace.kuusi.premium.annual`
 - Keep the app's StoreKit configuration and App Store Connect product metadata aligned
+- Set `APP_STORE_APP_APPLE_ID` for production subscription verification in the Functions runtime environment
 - Confirm the AdMob app ID and production native ad unit ID in `AppAdConfiguration`
 - Debug builds use Google's native ad test unit
 
-### 6. Deploy Cloud Functions when backend changes are needed
+### 6. Configure transactional email
+
+- Store the Resend API key in Firebase Secret Manager as `RESEND_API_KEY`
+- Keep the sender domain and support inbox aligned with `hi@kuusi.app`
+- Premium purchase, cancellation, expiry warning, expiry, and legal update emails are sent from Functions
+
+### 7. Deploy Firebase backend changes when needed
 
 Cloud Functions live in `functions/` and are documented in `docs/cloud-functions.md`.
 
-- Callable functions handle group deletion, photo deletion, member removal, and current-user data deletion
-- Firestore triggers send photo-batch and admin announcement notifications
+- Callable functions handle upload commits, group deletion, group leaving, photo deletion, member removal, current-user data deletion, and Premium subscription sync
+- Firestore triggers send photo-batch notifications, admin announcement notifications, and legal update emails
+- Scheduled functions send Premium expiry emails
+- Firestore rules live in `firestore.rules`
+- Storage rules live in `storage.rules`
 - Functions are deployed in `europe-west2`
 
-### 7. Run the app
+### 8. Run the app
 
 - Select an iPhone or iPad simulator, or a real device
 - Build and run from Xcode
@@ -213,22 +230,23 @@ For an App Store release, keep these aligned with the shipped app:
 - Google OAuth production approval, if Google Photos import is included in release builds
 - StoreKit product metadata and subscription review details
 - AdMob production ad unit configuration
-- Firebase App Check, Firestore rules, Storage rules, and Cloud Functions deployment region
+- Firebase App Check, Firestore rules, Storage rules, Cloud Functions deployment region, and old-region trigger cleanup
+- App Store server verification environment variables and Resend Secret Manager configuration
+- Transactional email copy for subscription and legal update messages
 - dSYM upload warnings for third-party frameworks, if App Store Connect reports missing symbols
 
 ## Security Notes
 
 - `GoogleService-Info.plist` should not be committed
+- `.env` files, service account files, Firebase credentials, Resend keys, and local secret folders should not be committed
 - Keep test credentials only in local Xcode scheme environment variables
 - Restrict Firebase rules and monitor usage, quota, and alerts in Firebase and GCP
+- Keep server-owned fields such as `usage_mb` and Premium entitlement data writable only from trusted backend code
 
 ## Support
 
-If you publish Kuusi publicly, add at least one support contact here:
-
-- Support email
-- Website
-- GitHub Issues, if appropriate for your release workflow
+- Support email: `hi@kuusi.app`
+- Website: `https://kuusi.app`
 
 ## Author
 
