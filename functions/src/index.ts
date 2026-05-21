@@ -24,7 +24,7 @@ initializeApp();
 const db = getFirestore();
 const storage = getStorage();
 const maxBatchWriteCount = 450;
-const maxGroupMembers = 50;
+const maxGroupMembers = 15;
 const maxMessagingBatchSize = 500;
 const maxUploadBatchPhotoCount = 10;
 const callableFunctionRegion = "europe-west2";

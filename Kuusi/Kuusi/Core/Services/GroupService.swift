@@ -34,7 +34,7 @@ struct JoinGroupResult {
 }
 
 final class GroupService {
-    static let maxGroupMembers = 50
+    static let maxGroupMembers = 15
     static let inviteLifetimeHours = 24
     private static let functionsRegion = "europe-west2"
 
