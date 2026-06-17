@@ -42,8 +42,163 @@ private struct PhotoAuthorNameView: View {
     }
 }
 
+private struct ZoomablePreviewImageView<Placeholder: View>: View {
+    let source: FeedImageSource?
+    let isZoomEnabled: Bool
+    let onZoomChanged: (Bool) -> Void
+    let placeholder: () -> Placeholder
+
+    @State private var scale: CGFloat = 1
+    @State private var committedScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var committedOffset: CGSize = .zero
+
+    private let minimumScale: CGFloat = 1
+    private let maximumScale: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { proxy in
+            imageContent(in: proxy.size)
+        }
+        .clipped()
+        .onChange(of: source) { _, _ in
+            resetZoom()
+        }
+        .onChange(of: isZoomEnabled) { _, newValue in
+            guard !newValue else { return }
+            resetZoom()
+        }
+    }
+
+    @ViewBuilder
+    private func imageContent(in size: CGSize) -> some View {
+        let image = CachedRemoteImageView(source: source) { image in
+            image
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(scale)
+                .offset(offset)
+        } placeholder: {
+            placeholder()
+        }
+        .frame(width: size.width, height: size.height)
+        .contentShape(Rectangle())
+
+        if isZoomEnabled {
+            if committedScale > minimumScale {
+                image
+                    .simultaneousGesture(magnifyGesture(in: size))
+                    .simultaneousGesture(panGesture(in: size))
+            } else {
+                image
+                    .simultaneousGesture(magnifyGesture(in: size))
+            }
+        } else {
+            image
+        }
+    }
+
+    private func magnifyGesture(in size: CGSize) -> some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                guard isZoomEnabled else { return }
+                let nextScale = clampedScale(committedScale * value.magnification)
+                let anchorOffset = offset(for: value.startAnchor, in: size)
+                let nextOffset = offset(
+                    scalingFrom: committedScale,
+                    to: nextScale,
+                    around: anchorOffset
+                )
+
+                scale = nextScale
+                offset = clampedOffset(nextOffset, scale: nextScale, size: size)
+                onZoomChanged(scale > minimumScale)
+            }
+            .onEnded { _ in
+                guard isZoomEnabled else {
+                    resetZoom()
+                    return
+                }
+
+                if scale <= minimumScale {
+                    resetZoom()
+                } else {
+                    scale = clampedScale(scale)
+                    offset = clampedOffset(offset, scale: scale, size: size)
+                    committedScale = scale
+                    committedOffset = offset
+                    onZoomChanged(true)
+                }
+            }
+    }
+
+    private func panGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                guard isZoomEnabled, scale > minimumScale else { return }
+                let proposedOffset = CGSize(
+                    width: committedOffset.width + value.translation.width,
+                    height: committedOffset.height + value.translation.height
+                )
+                offset = clampedOffset(proposedOffset, scale: scale, size: size)
+            }
+            .onEnded { _ in
+                guard isZoomEnabled, scale > minimumScale else { return }
+                offset = clampedOffset(offset, scale: scale, size: size)
+                committedOffset = offset
+            }
+    }
+
+    private func clampedScale(_ value: CGFloat) -> CGFloat {
+        min(max(value, minimumScale), maximumScale)
+    }
+
+    private func offset(for anchor: UnitPoint, in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: (anchor.x - 0.5) * size.width,
+            y: (anchor.y - 0.5) * size.height
+        )
+    }
+
+    private func offset(
+        scalingFrom startScale: CGFloat,
+        to nextScale: CGFloat,
+        around anchorOffset: CGPoint
+    ) -> CGSize {
+        guard startScale > 0 else { return committedOffset }
+
+        let scaleChange = nextScale / startScale
+
+        return CGSize(
+            width: anchorOffset.x * (1 - scaleChange) + committedOffset.width * scaleChange,
+            height: anchorOffset.y * (1 - scaleChange) + committedOffset.height * scaleChange
+        )
+    }
+
+    private func clampedOffset(_ value: CGSize, scale: CGFloat, size: CGSize) -> CGSize {
+        guard scale > minimumScale else { return .zero }
+
+        let horizontalLimit = max(0, size.width * (scale - minimumScale) / 2)
+        let verticalLimit = max(0, size.height * (scale - minimumScale) / 2)
+
+        return CGSize(
+            width: min(max(value.width, -horizontalLimit), horizontalLimit),
+            height: min(max(value.height, -verticalLimit), verticalLimit)
+        )
+    }
+
+    private func resetZoom() {
+        scale = minimumScale
+        committedScale = minimumScale
+        offset = .zero
+        committedOffset = .zero
+        onZoomChanged(false)
+    }
+}
+
 struct PhotoTileView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isPreviewZoomed = false
 
     let photo: FeedPhoto
     let previewAccess: PreviewAccess
@@ -66,18 +221,18 @@ struct PhotoTileView: View {
         let imageSource = resolvedImageSource
 
         VStack(alignment: .leading, spacing: 0) {
-            CachedRemoteImageView(source: imageSource) { image in
-                image
-                    .resizable()
-                    .scaledToFit()
-            } placeholder: {
+            ZoomablePreviewImageView(
+                source: imageSource,
+                isZoomEnabled: isExpanded,
+                onZoomChanged: { isPreviewZoomed = $0 }
+            ) {
                 Rectangle()
                     .fill(Color.gray.opacity(colorScheme == .dark ? 0.25 : 0.15))
                     .overlay(ProgressView())
             }
             .frame(width: width, height: isExpanded ? expandedHeight : collapsedHeight)
             .overlay(alignment: .bottomLeading) {
-                if isExpanded {
+                if isExpanded && !isPreviewZoomed {
                     expandedMetaOverlay
                 }
             }
@@ -91,6 +246,7 @@ struct PhotoTileView: View {
         }
         .overlay(alignment: .topTrailing) {
             statusBadge
+                .opacity(isExpanded && isPreviewZoomed ? 0 : 1)
         }
         .overlay {
             if isDeleting || isEditing {
@@ -104,7 +260,15 @@ struct PhotoTileView: View {
         .scaleEffect(1)
         .shadow(color: .black.opacity(isExpanded ? 0.1 : 0.08), radius: isExpanded ? 10 : 8, x: 0, y: isExpanded ? 5 : 4)
         .onTapGesture {
+            guard !isPreviewZoomed else { return }
             onTap()
+        }
+        .onChange(of: isExpanded) { _, newValue in
+            guard !newValue else { return }
+            isPreviewZoomed = false
+        }
+        .onChange(of: imageSource) { _, _ in
+            isPreviewZoomed = false
         }
         .contextMenu {
             Button {
