@@ -3265,6 +3265,22 @@
         }
       }
     },
+    "subscription.legal_notice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription renews yearly. By subscribing, you agree to the [Terms of Use (EULA)](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) and [Privacy Policy](https://kuusi.app/privacy)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サブスクリプションは年単位で自動更新されます。登録すると、[利用規約（EULA）](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/)および[プライバシーポリシー](https://kuusi.app/privacy)に同意したものとみなされます。"
+          }
+        }
+      }
+    },
     "subscription.renews_on" : {
       "localizations" : {
         "en" : {

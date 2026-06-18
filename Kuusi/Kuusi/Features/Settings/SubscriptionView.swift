@@ -295,6 +295,13 @@ struct SubscriptionView: View {
                         .accessibilityIdentifier("subscription-restore-purchases-button")
                 }
             }
+
+            Text(.init(String(localized: "subscription.legal_notice")))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .tint(Color.accentColor)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("subscription-legal-notice")
         }
     }
 
