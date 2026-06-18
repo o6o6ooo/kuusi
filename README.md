@@ -3,6 +3,8 @@
 Kuusi is a private family photo-sharing iOS app built with SwiftUI and Firebase.
 It is designed for small trusted groups who want a calmer, invite-only space for sharing photos.
 
+Kuusi is available on the App Store: <https://apps.apple.com/gb/app/kuusi/id6761270044>
+
 ## Overview
 
 Kuusi focuses on private sharing rather than public social posting.
@@ -70,7 +72,7 @@ Kuusi handles personal photos and account data, so privacy-related documentation
 
 ## Status
 
-This project is actively maintained.
+This project is released on the App Store and actively maintained.
 
 Current implemented areas include:
 
@@ -163,10 +165,10 @@ Open `Kuusi/Kuusi.xcodeproj` in Xcode.
 
 ### 4. Review Google OAuth rollout state
 
-- Google Photos import is currently configured for OAuth Testing mode
-- Test users may see an unverified app warning during testing
+- Google Photos import may require Google OAuth production approval before being enabled broadly
+- Test users may see an unverified app warning while the OAuth app is in Testing mode
 - For local or internal testing, add tester accounts as test users in Google Cloud
-- Before broader release, review the OAuth consent screen, complete any required Google verification, and switch the OAuth app to Production
+- Before changing Google Photos availability, review the OAuth consent screen, complete any required Google verification, and switch the OAuth app to Production if needed
 
 ### 5. Configure subscriptions and ads
 
@@ -247,6 +249,7 @@ For an App Store release, keep these aligned with the shipped app:
 
 - Support email: `hi@kuusi.app`
 - Website: `https://kuusi.app`
+- App Store: `https://apps.apple.com/gb/app/kuusi/id6761270044`
 
 ## Author
 
