@@ -97,6 +97,7 @@ struct DebugAccount: Identifiable, Hashable {
 @MainActor
 final class AppState: ObservableObject {
     enum Route {
+        case checkingAuth
         case signedOut
         case locked
         case signedIn
@@ -164,6 +165,7 @@ final class AppState: ObservableObject {
             return
         }
         if shouldObserveAuthState {
+            route = .checkingAuth
             self.observeAuthState()
         }
     }
