@@ -449,11 +449,12 @@ struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let accent = AppTheme.accent(for: colorScheme)
+        let labelOpacity = isEnabled || colorScheme == .light ? 1.0 : 0.56
         let shape = Capsule(style: .continuous)
 
         configuration.label
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.white.opacity(labelOpacity))
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .background {
@@ -491,7 +492,7 @@ struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
                     shape
                         .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.16), lineWidth: 0.6)
                 }
-                .opacity(isEnabled ? 1 : 0.56)
+                .opacity(isEnabled ? 1 : 0.20)
                 .clipShape(shape)
                 .shadow(
                     color: accent.opacity(colorScheme == .dark ? 0.28 : 0.30),
