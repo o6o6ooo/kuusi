@@ -1,12 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "#%@" : {
-
-    },
-    "•  %@" : {
-
-    },
     "alert.create_group.confirm" : {
       "localizations" : {
         "en" : {
@@ -2540,40 +2534,6 @@
         }
       }
     },
-    "photo.created_at.label" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "created at"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "作成日時"
-          }
-        }
-      }
-    },
-    "photo.created_at.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Created at"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "作成日時"
-          }
-        }
-      }
-    },
     "photo.date.label" : {
       "localizations" : {
         "en" : {
@@ -3499,23 +3459,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Photosから写真を取り込み中..."
-          }
-        }
-      }
-    },
-    "upload.year_placeholder" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "year"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年"
           }
         }
       }
