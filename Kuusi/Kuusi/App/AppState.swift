@@ -36,6 +36,17 @@ protocol AccountDeletionServicing {
     func deleteAuthCurrentUser() async throws
 }
 
+protocol SignOutServicing {
+    func signOut() throws
+}
+
+final class SignOutService: SignOutServicing {
+    func signOut() throws {
+        GIDSignIn.sharedInstance.signOut()
+        try Auth.auth().signOut()
+    }
+}
+
 final class AccountDeletionService: AccountDeletionServicing {
     private let userService = UserService()
 
@@ -78,7 +89,6 @@ private enum UITestRouteOverride {
     }
 }
 
-#if DEBUG
 struct DebugAccount: Identifiable, Hashable {
     let id: String
     let email: String
@@ -92,7 +102,6 @@ struct DebugAccount: Identifiable, Hashable {
         return email
     }
 }
-#endif
 
 @MainActor
 final class AppState: ObservableObject {
@@ -118,6 +127,8 @@ final class AppState: ObservableObject {
     private let biometricAuthService: BiometricAuthServicing
     private let notificationService: NotificationServicing
     private let accountDeletionService: AccountDeletionServicing
+    private let currentAuthUserID: () -> String?
+    private let signOutService: SignOutServicing
     private let groupService = GroupService()
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var prefetchedGroupsUID: String?
@@ -126,6 +137,9 @@ final class AppState: ObservableObject {
     private let now: () -> Date
     private let relockInterval: TimeInterval
     private var backgroundEnteredAt: Date?
+#if DEBUG
+    private let debugAccountsLoader: @MainActor () -> [DebugAccount]
+#endif
 
     var isRunningUITests: Bool {
         uiTestRouteOverride != nil
@@ -139,19 +153,27 @@ final class AppState: ObservableObject {
         relockInterval: TimeInterval? = nil,
         notificationService: NotificationServicing,
         authService: AppleAuthServicing? = nil,
-        accountDeletionService: AccountDeletionServicing? = nil
+        accountDeletionService: AccountDeletionServicing? = nil,
+        currentAuthUserID: @escaping () -> String? = { Auth.auth().currentUser?.uid },
+        signOutService: SignOutServicing? = nil,
+        debugAccountsLoader: (@MainActor () -> [DebugAccount])? = nil
     ) {
         self.authService = authService ?? AppleAuthService()
         self.biometricAuthService = biometricAuthService
         self.notificationService = notificationService
         self.accountDeletionService = accountDeletionService ?? AccountDeletionService()
+        self.currentAuthUserID = currentAuthUserID
+        self.signOutService = signOutService ?? SignOutService()
         self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
         self.now = now
         self.relockInterval = relockInterval ?? 5 * 60
 #if DEBUG
-        let loadedAccounts = AppState.loadDebugAccounts()
+        self.debugAccountsLoader = debugAccountsLoader ?? AppState.loadDebugAccounts
+        let loadedAccounts = self.debugAccountsLoader()
         debugAccounts = loadedAccounts
         selectedDebugAccountID = loadedAccounts.first?.id
+#else
+        _ = debugAccountsLoader
 #endif
         if let uiTestRouteOverride {
             route = switch uiTestRouteOverride {
@@ -286,10 +308,9 @@ final class AppState: ObservableObject {
 
     func signOut() async {
         do {
-            let signedOutUID = currentUser?.uid ?? Auth.auth().currentUser?.uid
+            let signedOutUID = currentUser?.uid ?? currentAuthUserID()
             await notificationService.handleSignedOutUser(signedOutUID)
-            GIDSignIn.sharedInstance.signOut()
-            try Auth.auth().signOut()
+            try signOutService.signOut()
             currentUser = nil
             route = .signedOut
             toastMessage = nil
@@ -301,7 +322,7 @@ final class AppState: ObservableObject {
     }
 
     func deleteCurrentUserAccount() async {
-        guard let uid = currentUser?.uid ?? Auth.auth().currentUser?.uid else {
+        guard let uid = currentUser?.uid ?? currentAuthUserID() else {
             toastMessage = AppMessage(.pleaseSignInFirst, .error)
             return
         }
@@ -336,7 +357,7 @@ final class AppState: ObservableObject {
 
 #if DEBUG
     func refreshDebugAccounts() {
-        let loadedAccounts = AppState.loadDebugAccounts()
+        let loadedAccounts = debugAccountsLoader()
         debugAccounts = loadedAccounts
         if !loadedAccounts.contains(where: { $0.id == selectedDebugAccountID }) {
             selectedDebugAccountID = loadedAccounts.first?.id
