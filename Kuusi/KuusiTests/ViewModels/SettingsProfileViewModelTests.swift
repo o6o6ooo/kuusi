@@ -155,6 +155,57 @@ struct SettingsProfileViewModelTests {
     }
 
     @Test
+    func connectGoogleAccountUpdatesLinkedStateOnSuccess() async {
+        let googleService = GoogleAccountServiceSpy()
+        googleService.connectResult = GoogleLinkedAccount(email: "connected@example.com", isLinked: true)
+        let viewModel = makeViewModel(googleAccountService: googleService)
+
+        await viewModel.connectGoogleAccount()
+
+        #expect(googleService.connectCallCount == 1)
+        #expect(viewModel.googleLinkedEmail == "connected@example.com")
+        #expect(viewModel.isGoogleLinked == true)
+        #expect(viewModel.isGoogleAccountActionInFlight == false)
+        #expect(viewModel.toastMessage?.id == .googleAccountConnected)
+        if case .success = viewModel.toastMessage?.tone {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected success inline message")
+        }
+    }
+
+    @Test
+    func connectGoogleAccountMapsGoogleAccountErrors() async {
+        let cases: [(GoogleAccountError, AppMessage.ID)] = [
+            (.missingFirebaseUser, .pleaseSignInFirst),
+            (.missingClientID, .googleSignInNotConfigured),
+            (.missingGoogleIDToken, .googleSignInReturnedInvalidToken),
+            (.missingGoogleEmail, .googleSignInReturnedIncompleteAccount),
+            (.noLinkedGoogleAccount, .noLinkedGoogleAccount),
+            (.mismatchedLinkedAccount(expected: "old@example.com", actual: "new@example.com"), .googleAccountMismatch)
+        ]
+
+        for (error, expectedMessageID) in cases {
+            let googleService = GoogleAccountServiceSpy()
+            googleService.connectError = error
+            let viewModel = makeViewModel(googleAccountService: googleService)
+
+            await viewModel.connectGoogleAccount()
+
+            #expect(googleService.connectCallCount == 1)
+            #expect(viewModel.googleLinkedEmail.isEmpty)
+            #expect(viewModel.isGoogleLinked == false)
+            #expect(viewModel.isGoogleAccountActionInFlight == false)
+            #expect(viewModel.toastMessage?.id == expectedMessageID)
+            if case .error = viewModel.toastMessage?.tone {
+                #expect(Bool(true))
+            } else {
+                Issue.record("Expected error inline message")
+            }
+        }
+    }
+
+    @Test
     func disconnectGoogleAccountClearsLinkedStateOnSuccess() async {
         let googleService = GoogleAccountServiceSpy()
         let viewModel = makeViewModel(googleAccountService: googleService)
@@ -169,15 +220,93 @@ struct SettingsProfileViewModelTests {
         #expect(viewModel.toastMessage?.id == .googleAccountDisconnected)
     }
 
+    @Test
+    func disconnectGoogleAccountMapsGoogleAccountError() async {
+        let googleService = GoogleAccountServiceSpy()
+        googleService.disconnectError = GoogleAccountError.noLinkedGoogleAccount
+        let viewModel = makeViewModel(googleAccountService: googleService)
+        viewModel.googleLinkedEmail = "linked@example.com"
+        viewModel.isGoogleLinked = true
+
+        await viewModel.disconnectGoogleAccount()
+
+        #expect(googleService.disconnectCallCount == 1)
+        #expect(viewModel.googleLinkedEmail == "linked@example.com")
+        #expect(viewModel.isGoogleLinked == true)
+        #expect(viewModel.isGoogleAccountActionInFlight == false)
+        #expect(viewModel.toastMessage?.id == .noLinkedGoogleAccount)
+        if case .error = viewModel.toastMessage?.tone {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected error inline message")
+        }
+    }
+
+    @Test
+    func disconnectGoogleAccountShowsGenericErrorWhenDisconnectFails() async {
+        let googleService = GoogleAccountServiceSpy()
+        googleService.disconnectError = NSError(domain: "Tests", code: 3)
+        let viewModel = makeViewModel(googleAccountService: googleService)
+        viewModel.googleLinkedEmail = "linked@example.com"
+        viewModel.isGoogleLinked = true
+
+        await viewModel.disconnectGoogleAccount()
+
+        #expect(googleService.disconnectCallCount == 1)
+        #expect(viewModel.googleLinkedEmail == "linked@example.com")
+        #expect(viewModel.isGoogleLinked == true)
+        #expect(viewModel.isGoogleAccountActionInFlight == false)
+        #expect(viewModel.toastMessage?.id == .failedToDisconnectGoogleAccount)
+        if case .error = viewModel.toastMessage?.tone {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Expected error inline message")
+        }
+    }
+
+    @Test
+    func saveProfileDoesNothingWhenSignedOut() async {
+        let userService = UserServiceSpy()
+        let viewModel = makeViewModel(
+            userService: userService,
+            currentUserIDProvider: { nil }
+        )
+        viewModel.name = "Sakura"
+        viewModel.icon = "🌲"
+        viewModel.bgColour = "#123456"
+
+        await viewModel.saveProfile()
+
+        #expect(userService.updateCalls.isEmpty)
+        #expect(userService.cacheUserProfileCalls.isEmpty)
+        #expect(viewModel.toastMessage == nil)
+    }
+
+    @Test
+    func addUploadedUsageDoesNothingWhenSignedOut() {
+        let userService = UserServiceSpy()
+        let viewModel = makeViewModel(
+            userService: userService,
+            currentUserIDProvider: { nil }
+        )
+        viewModel.usageMB = 10
+
+        viewModel.addUploadedUsage(2.5)
+
+        #expect(viewModel.usageMB == 10)
+        #expect(userService.cacheUserProfileCalls.isEmpty)
+    }
+
     private func makeViewModel(
         userService: SettingsProfileUserServicing = UserServiceSpy(),
         googleAccountService: SettingsProfileGoogleAccountServicing = GoogleAccountServiceSpy(),
+        currentUserIDProvider: @escaping @MainActor () -> String? = { "user-1" },
         topViewControllerProvider: @escaping @MainActor () -> UIViewController? = { UIViewController() }
     ) -> SettingsProfileViewModel {
         SettingsProfileViewModel(
             userService: userService,
             googleAccountService: googleAccountService,
-            currentUserIDProvider: { "user-1" },
+            currentUserIDProvider: currentUserIDProvider,
             linkedAccountProvider: { googleAccountService.currentLinkedAccount(for: nil) },
             topViewControllerProvider: topViewControllerProvider
         )
