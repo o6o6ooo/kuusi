@@ -19,17 +19,18 @@ final class KuusiUITests: XCTestCase {
     }
 
     @MainActor
-    func testSignedInLaunchShowsMainTabs() throws {
+    func testSignedInLaunchShowsFeed() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    func testLockedLaunchCanUnlockIntoMainTabs() throws {
+    func testLockedLaunchCanUnlockIntoFeed() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UI_TEST_ROUTE_LOCKED"]
         app.launch()
@@ -44,11 +45,12 @@ final class KuusiUITests: XCTestCase {
         unlockButton.tap()
 
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    func testSignedInLaunchAllowsMainTabNavigation() throws {
+    func testSignedInLaunchOpensSettingsFromFeed() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
         app.launch()
