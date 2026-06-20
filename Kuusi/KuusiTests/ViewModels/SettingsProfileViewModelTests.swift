@@ -192,11 +192,6 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
         let bgColour: String
     }
 
-    struct CacheAuthorNameCall {
-        let name: String
-        let uid: String
-    }
-
     struct CacheUserProfileCall {
         let uid: String
         let name: String
@@ -209,7 +204,6 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
     var fetchError: Error?
     var updateError: Error?
     var updateCalls: [UpdateCall] = []
-    var cacheAuthorNameCalls: [CacheAuthorNameCall] = []
     var cacheUserProfileCalls: [CacheUserProfileCall] = []
 
     func fetchCachedUser(uid: String) async throws -> AppUser? {
@@ -224,10 +218,6 @@ private final class UserServiceSpy: SettingsProfileUserServicing {
             throw updateError
         }
         updateCalls.append(.init(uid: uid, name: name, icon: icon, bgColour: bgColour))
-    }
-
-    func cacheAuthorName(_ name: String, for uid: String) {
-        cacheAuthorNameCalls.append(.init(name: name, uid: uid))
     }
 
     func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double) {

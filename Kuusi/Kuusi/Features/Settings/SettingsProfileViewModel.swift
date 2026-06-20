@@ -25,7 +25,6 @@ private extension GoogleAccountError {
 protocol SettingsProfileUserServicing {
     func fetchCachedUser(uid: String) async throws -> AppUser?
     func updateProfile(uid: String, name: String, icon: String, bgColour: String) async throws
-    func cacheAuthorName(_ name: String, for uid: String)
     func cacheUserProfile(uid: String, name: String, icon: String, bgColour: String, usageMB: Double)
 }
 
@@ -175,7 +174,6 @@ final class SettingsProfileViewModel: ObservableObject {
                 icon: cleanIcon,
                 bgColour: bgColour
             )
-            userService.cacheAuthorName(cleanName, for: uid)
             userService.cacheUserProfile(
                 uid: uid,
                 name: cleanName,

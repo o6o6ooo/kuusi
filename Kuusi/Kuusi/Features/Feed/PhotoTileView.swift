@@ -3,41 +3,65 @@ import Foundation
 import SwiftUI
 
 @MainActor
-private final class PhotoAuthorNameViewModel: ObservableObject {
-    @Published private(set) var name: String?
+private final class PhotoAuthorIconViewModel: ObservableObject {
+    @Published private(set) var user: AppUser?
     private let userService = UserService()
 
-    func loadName(for uid: String?) async {
+    func loadProfile(for uid: String?) async {
         guard let uid, !uid.isEmpty else {
-            name = nil
+            user = nil
             return
         }
 
-        name = userService.cachedAuthorName(uid: uid)
+        user = userService.cachedAuthorProfile(uid: uid)
 
-        if name == nil {
-            name = await userService.fetchCachedAuthorName(uid: uid)
+        if user == nil {
+            user = await userService.fetchCachedAuthorProfile(uid: uid)
             return
         }
 
-        guard userService.shouldRefreshCachedAuthorName(uid: uid) else { return }
-        let refreshedName = await userService.refreshAuthorName(uid: uid)
-        if let refreshedName, refreshedName != name {
-            name = refreshedName
+        guard userService.shouldRefreshCachedAuthorProfile(uid: uid) else { return }
+        let refreshedUser = await userService.refreshAuthorProfile(uid: uid)
+        if let refreshedUser, shouldApplyProfile(refreshedUser) {
+            user = refreshedUser
         }
+    }
+
+    private func shouldApplyProfile(_ refreshedUser: AppUser) -> Bool {
+        guard let user else { return true }
+        return refreshedUser.icon != user.icon
+            || refreshedUser.bgColour != user.bgColour
+            || refreshedUser.name != user.name
     }
 }
 
-private struct PhotoAuthorNameView: View {
+private struct PhotoAuthorIconView: View {
     let uid: String?
 
-    @StateObject private var viewModel = PhotoAuthorNameViewModel()
+    @StateObject private var viewModel = PhotoAuthorIconViewModel()
 
     var body: some View {
-        Text(viewModel.name ?? " ")
-            .opacity(viewModel.name == nil ? 0 : 1)
+        Group {
+            if let user = viewModel.user {
+                Text(user.icon)
+                    .font(.system(size: 15))
+                    .frame(width: 28, height: 28)
+                    .background(Color(hex: user.bgColour))
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(Color.white.opacity(0.82), lineWidth: 1.5)
+                    }
+                    .accessibilityLabel(String(format: String(localized: "photo.posted_by_accessibility"), user.name))
+            } else {
+                Circle()
+                    .fill(Color.white.opacity(0.16))
+                    .frame(width: 28, height: 28)
+                    .accessibilityHidden(true)
+            }
+        }
         .task(id: uid) {
-            await viewModel.loadName(for: uid)
+            await viewModel.loadProfile(for: uid)
         }
     }
 }
@@ -388,13 +412,11 @@ struct PhotoTileView: View {
                 }
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(photo.date.map { Self.dateFormatter.string(from: $0) } ?? String(localized: "photo.shared_memory"))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(dateOverlayColor)
+            HStack(alignment: .center, spacing: 8) {
+                PhotoAuthorIconView(uid: photo.postedBy)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
 
-                PhotoAuthorNameView(uid: photo.postedBy)
+                Text(photo.date.map { Self.dateFormatter.string(from: $0) } ?? String(localized: "photo.shared_memory"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(dateOverlayColor)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)

@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct AppUser: Identifiable {
+struct AppUser: Identifiable, Sendable {
     let id: String
     let name: String
     let icon: String

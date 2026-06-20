@@ -3,11 +3,6 @@ import FirebaseFirestore
 import FirebaseFunctions
 import Foundation
 
-private struct CachedAuthorName: Codable {
-    let name: String
-    let cachedAt: Date
-}
-
 private struct CachedAppUser: Codable {
     let id: String
     let name: String
@@ -45,11 +40,8 @@ final class UserService {
     private let db = Firestore.firestore()
     private let functions = Functions.functions(region: UserService.functionsRegion)
     private static let defaults = UserDefaults.standard
-    private static let authorNameCacheKey = "feed_author_name_cache_v1"
-    private static let authorNameTTL: TimeInterval = 7 * 24 * 60 * 60
-    private static var authorNameMemoryCache: [String: CachedAuthorName] = [:]
-    private static var authorNameInFlightTasks: [String: Task<String?, Never>] = [:]
-    private static var didLoadAuthorNameDefaults = false
+    private static let authorProfileTTL: TimeInterval = 7 * 24 * 60 * 60
+    private static var authorProfileInFlightTasks: [String: Task<AppUser?, Never>] = [:]
     private static let profileCacheKey = "current_user_profile_cache_v1"
     private static var profileMemoryCache: [String: CachedAppUser] = [:]
     private static var didLoadProfileDefaults = false
@@ -108,54 +100,43 @@ final class UserService {
         return Self.profileMemoryCache[uid]?.toAppUser()
     }
 
-    func cachedAuthorName(uid: String) -> String? {
-        loadAuthorNameDefaultsIfNeeded()
-        return Self.authorNameMemoryCache[uid]?.name
+    func cachedAuthorProfile(uid: String) -> AppUser? {
+        cachedUser(uid: uid)
     }
 
-    func shouldRefreshCachedAuthorName(uid: String) -> Bool {
-        loadAuthorNameDefaultsIfNeeded()
-        guard let cached = Self.authorNameMemoryCache[uid] else {
+    func shouldRefreshCachedAuthorProfile(uid: String) -> Bool {
+        loadProfileDefaultsIfNeeded()
+        guard let cached = Self.profileMemoryCache[uid] else {
             return true
         }
-        return Date().timeIntervalSince(cached.cachedAt) > Self.authorNameTTL
+        return Date().timeIntervalSince(cached.cachedAt) > Self.authorProfileTTL
     }
 
-    func fetchCachedAuthorName(uid: String) async -> String? {
-        if let cached = cachedAuthorName(uid: uid) {
+    func fetchCachedAuthorProfile(uid: String) async -> AppUser? {
+        if let cached = cachedAuthorProfile(uid: uid) {
             return cached
         }
-        return await refreshAuthorName(uid: uid)
+        return await refreshAuthorProfile(uid: uid)
     }
 
-    func refreshAuthorName(uid: String) async -> String? {
-        loadAuthorNameDefaultsIfNeeded()
-        if let task = Self.authorNameInFlightTasks[uid] {
+    func refreshAuthorProfile(uid: String) async -> AppUser? {
+        loadProfileDefaultsIfNeeded()
+        if let task = Self.authorProfileInFlightTasks[uid] {
             return await task.value
         }
 
-        let task = Task<String?, Never> {
-            defer { Self.authorNameInFlightTasks[uid] = nil }
+        let task = Task<AppUser?, Never> {
+            defer { Self.authorProfileInFlightTasks[uid] = nil }
 
             do {
-                guard let user = try await self.fetchUser(uid: uid) else {
-                    return nil
-                }
-                self.cacheAuthorName(user.name, for: uid)
-                return user.name
+                return try await self.fetchUser(uid: uid)
             } catch {
                 return nil
             }
         }
 
-        Self.authorNameInFlightTasks[uid] = task
+        Self.authorProfileInFlightTasks[uid] = task
         return await task.value
-    }
-
-    func cacheAuthorName(_ name: String, for uid: String) {
-        loadAuthorNameDefaultsIfNeeded()
-        Self.authorNameMemoryCache[uid] = CachedAuthorName(name: name, cachedAt: Date())
-        persistAuthorNameCache()
     }
 
     func cacheUser(_ user: AppUser) {
@@ -256,27 +237,6 @@ final class UserService {
                 continuation.resume(returning: snapshot)
             }
         }
-    }
-
-    private func loadAuthorNameDefaultsIfNeeded() {
-        guard !Self.didLoadAuthorNameDefaults else { return }
-        Self.didLoadAuthorNameDefaults = true
-
-        guard
-            let data = Self.defaults.data(forKey: Self.authorNameCacheKey),
-            let cached = try? JSONDecoder().decode([String: CachedAuthorName].self, from: data)
-        else {
-            return
-        }
-
-        Self.authorNameMemoryCache = cached
-    }
-
-    private func persistAuthorNameCache() {
-        guard let data = try? JSONEncoder().encode(Self.authorNameMemoryCache) else {
-            return
-        }
-        Self.defaults.set(data, forKey: Self.authorNameCacheKey)
     }
 
     private func loadProfileDefaultsIfNeeded() {

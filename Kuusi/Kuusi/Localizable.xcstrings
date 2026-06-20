@@ -2668,6 +2668,22 @@
         }
       }
     },
+    "photo.posted_by_accessibility" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posted by %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@の投稿"
+          }
+        }
+      }
+    },
     "photo.shared_memory" : {
       "localizations" : {
         "en" : {
