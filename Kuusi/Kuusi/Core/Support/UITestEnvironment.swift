@@ -20,7 +20,6 @@ enum UITestEnvironment {
     }
 
     static var currentUserID: String? {
-        guard !forcesEmptyGroups else { return nil }
         guard launchArguments.contains("UI_TEST_ROUTE_LOCKED")
             || launchArguments.contains("UI_TEST_ROUTE_SIGNED_IN")
         else {

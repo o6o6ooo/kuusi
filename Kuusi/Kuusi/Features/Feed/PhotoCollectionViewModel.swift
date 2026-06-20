@@ -95,7 +95,6 @@ final class PhotoCollectionViewModel: ObservableObject {
     }
 
     convenience init() {
-        let launchArguments = ProcessInfo.processInfo.arguments
 #if DEBUG
         if let feedService = UITestEnvironment.makePhotoCollectionFeedService() {
             self.init(
@@ -108,7 +107,6 @@ final class PhotoCollectionViewModel: ObservableObject {
         self.init(
             feedService: FeedService(),
             currentUserIDProvider: {
-                guard !launchArguments.contains("UI_TEST_FORCE_EMPTY_GROUPS") else { return nil }
                 return Auth.auth().currentUser?.uid
             }
         )

@@ -114,7 +114,6 @@ final class SettingsGroupsViewModel: ObservableObject {
     }
 
     convenience init() {
-        let launchArguments = ProcessInfo.processInfo.arguments
         let groupService = GroupService()
 #if DEBUG
         if let groupService = UITestEnvironment.makeGroupService() {
@@ -133,7 +132,6 @@ final class SettingsGroupsViewModel: ObservableObject {
             groupService: groupService,
             groupStore: GroupStore(groupService: groupService),
             currentUserIDProvider: {
-                guard !launchArguments.contains("UI_TEST_FORCE_EMPTY_GROUPS") else { return nil }
                 return Auth.auth().currentUser?.uid
             }
         )
