@@ -365,21 +365,9 @@ struct PhotoTileView: View {
 
     private var expandedMetaOverlay: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(photo.date.map { Self.dateFormatter.string(from: $0) } ?? String(localized: "photo.shared_memory"))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(dateOverlayColor)
-                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
-
-                PhotoAuthorNameView(uid: photo.postedBy)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(dateOverlayColor)
-                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
-            }
-
             if let caption = photo.caption {
                 Text(caption)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white.opacity(0.92))
                     .lineLimit(2)
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
@@ -398,6 +386,18 @@ struct PhotoTileView: View {
                         }
                     }
                 }
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(photo.date.map { Self.dateFormatter.string(from: $0) } ?? String(localized: "photo.shared_memory"))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(dateOverlayColor)
+                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
+
+                PhotoAuthorNameView(uid: photo.postedBy)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(dateOverlayColor)
+                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
             }
         }
         .padding(14)
