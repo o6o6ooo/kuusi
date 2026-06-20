@@ -48,6 +48,7 @@ final class SubscriptionStore: ObservableObject {
     private static let functionsRegion = "europe-west2"
     private let premiumProductID = "com.swallace.kuusi.premium.annual"
     private let functions = Functions.functions(region: SubscriptionStore.functionsRegion)
+    private let usesUITestFixture: Bool
     nonisolated private static let premiumFallbackPriceLabel = "£24.99 / year"
 
     struct EntitlementSnapshot: Equatable {
@@ -57,6 +58,7 @@ final class SubscriptionStore: ObservableObject {
     }
 
     init() {
+        usesUITestFixture = false
         updatesTask = observeTransactionUpdates()
         subscriptionStatusUpdatesTask = observeSubscriptionStatusUpdates()
 
@@ -65,17 +67,28 @@ final class SubscriptionStore: ObservableObject {
         }
     }
 
+#if DEBUG
+    init(uiTestIsPremiumActive: Bool) {
+        usesUITestFixture = true
+        isPremiumActive = uiTestIsPremiumActive
+        renewalDate = uiTestIsPremiumActive ? Date(timeIntervalSinceNow: 30 * 24 * 60 * 60) : nil
+        willAutoRenew = uiTestIsPremiumActive
+    }
+#endif
+
     deinit {
         updatesTask?.cancel()
         subscriptionStatusUpdatesTask?.cancel()
     }
 
     func prepare() async {
+        guard !usesUITestFixture else { return }
         await loadProducts()
         await refreshEntitlements()
     }
 
     func loadProducts() async {
+        guard !usesUITestFixture else { return }
         guard !isLoadingProducts else { return }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
@@ -133,6 +146,7 @@ final class SubscriptionStore: ObservableObject {
     }
 
     func syncSubscription() async throws {
+        guard !usesUITestFixture else { return }
         let signedTransactionInfo = try await currentPremiumTransactionJWS()
         if isPremiumActive && signedTransactionInfo == nil {
             throw SubscriptionStoreError.subscriptionSyncFailed

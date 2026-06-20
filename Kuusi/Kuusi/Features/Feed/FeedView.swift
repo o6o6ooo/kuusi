@@ -84,7 +84,11 @@ struct FeedView: View {
     }
 
     private var currentUserID: String? {
+#if DEBUG
+        UITestEnvironment.currentUserID ?? Auth.auth().currentUser?.uid
+#else
         Auth.auth().currentUser?.uid
+#endif
     }
 
     private var feedPageSize: Int {

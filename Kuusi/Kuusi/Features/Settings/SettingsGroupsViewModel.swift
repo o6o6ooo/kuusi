@@ -116,6 +116,19 @@ final class SettingsGroupsViewModel: ObservableObject {
     convenience init() {
         let launchArguments = ProcessInfo.processInfo.arguments
         let groupService = GroupService()
+#if DEBUG
+        if let groupService = UITestEnvironment.makeGroupService() {
+            self.init(
+                groupService: groupService,
+                groupStore: GroupStore(
+                    groupService: groupService,
+                    currentUserIDProvider: { UITestEnvironment.currentUserID }
+                ),
+                currentUserIDProvider: { UITestEnvironment.currentUserID }
+            )
+            return
+        }
+#endif
         self.init(
             groupService: groupService,
             groupStore: GroupStore(groupService: groupService),

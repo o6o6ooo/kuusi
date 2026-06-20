@@ -96,6 +96,15 @@ final class PhotoCollectionViewModel: ObservableObject {
 
     convenience init() {
         let launchArguments = ProcessInfo.processInfo.arguments
+#if DEBUG
+        if let feedService = UITestEnvironment.makePhotoCollectionFeedService() {
+            self.init(
+                feedService: feedService,
+                currentUserIDProvider: { UITestEnvironment.currentUserID }
+            )
+            return
+        }
+#endif
         self.init(
             feedService: FeedService(),
             currentUserIDProvider: {

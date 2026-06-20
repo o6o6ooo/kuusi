@@ -543,7 +543,7 @@ struct UploadOverlayView: View {
     @MainActor
     private func upload() async {
         if let messageID = UploadOverlayRules.uploadValidationMessageID(
-            currentUserID: Auth.auth().currentUser?.uid,
+            currentUserID: currentUserID,
             selectedGroupID: selectedGroupID,
             effectiveUsageMB: effectiveUsageMB,
             estimatedUploadSizeMB: estimatedUploadSizeMB,
@@ -554,7 +554,7 @@ struct UploadOverlayView: View {
             return
         }
 
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = currentUserID else { return }
         guard let groupID = selectedGroupID else { return }
 
         isUploading = true
@@ -587,6 +587,14 @@ struct UploadOverlayView: View {
         } catch {
             toastMessage = AppMessage(.failedToLoadImage, .error)
         }
+    }
+
+    private var currentUserID: String? {
+#if DEBUG
+        UITestEnvironment.currentUserID ?? Auth.auth().currentUser?.uid
+#else
+        Auth.auth().currentUser?.uid
+#endif
     }
 
     private func scheduleMessageAutoClear(for value: AppMessage?) {

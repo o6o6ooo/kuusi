@@ -72,6 +72,18 @@ final class SettingsProfileViewModel: ObservableObject {
     convenience init() {
         let userService = UserService()
         let googleAccountService = GoogleAccountService()
+#if DEBUG
+        if let userService = UITestEnvironment.makeProfileUserService() {
+            self.init(
+                userService: userService,
+                googleAccountService: googleAccountService,
+                currentUserIDProvider: { UITestEnvironment.currentUserID },
+                linkedAccountProvider: { GoogleLinkedAccount(email: "", isLinked: false) },
+                topViewControllerProvider: { UIApplication.topViewController() }
+            )
+            return
+        }
+#endif
         self.init(
             userService: userService,
             googleAccountService: googleAccountService,

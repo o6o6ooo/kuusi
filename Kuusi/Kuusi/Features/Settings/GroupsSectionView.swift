@@ -230,7 +230,13 @@ struct GroupsSectionView: View {
     }
 
     private func currentUserOwns(_ group: GroupSummary) -> Bool {
-        guard let uid = Auth.auth().currentUser?.uid else { return false }
+        let uid: String?
+#if DEBUG
+        uid = UITestEnvironment.currentUserID ?? Auth.auth().currentUser?.uid
+#else
+        uid = Auth.auth().currentUser?.uid
+#endif
+        guard let uid else { return false }
         return group.ownerUID == uid
     }
 
