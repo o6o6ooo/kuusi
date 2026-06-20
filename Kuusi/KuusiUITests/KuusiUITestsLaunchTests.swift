@@ -1,33 +1,17 @@
-//
-//  KuusiUITestsLaunchTests.swift
-//  KuusiUITests
-//
-//  Created by Sakura Wallace on 06/03/2026.
-//
-
 import XCTest
 
 final class KuusiUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
-    }
-
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
     @MainActor
-    func testLaunch() throws {
+    func testLaunchShowsSignedOutRoute() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_OUT"]
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-out"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["login-screen"].waitForExistence(timeout: 5))
     }
 }
