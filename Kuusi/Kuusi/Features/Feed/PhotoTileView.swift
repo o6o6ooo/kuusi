@@ -44,8 +44,8 @@ private struct PhotoAuthorIconView: View {
         Group {
             if let user = viewModel.user {
                 Text(user.icon)
-                    .font(.system(size: 15))
-                    .frame(width: 28, height: 28)
+                    .font(.system(size: 10))
+                    .frame(width: 24, height: 24)
                     .background(Color(hex: user.bgColour))
                     .clipShape(Circle())
                     .overlay {
@@ -56,7 +56,7 @@ private struct PhotoAuthorIconView: View {
             } else {
                 Circle()
                     .fill(Color.white.opacity(0.16))
-                    .frame(width: 28, height: 28)
+                    .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
             }
         }
