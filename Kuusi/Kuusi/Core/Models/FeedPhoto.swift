@@ -15,7 +15,7 @@ struct FeedPhoto: Identifiable, Sendable {
     let aspectRatio: Double?
     let createdAt: Date?
 
-    init(
+    nonisolated init(
         id: String,
         previewStoragePath: String?,
         thumbnailStoragePath: String?,
@@ -112,7 +112,7 @@ extension FeedPhoto {
 }
 
 extension FeedPhotoMetadataUpdate {
-    static let captionCharacterLimit = 140
+    nonisolated static let captionCharacterLimit = 140
 
     init(date: Date, hashtags: [String], rawCaption: String?) {
         self.date = date
@@ -120,7 +120,7 @@ extension FeedPhotoMetadataUpdate {
         self.caption = Self.normalizedCaption(rawCaption)
     }
 
-    static func normalizedCaption(_ value: String?) -> String? {
+    nonisolated static func normalizedCaption(_ value: String?) -> String? {
         guard let value else { return nil }
 
         let normalizedWhitespace = value
