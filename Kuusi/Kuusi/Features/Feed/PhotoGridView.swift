@@ -138,6 +138,22 @@ private struct MasonryGridLayout: Layout {
     }
 }
 
+enum PhotoGridInlineAdRules {
+    static let firstAdPhotoIndex = 8
+    static let adPhotoInterval = 12
+
+    static func shouldShowInlineAd(
+        afterPhotoAt index: Int,
+        photoID: String,
+        showsInlineAds: Bool,
+        hiddenInlineAdPhotoIDs: Set<String>
+    ) -> Bool {
+        guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
+        guard !hiddenInlineAdPhotoIDs.contains(photoID) else { return false }
+        return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
+    }
+}
+
 struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
     let photos: [FeedPhoto]
     let availableWidth: CGFloat
@@ -153,8 +169,6 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
 
     private let spacing: CGFloat = 8
     private let horizontalPadding: CGFloat = 12
-    private let firstAdPhotoIndex = 8
-    private let adPhotoInterval = 12
     private let loadMorePreloadDistance: CGFloat = 260
     private let scrollCoordinateSpaceName = "photo-grid-scroll"
 
@@ -240,9 +254,12 @@ struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
     }
 
     private func shouldShowInlineAd(afterPhotoAt index: Int) -> Bool {
-        guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
-        guard !hiddenInlineAdPhotoIDs.contains(photos[index].id) else { return false }
-        return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
+        PhotoGridInlineAdRules.shouldShowInlineAd(
+            afterPhotoAt: index,
+            photoID: photos[index].id,
+            showsInlineAds: showsInlineAds,
+            hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs
+        )
     }
 
     private func twoColumnWidth(columnWidth: CGFloat, contentWidth: CGFloat) -> CGFloat {

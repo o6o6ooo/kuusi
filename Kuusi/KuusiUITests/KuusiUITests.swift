@@ -244,7 +244,17 @@ final class KuusiUITests: XCTestCase {
         let app = launchSignedIn(extraArguments: ["UI_TEST_SHOW_INLINE_ADS"])
 
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["feed-photo-tile-ui-test-photo-9"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["feed-inline-ad"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testPremiumSignedInLaunchHidesInlineAdWhenAdsFixtureIsEnabled() throws {
+        let app = launchSignedIn(extraArguments: ["UI_TEST_SHOW_INLINE_ADS", "UI_TEST_PREMIUM"])
+
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["feed-photo-tile-ui-test-photo-9"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["feed-inline-ad"].waitForExistence(timeout: 1))
     }
 
     @MainActor

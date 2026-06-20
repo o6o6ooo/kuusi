@@ -294,6 +294,7 @@ struct PhotoTileView: View {
         .onChange(of: imageSource) { _, _ in
             isPreviewZoomed = false
         }
+        .accessibilityIdentifier("feed-photo-tile-\(photo.id)")
         .contextMenu {
             Button {
                 onEdit()

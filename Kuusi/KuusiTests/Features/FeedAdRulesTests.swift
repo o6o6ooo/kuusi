@@ -67,4 +67,84 @@ struct FeedAdRulesTests {
         #expect(FeedAdRules.shouldGatherConsent(isPremiumActive: true, scenePhase: .active) == false)
         #expect(FeedAdRules.shouldGatherConsent(isPremiumActive: false, scenePhase: .inactive) == false)
     }
+
+    @Test
+    func inlineAdsStartAfterConfiguredPhotoIndexAndRepeatByInterval() {
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 7,
+                photoID: "photo-7",
+                showsInlineAds: true,
+                hiddenInlineAdPhotoIDs: []
+            ) == false
+        )
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 8,
+                photoID: "photo-8",
+                showsInlineAds: true,
+                hiddenInlineAdPhotoIDs: []
+            ) == true
+        )
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 19,
+                photoID: "photo-19",
+                showsInlineAds: true,
+                hiddenInlineAdPhotoIDs: []
+            ) == false
+        )
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 20,
+                photoID: "photo-20",
+                showsInlineAds: true,
+                hiddenInlineAdPhotoIDs: []
+            ) == true
+        )
+    }
+
+    @Test
+    func inlineAdsRespectHiddenFailedAds() {
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 8,
+                photoID: "photo-8",
+                showsInlineAds: true,
+                hiddenInlineAdPhotoIDs: ["photo-8"]
+            ) == false
+        )
+    }
+
+    @Test
+    func inlineAdsFollowFeedAdLoadingEligibility() {
+        let freeWithConsent = FeedAdRules.canLoadFeedAds(isPremiumActive: false, canRequestAds: true)
+        let freeWithoutConsent = FeedAdRules.canLoadFeedAds(isPremiumActive: false, canRequestAds: false)
+        let premiumWithConsent = FeedAdRules.canLoadFeedAds(isPremiumActive: true, canRequestAds: true)
+
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 8,
+                photoID: "photo-8",
+                showsInlineAds: freeWithConsent,
+                hiddenInlineAdPhotoIDs: []
+            ) == true
+        )
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 8,
+                photoID: "photo-8",
+                showsInlineAds: freeWithoutConsent,
+                hiddenInlineAdPhotoIDs: []
+            ) == false
+        )
+        #expect(
+            PhotoGridInlineAdRules.shouldShowInlineAd(
+                afterPhotoAt: 8,
+                photoID: "photo-8",
+                showsInlineAds: premiumWithConsent,
+                hiddenInlineAdPhotoIDs: []
+            ) == false
+        )
+    }
 }
