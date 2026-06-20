@@ -116,6 +116,9 @@ struct FeedNativeAdTileView: View {
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         .accessibilityIdentifier("feed-inline-ad")
         .task(id: canLoadAds) {
+#if DEBUG
+            guard !UITestEnvironment.isRunningUITests else { return }
+#endif
             viewModel.loadIfNeeded(canLoadAds: canLoadAds)
         }
         .onChange(of: viewModel.hasFailedToLoad) { _, hasFailedToLoad in

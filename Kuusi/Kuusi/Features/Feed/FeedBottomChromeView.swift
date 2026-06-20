@@ -18,6 +18,7 @@ struct FeedBottomChromeView: View {
                         Button(group.name) {
                             onSelectGroup(group.id)
                         }
+                        .accessibilityIdentifier("feed-group-menu-\(group.id)")
                     }
                 } label: {
                     Image(systemName: "person.2.fill")
@@ -66,6 +67,7 @@ struct FeedBottomChromeView: View {
                     HStack(spacing: 8) {
                         hashtagChip(
                             title: "All",
+                            accessibilityIdentifier: "feed-hashtag-chip-all",
                             isSelected: selectedHashtag == nil,
                             action: { selectedHashtag = nil }
                         )
@@ -73,6 +75,7 @@ struct FeedBottomChromeView: View {
                         ForEach(availableHashtags, id: \.self) { hashtag in
                             hashtagChip(
                                 title: "#\(hashtag)",
+                                accessibilityIdentifier: "feed-hashtag-chip-\(hashtag)",
                                 isSelected: selectedHashtag == hashtag,
                                 action: { selectedHashtag = hashtag }
                             )
@@ -88,7 +91,12 @@ struct FeedBottomChromeView: View {
         }
     }
 
-    private func hashtagChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func hashtagChip(
+        title: String,
+        accessibilityIdentifier: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
@@ -103,6 +111,7 @@ struct FeedBottomChromeView: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
         .animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
     }
 

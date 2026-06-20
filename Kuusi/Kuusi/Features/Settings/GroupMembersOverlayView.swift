@@ -42,6 +42,7 @@ struct GroupMembersOverlayView: View {
                         .disabled(isRefreshing)
                         .frame(width: 32, height: 32)
                         .accessibilityLabel(String(localized: "groups.members.refresh"))
+                        .accessibilityIdentifier("groups-members-refresh-button")
                     }
 
                     ForEach(members) { member in
@@ -99,6 +100,7 @@ struct GroupMembersOverlayView: View {
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
             .appAlert($appAlert)
+            .accessibilityIdentifier("groups-members-overlay")
         }
     }
 }

@@ -123,6 +123,7 @@ struct ProfileView: View {
                     }
                     .buttonStyle(.appPrimaryCapsule)
                     .controlSize(.small)
+                    .accessibilityIdentifier("profile-google-disconnect-button")
                 } else {
                     Button("profile.google_photos.connect") {
                         Task {
@@ -131,6 +132,7 @@ struct ProfileView: View {
                     }
                     .buttonStyle(.appPrimaryCapsule)
                     .controlSize(.small)
+                    .accessibilityIdentifier("profile-google-connect-button")
                 }
             }
         }

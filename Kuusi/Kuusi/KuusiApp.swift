@@ -22,9 +22,14 @@ struct KuusiApp: App {
 
     init() {
         _appState = StateObject(wrappedValue: AppState())
-        _consentStore = StateObject(wrappedValue: ConsentStore())
         _toastCenter = StateObject(wrappedValue: AppToastCenter())
 #if DEBUG
+        if let consentFixture = UITestEnvironment.consentFixture {
+            _consentStore = StateObject(wrappedValue: ConsentStore(uiTestFixture: consentFixture))
+        } else {
+            _consentStore = StateObject(wrappedValue: ConsentStore())
+        }
+
         if let groupService = UITestEnvironment.makeGroupService() {
             _groupStore = StateObject(wrappedValue: GroupStore(
                 groupService: groupService,
@@ -44,6 +49,7 @@ struct KuusiApp: App {
             MobileAds.shared.start()
         }
 #else
+        _consentStore = StateObject(wrappedValue: ConsentStore())
         _groupStore = StateObject(wrappedValue: GroupStore())
         _subscriptionStore = StateObject(wrappedValue: SubscriptionStore())
         MobileAds.shared.start()

@@ -19,10 +19,29 @@ final class ConsentStore: ObservableObject {
         ConsentInformation.shared.privacyOptionsRequirementStatus == .required
     )
 
+    private let usesUITestFixture: Bool
     private var isGatheringConsent = false
     private var hasGatheredConsentThisSession = false
 
+    init() {
+        usesUITestFixture = false
+    }
+
+#if DEBUG
+    struct UITestFixture {
+        let canRequestAds: Bool
+        let isPrivacyOptionsRequired: Bool
+    }
+
+    init(uiTestFixture: UITestFixture) {
+        usesUITestFixture = true
+        canRequestAds = uiTestFixture.canRequestAds
+        isPrivacyOptionsRequired = uiTestFixture.isPrivacyOptionsRequired
+    }
+#endif
+
     func gatherConsentIfNeeded() async {
+        guard !usesUITestFixture else { return }
         guard ConsentStoreRules.shouldStartGatheringConsent(
             isGatheringConsent: isGatheringConsent,
             hasGatheredConsentThisSession: hasGatheredConsentThisSession
@@ -49,6 +68,7 @@ final class ConsentStore: ObservableObject {
     }
 
     func presentPrivacyOptions() async throws {
+        guard !usesUITestFixture else { return }
         try await presentPrivacyOptionsForm()
         refreshState()
     }

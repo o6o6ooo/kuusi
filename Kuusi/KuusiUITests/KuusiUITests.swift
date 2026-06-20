@@ -5,6 +5,27 @@ final class KuusiUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func launchSignedIn(extraArguments: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"] + extraArguments
+        app.launch()
+        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        return app
+    }
+
+    private func openSettings(in app: XCUIApplication) {
+        let settingsButton = app.buttons["feed-settings-button"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
+    }
+
+    private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<4 where element.exists && !element.isHittable {
+            app.swipeUp()
+        }
+    }
+
     @MainActor
     func testLaunchShowsLoginScreen() throws {
         let app = XCUIApplication()
@@ -18,11 +39,8 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchShowsFeed() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feed-settings-button"].waitForExistence(timeout: 5))
     }
@@ -48,27 +66,18 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchOpensSettingsFromFeed() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
 
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
-        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
+        openSettings(in: app)
         XCTAssertTrue(app.buttons["settings-sign-out-button"].exists)
     }
 
     @MainActor
     func testSignedInLaunchShowsFeedUploadEntryPoint() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.staticTexts["ui-feed-no-groups"].exists
@@ -104,17 +113,10 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchShowsSettingsSections() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        openSettings(in: app)
 
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
-
-        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-settings-profile-section"].exists)
         XCTAssertTrue(app.staticTexts["ui-settings-groups-section"].exists)
         XCTAssertTrue(app.staticTexts["ui-settings-subscription-section"].exists)
@@ -141,15 +143,9 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchShowsGroupCreateMenuActions() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
+        openSettings(in: app)
 
         let createButton = app.buttons["groups-create-button"]
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
@@ -162,15 +158,9 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchCanOpenCreateGroupPrompt() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
+        openSettings(in: app)
 
         let createButton = app.buttons["groups-create-button"]
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
@@ -186,35 +176,131 @@ final class KuusiUITests: XCTestCase {
 
     @MainActor
     func testSignedInLaunchShowsSubscriptionFreeState() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
+        openSettings(in: app)
 
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
-
-        XCTAssertTrue(app.staticTexts["ui-screen-settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["ui-subscription-free"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testSignedInLaunchShowsSubscriptionEntryPoints() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UI_TEST_ROUTE_SIGNED_IN"]
-        app.launch()
+        let app = launchSignedIn()
 
-        XCTAssertTrue(app.staticTexts["ui-test-route-signed-in"].waitForExistence(timeout: 5))
-
-        let settingsButton = app.buttons["feed-settings-button"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
-        settingsButton.tap()
+        openSettings(in: app)
 
         XCTAssertTrue(app.staticTexts["ui-screen-subscription"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["subscription-premium-card-button"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["subscription-restore-purchases-button"].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchCanSwitchFeedGroup() throws {
+        let app = launchSignedIn()
+
+        let groupButton = app.buttons["feed-group-button"]
+        XCTAssertTrue(groupButton.waitForExistence(timeout: 5))
+        groupButton.tap()
+
+        let friendsAction = app.buttons["feed-group-menu-ui-test-group-friends"]
+        if friendsAction.waitForExistence(timeout: 2) {
+            friendsAction.tap()
+        } else {
+            let fallbackFriendsAction = app.buttons["Friends"]
+            XCTAssertTrue(fallbackFriendsAction.waitForExistence(timeout: 5))
+            fallbackFriendsAction.tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["ui-feed-no-photos"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSignedInLaunchCanUseHashtagFilter() throws {
+        let app = launchSignedIn()
+
+        let hashtagButton = app.buttons["feed-hashtag-toggle-button"]
+        XCTAssertTrue(hashtagButton.waitForExistence(timeout: 5))
+        hashtagButton.tap()
+
+        XCTAssertTrue(app.buttons["feed-hashtag-chip-winter"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["feed-hashtag-chip-all"].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchCanToggleFavouritesFilter() throws {
+        let app = launchSignedIn()
+
+        let favouritesButton = app.buttons["feed-favourites-filter-button"]
+        XCTAssertTrue(favouritesButton.waitForExistence(timeout: 5))
+        favouritesButton.tap()
+
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(favouritesButton.exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsInlineAdWhenAdsFixtureIsEnabled() throws {
+        let app = launchSignedIn(extraArguments: ["UI_TEST_SHOW_INLINE_ADS"])
+
+        XCTAssertTrue(app.staticTexts["ui-screen-feed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["feed-inline-ad"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSignedInLaunchCanOpenGroupMembersOverlay() throws {
+        let app = launchSignedIn()
+
+        openSettings(in: app)
+
+        let membersButton = app.buttons["groups-members-button-ui-test-group-family"]
+        XCTAssertTrue(membersButton.waitForExistence(timeout: 5))
+        membersButton.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["groups-members-overlay"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["groups-members-refresh-button"].exists)
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsDeleteAccountReauthentication() throws {
+        let app = launchSignedIn()
+
+        openSettings(in: app)
+
+        let deleteAccountButton = app.buttons["settings-delete-account-button"]
+        XCTAssertTrue(deleteAccountButton.waitForExistence(timeout: 5))
+        scrollToElement(deleteAccountButton, in: app)
+        deleteAccountButton.tap()
+
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        let confirmButton = alert.buttons["app-alert-confirm-button"].firstMatch
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        confirmButton.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["delete-account-reauthentication-sheet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["delete-account-reauthenticate-button"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsGoogleConnectionEntryPoint() throws {
+        let app = launchSignedIn()
+
+        openSettings(in: app)
+
+        XCTAssertTrue(app.buttons["profile-google-connect-button"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSignedInLaunchShowsPrivacyChoicesWhenRequired() throws {
+        let app = launchSignedIn(extraArguments: ["UI_TEST_PRIVACY_CHOICES_REQUIRED"])
+
+        openSettings(in: app)
+
+        let privacyChoicesButton = app.buttons["settings-privacy-choices-button"]
+        XCTAssertTrue(privacyChoicesButton.waitForExistence(timeout: 5))
+        scrollToElement(privacyChoicesButton, in: app)
+        privacyChoicesButton.tap()
+        XCTAssertTrue(privacyChoicesButton.exists)
     }
 }

@@ -33,6 +33,14 @@ enum UITestEnvironment {
         return launchArguments.contains("UI_TEST_PREMIUM")
     }
 
+    static var consentFixture: ConsentStore.UITestFixture? {
+        guard isRunningUITests else { return nil }
+        return ConsentStore.UITestFixture(
+            canRequestAds: launchArguments.contains("UI_TEST_SHOW_INLINE_ADS"),
+            isPrivacyOptionsRequired: launchArguments.contains("UI_TEST_PRIVACY_CHOICES_REQUIRED")
+        )
+    }
+
     static var user: AppUser {
         AppUser(
             id: userID,
@@ -88,35 +96,23 @@ enum UITestEnvironment {
     }
 
     static var photos: [FeedPhoto] {
-        [
-            FeedPhoto(
-                id: "ui-test-photo-1",
+        (0..<12).map { index in
+            let timestamp = 1_750_000_000 - TimeInterval(index * 10_000)
+            return FeedPhoto(
+                id: "ui-test-photo-\(index + 1)",
                 previewStoragePath: nil,
                 thumbnailStoragePath: nil,
                 groupID: "ui-test-group-family",
                 postedBy: userID,
-                date: Date(timeIntervalSince1970: 1_750_000_000),
-                hashtags: ["family", "spring"],
-                caption: "UI test photo",
-                isFavourite: true,
-                sizeMB: 1.5,
-                aspectRatio: 1,
-                createdAt: Date(timeIntervalSince1970: 1_750_000_000)
-            ),
-            FeedPhoto(
-                id: "ui-test-photo-2",
-                previewStoragePath: nil,
-                thumbnailStoragePath: nil,
-                groupID: "ui-test-group-family",
-                postedBy: userID,
-                date: Date(timeIntervalSince1970: 1_740_000_000),
-                hashtags: ["winter"],
-                isFavourite: false,
+                date: Date(timeIntervalSince1970: timestamp),
+                hashtags: index.isMultiple(of: 2) ? ["family", "spring"] : ["winter"],
+                caption: index == 0 ? "UI test photo" : nil,
+                isFavourite: index == 0 || index == 3,
                 sizeMB: 1,
                 aspectRatio: 1,
-                createdAt: Date(timeIntervalSince1970: 1_740_000_000)
+                createdAt: Date(timeIntervalSince1970: timestamp)
             )
-        ]
+        }
     }
 
     static func makeGroupService() -> UITestGroupService? {

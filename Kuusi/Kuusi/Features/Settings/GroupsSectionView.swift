@@ -183,6 +183,7 @@ struct GroupsSectionView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("groups-members-button-\(group.id)")
     }
 
     private func groupMenu(for group: GroupSummary) -> some View {

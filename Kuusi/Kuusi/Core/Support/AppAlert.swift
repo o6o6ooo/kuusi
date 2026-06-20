@@ -151,9 +151,11 @@ private struct AppAlertModifier: ViewModifier {
                 Button(alert.id.cancelButtonTitle, role: .cancel) {
                     dismissCurrentAlert()
                 }
+                .accessibilityIdentifier("app-alert-cancel-button")
                 Button(alert.id.confirmButtonTitle, role: alert.id.confirmButtonRole) {
                     confirm(alert)
                 }
+                .accessibilityIdentifier("app-alert-confirm-button")
             } message: { alert in
                 Text(alert.id.message)
             }
@@ -168,9 +170,11 @@ private struct AppAlertModifier: ViewModifier {
                 Button(alert.id.cancelButtonTitle, role: .cancel) {
                     dismissCurrentAlert()
                 }
+                .accessibilityIdentifier("app-alert-cancel-button")
                 Button(alert.id.confirmButtonTitle) {
                     confirm(alert)
                 }
+                .accessibilityIdentifier("app-alert-confirm-button")
             } message: { alert in
                 Text(alert.id.message)
             }

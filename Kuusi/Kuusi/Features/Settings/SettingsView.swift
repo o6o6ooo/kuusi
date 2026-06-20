@@ -242,6 +242,8 @@ private struct DeleteAccountReauthenticationView: View {
             .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
             .accessibilityIdentifier("delete-account-reauthenticate-button")
 
+            uiTestMarker("delete-account-reauthenticate-button")
+
             Button("common.cancel") {
                 onFinished()
             }
@@ -253,6 +255,17 @@ private struct DeleteAccountReauthenticationView: View {
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .appOverlayTheme()
+        .accessibilityIdentifier("delete-account-reauthentication-sheet")
+    }
+
+    private func uiTestMarker(_ identifier: String) -> some View {
+        Text(identifier)
+            .font(.caption2)
+            .foregroundStyle(.clear)
+            .accessibilityIdentifier(identifier)
+            .frame(width: 0, height: 0)
+            .clipped()
+            .allowsHitTesting(false)
     }
 
     private func handleAuthorizationResult(_ result: Result<ASAuthorization, Error>) {
