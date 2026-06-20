@@ -9,15 +9,51 @@ struct FeedPhoto: Identifiable, Sendable {
     let postedBy: String?
     let date: Date?
     let hashtags: [String]
+    let caption: String?
     var isFavourite: Bool
     let sizeMB: Double?
     let aspectRatio: Double?
     let createdAt: Date?
+
+    init(
+        id: String,
+        previewStoragePath: String?,
+        thumbnailStoragePath: String?,
+        groupID: String?,
+        postedBy: String?,
+        date: Date?,
+        hashtags: [String],
+        caption: String? = nil,
+        isFavourite: Bool,
+        sizeMB: Double?,
+        aspectRatio: Double?,
+        createdAt: Date?
+    ) {
+        self.id = id
+        self.previewStoragePath = previewStoragePath
+        self.thumbnailStoragePath = thumbnailStoragePath
+        self.groupID = groupID
+        self.postedBy = postedBy
+        self.date = date
+        self.hashtags = hashtags
+        self.caption = FeedPhotoMetadataUpdate.normalizedCaption(caption)
+        self.isFavourite = isFavourite
+        self.sizeMB = sizeMB
+        self.aspectRatio = aspectRatio
+        self.createdAt = createdAt
+    }
 }
 
 struct FeedPhotoMetadataUpdate: Sendable {
     let date: Date
     let hashtags: [String]
+    let caption: String?
+
+    init(date: Date, hashtags: [String], caption: String? = nil) {
+        self.date = date
+        self.hashtags = hashtags
+        self.caption = Self.normalizedCaption(caption)
+    }
 }
 
 extension FeedPhoto {
@@ -40,6 +76,7 @@ extension FeedPhoto {
             self.date = nil
         }
         self.hashtags = (data["hashtags"] as? [String]) ?? []
+        self.caption = FeedPhotoMetadataUpdate.normalizedCaption(data["caption"] as? String)
         self.isFavourite = false
         self.sizeMB = data["size_mb"] as? Double
         self.aspectRatio = data["aspect_ratio"] as? Double
@@ -65,6 +102,7 @@ extension FeedPhoto {
             postedBy: postedBy,
             date: update.date,
             hashtags: update.hashtags,
+            caption: update.caption,
             isFavourite: isFavourite,
             sizeMB: sizeMB,
             aspectRatio: aspectRatio,
@@ -74,10 +112,33 @@ extension FeedPhoto {
 }
 
 extension FeedPhotoMetadataUpdate {
+    static let captionCharacterLimit = 140
+
+    init(date: Date, hashtags: [String], rawCaption: String?) {
+        self.date = date
+        self.hashtags = hashtags
+        self.caption = Self.normalizedCaption(rawCaption)
+    }
+
+    static func normalizedCaption(_ value: String?) -> String? {
+        guard let value else { return nil }
+
+        let normalizedWhitespace = value
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let trimmed = normalizedWhitespace.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        return String(trimmed.prefix(captionCharacterLimit))
+    }
+
     func firestorePayload() -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "date": Timestamp(date: date),
             "hashtags": hashtags
         ]
+        payload["caption"] = caption ?? FieldValue.delete()
+        return payload
     }
 }

@@ -43,6 +43,7 @@ Current Firebase usage in the SwiftUI app.
 - `posted_by: string`
 - `date: timestamp` (editable photo date used for feed ordering)
 - `hashtags: string[]`
+- `caption: string` (optional, max 140 characters)
 - `aspect_ratio: number`
 - `size_mb: number`
 - `upload_batch_id: string`

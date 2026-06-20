@@ -11,6 +11,7 @@ struct EditOverlayView: View {
     let photo: FeedPhoto
     let onSave: @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>
 
+    @State private var captionInput: String
     @State private var hashtagInput = ""
     @State private var hashtags: [String]
     @State private var isDatePickerPresented = false
@@ -22,6 +23,7 @@ struct EditOverlayView: View {
     init(photo: FeedPhoto, onSave: @escaping @MainActor (_ update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError>) {
         self.photo = photo
         self.onSave = onSave
+        _captionInput = State(initialValue: photo.caption ?? "")
         _hashtags = State(initialValue: photo.hashtags)
         _dateSelection = State(initialValue: photo.date ?? Date())
     }
@@ -51,6 +53,7 @@ struct EditOverlayView: View {
 
                 VStack(spacing: 12) {
                     dateField
+                    captionField
                     hashtagsField
                 }
 
@@ -137,6 +140,17 @@ struct EditOverlayView: View {
             }
     }
 
+    private var captionField: some View {
+        liftedField {
+            TextField("photo.caption.placeholder", text: $captionInput)
+                .lineLimit(1)
+                .foregroundStyle(primaryText)
+        }
+            .onChange(of: captionInput) { _, newValue in
+                limitCaptionInput(newValue)
+            }
+    }
+
     private var dateField: some View {
         Button {
             isDatePickerPresented = true
@@ -182,7 +196,8 @@ struct EditOverlayView: View {
 
         switch await onSave(FeedPhotoMetadataUpdate(
             date: dateSelection,
-            hashtags: hashtags
+            hashtags: hashtags,
+            rawCaption: captionInput
         )) {
         case .success:
             dismiss()
@@ -199,6 +214,11 @@ struct EditOverlayView: View {
             currentMessage: { toastMessage },
             clear: { toastMessage = nil }
         )
+    }
+
+    private func limitCaptionInput(_ value: String) {
+        guard value.count > FeedPhotoMetadataUpdate.captionCharacterLimit else { return }
+        captionInput = String(value.prefix(FeedPhotoMetadataUpdate.captionCharacterLimit))
     }
 
     private static let dateFormatter: DateFormatter = {

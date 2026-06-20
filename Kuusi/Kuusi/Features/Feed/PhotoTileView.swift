@@ -377,6 +377,14 @@ struct PhotoTileView: View {
                     .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
             }
 
+            if let caption = photo.caption {
+                Text(caption)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .lineLimit(2)
+                    .shadow(color: overlayShadowColor, radius: 8, x: 0, y: 3)
+            }
+
             if !photo.hashtags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {

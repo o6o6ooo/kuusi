@@ -23,6 +23,7 @@ private struct CachedFeedPhoto: Codable {
     let postedBy: String?
     let date: Date?
     let hashtags: [String]
+    let caption: String?
     let isFavourite: Bool
     let sizeMB: Double?
     let aspectRatio: Double?
@@ -36,6 +37,7 @@ private struct CachedFeedPhoto: Codable {
         postedBy = photo.postedBy
         date = photo.date
         hashtags = photo.hashtags
+        caption = photo.caption
         isFavourite = photo.isFavourite
         sizeMB = photo.sizeMB
         aspectRatio = photo.aspectRatio
@@ -51,6 +53,7 @@ private struct CachedFeedPhoto: Codable {
             postedBy: postedBy,
             date: date ?? createdAt,
             hashtags: hashtags,
+            caption: caption,
             isFavourite: isFavourite,
             sizeMB: sizeMB,
             aspectRatio: aspectRatio,

@@ -78,6 +78,7 @@ type GroupInviteData = {
 
 type PhotoData = {
   aspect_ratio?: number;
+  caption?: string;
   created_at?: Timestamp;
   date?: Timestamp;
   group_id?: string;
@@ -506,6 +507,7 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
   const groupId = normalizeGroupId(request.data?.groupId);
   const uploadBatchId = normalizeUploadBatchId(request.data?.uploadBatchId);
   const hashtags = normalizeHashtags(request.data?.hashtags);
+  const caption = normalizeCaption(request.data?.caption);
   const inputPhotos: unknown[] = Array.isArray(request.data?.photos) ? request.data.photos : [];
 
   if (!groupId || !uploadBatchId) {
@@ -585,6 +587,7 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
           group_id: groupId,
           posted_by: uid,
           hashtags,
+          ...(caption ? { caption } : {}),
           aspect_ratio: photo.aspectRatio,
           size_mb: photo.sizeMB,
           upload_batch_id: uploadBatchId,
@@ -612,6 +615,7 @@ export const commitPhotoUploadBatch = onCall({ region: callableFunctionRegion },
         group_id: groupId,
         posted_by: uid,
         hashtags,
+        ...(caption ? { caption } : {}),
         aspect_ratio: photo.aspectRatio,
         size_mb: photo.sizeMB,
         upload_batch_id: uploadBatchId,
@@ -915,6 +919,19 @@ function normalizeHashtags(value: unknown): string[] {
     .filter((item) => item.length > 0 && item.length <= 40);
 
   return Array.from(new Set(hashtags)).slice(0, 30);
+}
+
+function normalizeCaption(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.split(/\s+/u).filter(Boolean).join(" ").trim();
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  return Array.from(normalized).slice(0, 140).join("");
 }
 
 function normalizeUploadPhoto(

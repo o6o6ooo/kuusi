@@ -571,9 +571,9 @@ struct FeedView: View {
 
     private var editOverlayHeight: CGFloat {
         #if DEBUG
-        405
+        480
         #else
-        330
+        405
         #endif
     }
 

@@ -104,6 +104,10 @@ enum UploadOverlayRules {
                 return clean.lowercased()
             }
     }
+
+    static func normalizedCaption(from input: String) -> String? {
+        FeedPhotoMetadataUpdate.normalizedCaption(input)
+    }
 }
 
 struct UploadOverlayView: View {
@@ -116,6 +120,7 @@ struct UploadOverlayView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var selectedGroupID: String?
+    @State private var captionInput = ""
     @State private var hashtagInput = ""
     @State private var hashtags: [String] = []
     @State private var isUploading = false
@@ -192,6 +197,7 @@ struct UploadOverlayView: View {
 
                     VStack(spacing: 12) {
                         groupPicker
+                        captionField
                         hashtagsField
                     }
 
@@ -466,6 +472,29 @@ struct UploadOverlayView: View {
             }
     }
 
+    private var captionField: some View {
+        TextField("photo.caption.placeholder", text: $captionInput)
+            .lineLimit(1)
+            .foregroundStyle(primaryText)
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(surfaceBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(surfaceBorder, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(
+                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                radius: colorScheme == .dark ? 10 : 14,
+                x: 0,
+                y: 4
+            )
+            .onChange(of: captionInput) { _, newValue in
+                limitCaptionInput(newValue)
+            }
+    }
+
     private func syncSelectedGroupIfNeeded() {
         if let selectedGroupID, groupStore.groups.contains(where: { $0.id == selectedGroupID }) {
             return
@@ -540,11 +569,13 @@ struct UploadOverlayView: View {
                 images: selectedImages,
                 userID: uid,
                 groupID: groupID,
-                hashtags: hashtags
+                hashtags: hashtags,
+                caption: UploadOverlayRules.normalizedCaption(from: captionInput)
             )
             onUploadCompleted(uploadedPhotos)
             selectedImages = []
             pickerItems = []
+            captionInput = ""
             hashtagInput = ""
             hashtags = []
             effectiveUsageMB += uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) }
@@ -565,6 +596,11 @@ struct UploadOverlayView: View {
             currentMessage: { toastMessage },
             clear: { toastMessage = nil }
         )
+    }
+
+    private func limitCaptionInput(_ value: String) {
+        guard value.count > FeedPhotoMetadataUpdate.captionCharacterLimit else { return }
+        captionInput = String(value.prefix(FeedPhotoMetadataUpdate.captionCharacterLimit))
     }
 
     @MainActor

@@ -1,6 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "#%@" : {
+
+    },
+    "•  %@" : {
+
+    },
     "alert.create_group.confirm" : {
       "localizations" : {
         "en" : {
@@ -305,22 +311,6 @@
         }
       }
     },
-    "alert.leave_owned_group.message" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You will be removed from this group. Another member will become the group owner."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このグループから退出します。他のメンバーがグループオーナーになります。"
-          }
-        }
-      }
-    },
     "alert.leave_group.title" : {
       "localizations" : {
         "en" : {
@@ -333,6 +323,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "グループを退出しますか？"
+          }
+        }
+      }
+    },
+    "alert.leave_owned_group.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You will be removed from this group. Another member will become the group owner."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このグループから退出します。他のメンバーがグループオーナーになります。"
           }
         }
       }
@@ -1638,22 +1644,6 @@
         }
       }
     },
-    "message.failed_to_verify_premium_subscription" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not verify Premium. Please try again."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premiumサブスクリプションを確認できませんでした。もう一度お試しください。"
-          }
-        }
-      }
-    },
     "message.failed_to_save_profile" : {
       "localizations" : {
         "en" : {
@@ -1746,6 +1736,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "写真の更新に失敗しました"
+          }
+        }
+      }
+    },
+    "message.failed_to_verify_premium_subscription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not verify Premium. Please try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premiumサブスクリプションを確認できませんでした。もう一度お試しください。"
           }
         }
       }
@@ -2534,6 +2540,22 @@
         }
       }
     },
+    "photo.caption.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "caption"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャプション"
+          }
+        }
+      }
+    },
     "photo.date.label" : {
       "localizations" : {
         "en" : {
@@ -2985,6 +3007,54 @@
     "Sakura Wallace" : {
 
     },
+    "settings.delete_account.deleting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting account..."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントを削除中..."
+          }
+        }
+      }
+    },
+    "settings.delete_account.reauth.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with Apple to confirm account deletion. Your data will only be deleted after this check succeeds."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウント削除を確定するため、Appleでサインインしてください。この確認が成功するまでデータは削除されません。"
+          }
+        }
+      }
+    },
+    "settings.delete_account.reauth.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm your identity"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本人確認"
+          }
+        }
+      }
+    },
     "settings.footer.delete_account" : {
       "localizations" : {
         "en" : {
@@ -3049,22 +3119,6 @@
         }
       }
     },
-    "settings.footer.send_feedback" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send feedback"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フィードバックを送る"
-          }
-        }
-      }
-    },
     "settings.footer.privacy_policy" : {
       "localizations" : {
         "en" : {
@@ -3081,6 +3135,22 @@
         }
       }
     },
+    "settings.footer.send_feedback" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send feedback"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フィードバックを送る"
+          }
+        }
+      }
+    },
     "settings.footer.terms_of_service" : {
       "localizations" : {
         "en" : {
@@ -3093,54 +3163,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "利用規約"
-          }
-        }
-      }
-    },
-    "settings.delete_account.reauth.message" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in with Apple to confirm account deletion. Your data will only be deleted after this check succeeds."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アカウント削除を確定するため、Appleでサインインしてください。この確認が成功するまでデータは削除されません。"
-          }
-        }
-      }
-    },
-    "settings.delete_account.deleting" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deleting account..."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アカウントを削除中..."
-          }
-        }
-      }
-    },
-    "settings.delete_account.reauth.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirm your identity"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本人確認"
           }
         }
       }

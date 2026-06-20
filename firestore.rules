@@ -99,8 +99,12 @@ service cloud.firestore {
         && request.resource.data.group_id == resource.data.group_id
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           "hashtags",
-          "date"
-        ]);
+          "date",
+          "caption"
+        ])
+        && (!request.resource.data.keys().hasAny(["caption"])
+          || (request.resource.data.caption is string
+            && request.resource.data.caption.size() <= 140));
 
       allow delete: if false;
     }

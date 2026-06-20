@@ -29,7 +29,8 @@ final class UploadService {
         images: [UIImage],
         userID: String,
         groupID: String,
-        hashtags: [String]
+        hashtags: [String],
+        caption: String?
     ) async throws -> [FeedPhoto] {
         let preparedImages = await prepareImagesForUpload(images)
         try Self.ensurePreparedImagesExist(preparedImages, originalCount: images.count)
@@ -46,6 +47,7 @@ final class UploadService {
                 temporaryPhotos: temporaryPhotos,
                 groupID: groupID,
                 hashtags: hashtags,
+                caption: caption,
                 uploadBatchID: uploadBatchID
             )
         } catch {
@@ -208,14 +210,18 @@ final class UploadService {
         temporaryPhotos: [TemporaryUploadedPhoto],
         groupID: String,
         hashtags: [String],
+        caption: String?,
         uploadBatchID: String
     ) async throws -> [FeedPhoto] {
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "groupId": groupID,
             "hashtags": hashtags,
             "uploadBatchId": uploadBatchID,
             "photos": temporaryPhotos.map { $0.commitPayload() }
         ]
+        if let caption {
+            payload["caption"] = caption
+        }
         let result = try await functions.httpsCallable("commitPhotoUploadBatch").call(payload)
         return try Self.feedPhotos(from: result.data)
     }
@@ -298,6 +304,7 @@ final class UploadService {
 
         let date = (payload["date"] as? String).flatMap(Self.dateFromISOString)
         let createdAt = (payload["created_at"] as? String).flatMap(Self.dateFromISOString)
+        let caption = FeedPhotoMetadataUpdate.normalizedCaption(payload["caption"] as? String)
         return FeedPhoto(
             id: id,
             previewStoragePath: previewPath,
@@ -306,6 +313,7 @@ final class UploadService {
             postedBy: postedBy,
             date: date ?? createdAt,
             hashtags: hashtags,
+            caption: caption,
             isFavourite: false,
             sizeMB: sizeMB,
             aspectRatio: aspectRatio,
