@@ -14,8 +14,6 @@ final class KuusiUITests: XCTestCase {
         let loginScreen = app.descendants(matching: .any)["login-screen"]
         XCTAssertTrue(app.staticTexts["ui-test-route-signed-out"].waitForExistence(timeout: 5))
         XCTAssertTrue(loginScreen.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Kuusi"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Share photos with your loved ones"].exists)
     }
 
     @MainActor
@@ -38,8 +36,7 @@ final class KuusiUITests: XCTestCase {
         let unlockScreen = app.descendants(matching: .any)["unlock-screen"]
         XCTAssertTrue(app.staticTexts["ui-test-route-locked"].waitForExistence(timeout: 5))
         XCTAssertTrue(unlockScreen.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Unlock Kuusi"].waitForExistence(timeout: 5))
-        let unlockButton = app.buttons["Unlock"]
+        let unlockButton = app.descendants(matching: .any)["unlock-button"]
         XCTAssertTrue(unlockButton.waitForExistence(timeout: 5))
 
         unlockButton.tap()

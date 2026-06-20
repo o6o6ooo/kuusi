@@ -4,30 +4,45 @@ struct UnlockView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "faceid")
-                .font(.system(size: 56))
-            Text("auth.unlock.title")
-                .font(.title2.weight(.bold))
-                .accessibilityIdentifier("unlock-title")
-            Text("auth.unlock.subtitle")
-                .foregroundStyle(.secondary)
+        ZStack(alignment: .topLeading) {
+            uiTestMarker("unlock-screen")
 
-            Button("auth.unlock.button") {
-                Task {
-                    await appState.unlockApp()
+            VStack(spacing: 20) {
+                Spacer()
+                Image(systemName: "faceid")
+                    .font(.system(size: 56))
+                Text("auth.unlock.title")
+                    .font(.title2.weight(.bold))
+                    .accessibilityIdentifier("unlock-title")
+                Text("auth.unlock.subtitle")
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    Task {
+                        await appState.unlockApp()
+                    }
+                } label: {
+                    Text("auth.unlock.button")
                 }
+                .buttonStyle(.appPrimaryCapsule)
+                .controlSize(.regular)
+                .accessibilityIdentifier("unlock-button")
+                Spacer()
             }
-            .buttonStyle(.appPrimaryCapsule)
-            .controlSize(.regular)
-            .accessibilityIdentifier("unlock-button")
-            Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
         .appFeedBackground()
-        .accessibilityIdentifier("unlock-screen")
+    }
+
+    private func uiTestMarker(_ identifier: String) -> some View {
+        Text(identifier)
+            .font(.caption2)
+            .foregroundStyle(.clear)
+            .accessibilityIdentifier(identifier)
+            .frame(width: 0, height: 0)
+            .clipped()
+            .allowsHitTesting(false)
     }
 }
