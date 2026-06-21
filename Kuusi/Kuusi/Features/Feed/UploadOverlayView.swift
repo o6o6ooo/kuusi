@@ -113,6 +113,7 @@ enum UploadOverlayRules {
 struct UploadOverlayView: View {
     private static let uploadSizeEstimationTimeout: TimeInterval = 15
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
@@ -193,6 +194,21 @@ struct UploadOverlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.headline.weight(.semibold))
+                                .frame(width: 40, height: 40)
+                                .appFeedGlassCircle()
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("common.close")
+
+                        Spacer()
+                    }
+
                     topContent
 
                     VStack(spacing: 12) {
