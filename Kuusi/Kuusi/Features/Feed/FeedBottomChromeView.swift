@@ -2,7 +2,6 @@ import SwiftUI
 
 struct FeedBottomChromeView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @Namespace private var hashtagSelectionNamespace
 
     let groups: [GroupSummary]
     let availableHashtags: [String]
@@ -105,44 +104,19 @@ struct FeedBottomChromeView: View {
                 .lineLimit(1)
                 .padding(.horizontal, 8)
                 .frame(height: 36)
-                .background(selectionFill(isSelected: isSelected))
-                .overlay {
-                    selectionStroke(isSelected: isSelected)
-                }
+                .glassEffect(selectedChipGlass(isSelected: isSelected), in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier)
         .animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
     }
 
-    @ViewBuilder
-    private func selectionFill(isSelected: Bool) -> some View {
-        if isSelected {
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .matchedGeometryEffect(id: "selectedHashtagChip", in: hashtagSelectionNamespace)
-        }
-    }
+    private func selectedChipGlass(isSelected: Bool) -> Glass {
+        guard isSelected else { return .identity }
 
-    @ViewBuilder
-    private func selectionStroke(isSelected: Bool) -> some View {
-        if isSelected {
-            Capsule()
-                .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22),
-                    lineWidth: 0.8
-                )
-                .matchedGeometryEffect(id: "selectedHashtagChipStroke", in: hashtagSelectionNamespace)
-        }
+        return .regular
+            .tint(AppTheme.accent(for: colorScheme).opacity(colorScheme == .dark ? 0.32 : 0.28))
     }
 
     private var chromePrimaryColor: Color {
