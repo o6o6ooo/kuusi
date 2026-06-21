@@ -247,7 +247,7 @@ struct FeedView: View {
                         }
                     }
                 )
-                    .presentationDetents(uploadOverlayDetents)
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isSettingsPresented, onDismiss: {
