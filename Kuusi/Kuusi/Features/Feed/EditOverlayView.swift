@@ -42,6 +42,12 @@ struct EditOverlayView: View {
             VStack(alignment: .leading, spacing: 14) {
                 header
 
+                HStack {
+                    Spacer()
+                    photoPreview
+                    Spacer()
+                }
+
                 VStack(spacing: 12) {
                     dateField
                     captionField
@@ -126,6 +132,31 @@ struct EditOverlayView: View {
         }
         .buttonStyle(.appPrimaryCapsule)
         .disabled(isSaving)
+    }
+
+    private var photoPreview: some View {
+        CachedRemoteImageView(source: photoImageSource) { image in
+            image
+                .resizable()
+                .scaledToFill()
+        } placeholder: {
+            ProgressView()
+        }
+        .frame(width: 120, height: 120)
+        .background(surfaceBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private var photoImageSource: FeedImageSource? {
+        if let thumbnailStoragePath = photo.thumbnailStoragePath, !thumbnailStoragePath.isEmpty {
+            return .storagePath(thumbnailStoragePath)
+        }
+
+        if let previewStoragePath = photo.previewStoragePath, !previewStoragePath.isEmpty {
+            return .storagePath(previewStoragePath)
+        }
+
+        return nil
     }
 
     private func liftedField<Content: View>(
