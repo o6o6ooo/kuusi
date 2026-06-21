@@ -194,20 +194,7 @@ struct UploadOverlayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.headline.weight(.semibold))
-                                .frame(width: 40, height: 40)
-                                .appFeedGlassCircle()
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("common.close")
-
-                        Spacer()
-                    }
+                    header
 
                     topContent
 
@@ -260,27 +247,10 @@ struct UploadOverlayView: View {
                         }
                     }
 
-                    HStack {
-                        Spacer()
-                        Button {
-                            Task { await upload() }
-                        } label: {
-                            if isUploading {
-                                ProgressView()
-                                    .tint(.white)
-                                    .frame(minWidth: 54)
-                            } else {
-                                Text("upload.button")
-                            }
-                        }
-                        .frame(minWidth: 96)
-                        .buttonStyle(.appPrimaryCapsule)
-                        .controlSize(.regular)
-                        .disabled(!canUpload)
-                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                .padding(.top, 12)
                 .foregroundStyle(primaryText)
             }
             .appOverlayTheme()
@@ -315,6 +285,49 @@ struct UploadOverlayView: View {
                 SafariSheetView(url: session.pickerURL)
             }
         }
+    }
+
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 40, height: 40)
+                        .appFeedGlassCircle()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("common.close")
+
+                Spacer()
+
+                uploadButton
+            }
+
+            Text("upload.button")
+                .font(.title3.weight(.bold))
+        }
+        .padding(.bottom, 4)
+    }
+
+    private var uploadButton: some View {
+        Button {
+            Task { await upload() }
+        } label: {
+            if isUploading {
+                ProgressView()
+                    .tint(.white)
+                    .frame(minWidth: 54)
+            } else {
+                Text("upload.button")
+            }
+        }
+        .frame(minWidth: 96)
+        .buttonStyle(.appPrimaryCapsule)
+        .controlSize(.regular)
+        .disabled(!canUpload)
     }
 
     @ViewBuilder
