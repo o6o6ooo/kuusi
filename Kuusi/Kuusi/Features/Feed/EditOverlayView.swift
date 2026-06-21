@@ -40,16 +40,7 @@ struct EditOverlayView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Spacer()
-                    Button("common.save") {
-                        Task {
-                            await save()
-                        }
-                    }
-                    .buttonStyle(.appPrimaryCapsule)
-                    .disabled(isSaving)
-                }
+                header
 
                 VStack(spacing: 12) {
                     dateField
@@ -83,6 +74,7 @@ struct EditOverlayView: View {
                 Spacer()
             }
             .padding(16)
+            .padding(.top, 12)
             .appOverlayTheme()
             .toolbar(.hidden, for: .navigationBar)
             .onDisappear {
@@ -99,6 +91,41 @@ struct EditOverlayView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+    }
+
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 40, height: 40)
+                        .appFeedGlassCircle()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("common.close")
+
+                Spacer()
+
+                saveButton
+            }
+
+            Text("photo.menu.edit")
+                .font(.title3.weight(.bold))
+        }
+        .padding(.bottom, 4)
+    }
+
+    private var saveButton: some View {
+        Button("common.save") {
+            Task {
+                await save()
+            }
+        }
+        .buttonStyle(.appPrimaryCapsule)
+        .disabled(isSaving)
     }
 
     private func liftedField<Content: View>(

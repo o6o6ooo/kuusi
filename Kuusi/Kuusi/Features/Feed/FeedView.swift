@@ -265,7 +265,7 @@ struct FeedView: View {
                 EditOverlayView(photo: photo) { update in
                     await savePhotoEdits(photo: photo, update: update)
                 }
-                .presentationDetents([.height(editOverlayHeight)])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
             .onChange(of: displayedPhotos.map(\.id)) { _, ids in
@@ -571,14 +571,6 @@ struct FeedView: View {
             currentMessage: { feedMessage },
             clear: { feedMessage = nil }
         )
-    }
-
-    private var editOverlayHeight: CGFloat {
-        #if DEBUG
-        480
-        #else
-        405
-        #endif
     }
 
     private func savePhotoEdits(photo: FeedPhoto, update: FeedPhotoMetadataUpdate) async -> Result<Void, FeedEditError> {
