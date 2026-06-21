@@ -97,11 +97,14 @@ struct FeedTopChromeView: View {
             Circle()
                 .fill(Color(hex: profileBackgroundColour))
 
+            Circle()
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22), lineWidth: 0.8)
+
             Text(profileIcon)
                 .font(.system(size: 26))
         }
         .frame(width: 48, height: 48)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.08), radius: 18, x: 0, y: 8)
+        .shadow(color: chromeShadowColor.opacity(0.55), radius: 8, x: 0, y: 4)
     }
 
     private var chromePrimaryColor: Color {
