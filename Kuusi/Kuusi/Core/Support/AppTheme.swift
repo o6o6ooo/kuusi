@@ -377,66 +377,22 @@ struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let accent = AppTheme.accent(for: colorScheme)
         let labelOpacity = isEnabled || colorScheme == .light ? 1.0 : 0.56
-        let shape = Capsule(style: .continuous)
+        let tintOpacity = isEnabled ? (colorScheme == .dark ? 0.92 : 0.88) : 0.16
 
         configuration.label
             .font(.footnote.weight(.semibold))
             .foregroundStyle(Color.white.opacity(labelOpacity))
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background {
-                ZStack {
-                    Color.clear
-                        .background(.ultraThinMaterial, in: shape)
-
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(colorScheme == .dark ? 0.98 : 0.96),
-                                    accent.opacity(colorScheme == .dark ? 0.92 : 0.94),
-                                    accent.opacity(colorScheme == .dark ? 0.78 : 0.82)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.22 : 0.28),
-                                    Color.white.opacity(colorScheme == .dark ? 0.06 : 0.10),
-                                    Color.black.opacity(colorScheme == .dark ? 0.16 : 0.08)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .blendMode(.softLight)
-
-                    shape
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.16), lineWidth: 0.6)
-                }
-                .opacity(isEnabled ? 1 : 0.20)
-                .clipShape(shape)
-                .shadow(
-                    color: accent.opacity(colorScheme == .dark ? 0.28 : 0.30),
-                    radius: configuration.isPressed ? 6 : 11,
-                    x: 0,
-                    y: configuration.isPressed ? 2 : 5
-                )
-                .shadow(
-                    color: accent.opacity(colorScheme == .dark ? 0.14 : 0.16),
-                    radius: configuration.isPressed ? 2 : 4,
-                    x: 0,
-                    y: configuration.isPressed ? 1 : 2
-                )
-            }
+            .glassEffect(
+                .regular
+                    .tint(accent.opacity(tintOpacity))
+                    .interactive(isEnabled),
+                in: Capsule(style: .continuous)
+            )
+            .contentShape(Capsule(style: .continuous))
+            .opacity(isEnabled ? 1 : 0.42)
             .shadow(color: Color.black.opacity(0.12), radius: 1, x: 0, y: 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
