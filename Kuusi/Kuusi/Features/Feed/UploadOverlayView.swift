@@ -374,21 +374,20 @@ struct UploadOverlayView: View {
                                 selectedImages.remove(at: idx)
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.caption.weight(.bold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(primaryText)
-                                    .frame(width: 26, height: 26)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
+                                    .frame(width: 28, height: 28)
+                                    .appFeedGlassCircle()
                             }
                             .buttonStyle(.plain)
                             .offset(x: -8, y: -8)
                         }
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, 10)
                 .padding(.leading, 8)
             }
-            .frame(height: 132)
+            .frame(height: 138)
         }
     }
 
