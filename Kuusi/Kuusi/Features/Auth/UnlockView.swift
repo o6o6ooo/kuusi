@@ -25,7 +25,6 @@ struct UnlockView: View {
                     Text("auth.unlock.button")
                 }
                 .buttonStyle(.appPrimaryCapsule)
-                .controlSize(.regular)
                 .accessibilityIdentifier("unlock-button")
                 Spacer()
             }

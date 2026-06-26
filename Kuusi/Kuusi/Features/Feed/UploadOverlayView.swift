@@ -326,7 +326,6 @@ struct UploadOverlayView: View {
         }
         .frame(minWidth: 96)
         .buttonStyle(.appPrimaryCapsule)
-        .controlSize(.regular)
         .disabled(!canUpload)
     }
 

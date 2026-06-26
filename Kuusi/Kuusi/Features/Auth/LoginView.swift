@@ -77,7 +77,6 @@ struct LoginView: View {
                             }
                         }
                         .buttonStyle(.appPrimaryCapsule)
-                        .controlSize(.small)
                         .accessibilityIdentifier("debug-sign-in-button")
                     }
                     .padding(.horizontal, 24)
@@ -88,7 +87,6 @@ struct LoginView: View {
                         }
                     }
                     .buttonStyle(.appPrimaryCapsule)
-                    .controlSize(.small)
                     .accessibilityIdentifier("debug-sign-in-button")
                 }
 #endif

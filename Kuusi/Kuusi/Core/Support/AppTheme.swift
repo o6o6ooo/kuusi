@@ -387,6 +387,7 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
                 .padding(.vertical, 2)
                 .foregroundStyle(isEnabled ? Color.white : Color(uiColor: .systemGray4))
         }
+        .controlSize(.regular)
         .buttonStyle(glassStyle)
     }
 }
