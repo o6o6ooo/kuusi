@@ -151,7 +151,7 @@ struct GroupsSectionView: View {
         }
         .padding(16)
         .frame(width: groupCardWidth, height: groupCardHeight, alignment: .topLeading)
-        .appCardSurface(cornerRadius: 22)
+        .appGlassCard()
     }
 
     private func memberStack(for group: GroupSummary) -> some View {

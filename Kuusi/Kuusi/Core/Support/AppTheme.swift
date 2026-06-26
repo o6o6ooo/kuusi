@@ -145,11 +145,9 @@ private struct FeedChromeSecondaryModifier: ViewModifier {
     }
 }
 
-private struct CardSurfaceModifier: ViewModifier {
-    let cornerRadius: CGFloat
-
+private struct GlassCardModifier: ViewModifier {
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
         content
             .glassEffect(.regular, in: shape)
@@ -322,12 +320,8 @@ extension View {
         modifier(FeedChromeSecondaryModifier())
     }
 
-    func appCardSurface(cornerRadius: CGFloat) -> some View {
-        modifier(
-            CardSurfaceModifier(
-                cornerRadius: cornerRadius
-            )
-        )
+    func appGlassCard() -> some View {
+        modifier(GlassCardModifier())
     }
 
     func appTextLinkStyle() -> some View {

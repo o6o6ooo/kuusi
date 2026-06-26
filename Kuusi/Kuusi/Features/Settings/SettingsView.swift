@@ -316,7 +316,7 @@ private struct SettingsLoadingOverlay: View {
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 18)
-            .appCardSurface(cornerRadius: 18)
+            .appGlassCard()
         }
         .transition(.opacity)
         .accessibilityElement(children: .combine)
