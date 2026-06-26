@@ -294,8 +294,7 @@ struct UploadOverlayView: View {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
-                        .frame(width: 40, height: 40)
-                        .appFeedGlassCircle()
+                        .appDismissGlassCircle()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("common.close")
@@ -365,10 +364,8 @@ struct UploadOverlayView: View {
                                 selectedImages.remove(at: idx)
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(primaryText)
-                                    .frame(width: 28, height: 28)
-                                    .appFeedGlassCircle()
+                                    .appFeedGlassCircle(size: 28, font: .caption.weight(.semibold))
                             }
                             .buttonStyle(.plain)
                             .offset(x: -8, y: -8)

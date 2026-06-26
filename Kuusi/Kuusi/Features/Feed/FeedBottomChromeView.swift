@@ -22,8 +22,6 @@ struct FeedBottomChromeView: View {
                 } label: {
                     Image(systemName: "person.2.fill")
                         .foregroundStyle(chromePrimaryColor)
-                        .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                        .frame(width: 48, height: 48)
                         .appFeedGlassCircle()
                 }
                 .buttonStyle(.plain)
@@ -52,8 +50,6 @@ struct FeedBottomChromeView: View {
             } label: {
                 Image(systemName: "number")
                     .foregroundStyle(chromePrimaryColor)
-                    .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                    .frame(width: 48, height: 48)
                     .appFeedGlassCircle()
             }
             .buttonStyle(.plain)

@@ -106,8 +106,7 @@ struct EditOverlayView: View {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
-                        .frame(width: 40, height: 40)
-                        .appFeedGlassCircle()
+                        .appDismissGlassCircle()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("common.close")

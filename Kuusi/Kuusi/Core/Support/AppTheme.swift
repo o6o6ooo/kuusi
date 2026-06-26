@@ -261,12 +261,21 @@ private struct FeedGlassCircleModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
     let isSelected: Bool
+    let size: CGFloat
+    let font: Font
 
     func body(content: Content) -> some View {
         content
-				.font(.system(size: 18, weight: .semibold))
+            .font(font)
+            .frame(width: size, height: size)
             .glassEffect(glass, in: Circle())
             .contentShape(Circle())
+            .shadow(
+                color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
     }
 
     private var glass: Glass {
@@ -277,6 +286,16 @@ private struct FeedGlassCircleModifier: ViewModifier {
         }
 
         return .clear.interactive()
+    }
+}
+
+private struct DismissGlassCircleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 18, weight: .semibold))
+            .frame(width: 40, height: 40)
+            .glassEffect(.clear.interactive(), in: Circle())
+            .contentShape(Circle())
     }
 }
 
@@ -342,8 +361,16 @@ extension View {
             .foregroundStyle(Color.accentColor)
     }
 
-    func appFeedGlassCircle(isSelected: Bool = false) -> some View {
-        modifier(FeedGlassCircleModifier(isSelected: isSelected))
+    func appFeedGlassCircle(
+        isSelected: Bool = false,
+        size: CGFloat = 48,
+        font: Font = .system(size: 18, weight: .semibold)
+    ) -> some View {
+        modifier(FeedGlassCircleModifier(isSelected: isSelected, size: size, font: font))
+    }
+
+    func appDismissGlassCircle() -> some View {
+        modifier(DismissGlassCircleModifier())
     }
 
     func appFeedGlassPill() -> some View {

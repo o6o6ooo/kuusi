@@ -81,8 +81,6 @@ struct FeedTopChromeView: View {
                             .foregroundStyle(foregroundColor)
                     }
                 }
-                .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                .frame(width: 48, height: 48)
                 .appFeedGlassCircle(isSelected: isSelected)
         }
         .buttonStyle(.plain)
