@@ -28,14 +28,20 @@ struct BackgroundColorPickerSheet: View {
                             onSelect(colour)
                             dismiss()
                         } label: {
-                            Circle()
-                                .fill(Color(hex: colour))
+                            Color.clear
+                                .glassEffect(.regular.tint(Color(hex: colour)), in: Circle())
                                 .frame(width: 58, height: 58)
+                                .contentShape(Circle())
                                 .overlay {
                                     if selectedColour == colour {
                                         Circle()
-                                            .stroke(Color.black.opacity(0.18), lineWidth: 2)
-                                            .padding(2)
+                                            .strokeBorder(Color.white.opacity(0.92), lineWidth: 2)
+                                            .padding(3)
+
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundStyle(Color.white)
+                                            .shadow(color: .black.opacity(0.24), radius: 4, x: 0, y: 2)
                                     }
                                 }
                                 .shadow(color: .black.opacity(selectedColour == colour ? 0.12 : 0.05), radius: 6, x: 0, y: 2)
