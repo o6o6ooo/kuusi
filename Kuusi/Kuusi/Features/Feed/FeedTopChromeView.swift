@@ -89,8 +89,8 @@ struct FeedTopChromeView: View {
 
     private var avatarBadge: some View {
         ZStack {
-            Circle()
-                .fill(Color(hex: profileBackgroundColour))
+            Color.clear
+                .glassEffect(.regular.tint(Color(hex: profileBackgroundColour)), in: Circle())
 
             Circle()
                 .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.18 : 0.22), lineWidth: 0.8)

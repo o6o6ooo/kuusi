@@ -171,11 +171,14 @@ struct GroupsSectionView: View {
                     }
                 } else {
                     ForEach(Array(group.members.prefix(3))) { member in
-                        Text(member.icon)
-                            .font(.system(size: 22))
+                        ZStack {
+                            Color.clear
+                                .glassEffect(.regular.tint(Color(hex: member.bgColour)), in: Circle())
+
+                            Text(member.icon)
+                                .font(.system(size: 22))
+                        }
                             .frame(width: 46, height: 46)
-                            .background(Color(hex: member.bgColour))
-                            .clipShape(Circle())
                             .overlay {
                                 Circle()
                                     .stroke(Color.white.opacity(0.9), lineWidth: 2)

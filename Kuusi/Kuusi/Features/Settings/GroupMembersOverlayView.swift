@@ -48,11 +48,14 @@ struct GroupMembersOverlayView: View {
                     ForEach(members) { member in
                         HStack(spacing: 12) {
                             ZStack(alignment: .topTrailing) {
-                                Text(member.icon)
-                                    .font(.system(size: 22))
+                                ZStack {
+                                    Color.clear
+                                        .glassEffect(.regular.tint(Color(hex: member.bgColour)), in: Circle())
+
+                                    Text(member.icon)
+                                        .font(.system(size: 22))
+                                }
                                     .frame(width: 42, height: 42)
-                                    .background(Color(hex: member.bgColour))
-                                    .clipShape(Circle())
 
                                 if member.isOwner {
                                     Image(systemName: "star.fill")

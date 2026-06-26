@@ -36,13 +36,13 @@ struct ProfileView: View {
                     }
                 } label: {
                     ZStack {
-                        Circle()
-                            .fill(Color(hex: viewModel.bgColour))
-                            .frame(width: 112, height: 112)
+                        Color.clear
+                            .glassEffect(.regular.tint(Color(hex: viewModel.bgColour)), in: Circle())
 
                         Text(viewModel.icon)
                             .font(.system(size: 58))
                     }
+                    .frame(width: 112, height: 112)
                     .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
