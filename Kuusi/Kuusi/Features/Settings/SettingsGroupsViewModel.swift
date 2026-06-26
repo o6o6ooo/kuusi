@@ -183,7 +183,7 @@ final class SettingsGroupsViewModel: ObservableObject {
             : String(localized: "alert.leave_group.message")
     }
 
-    let appShareURL = URL(string: "https://apps.apple.com/app/id1234567890")!
+    let appShareURL = URL(string: "https://apps.apple.com/gb/app/kuusi/id6761270044")!
 
     func onDisappear() {
         clearCreateMessageTask?.cancel()
