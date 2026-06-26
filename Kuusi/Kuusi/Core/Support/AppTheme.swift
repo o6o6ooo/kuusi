@@ -370,33 +370,24 @@ extension View {
     }
 }
 
-struct AppPrimaryCapsuleButtonStyle: ButtonStyle {
+struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {
         let accent = AppTheme.accent(for: colorScheme)
-        let labelOpacity = isEnabled || colorScheme == .light ? 1.0 : 0.56
-        let tintOpacity = isEnabled ? (colorScheme == .dark ? 0.92 : 0.88) : 0.16
+        let glassStyle: GlassButtonStyle = isEnabled
+            ? .glass(.regular.tint(accent))
+            : .glass
 
-        configuration.label
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Color.white.opacity(labelOpacity))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .glassEffect(
-                .regular
-                    .tint(accent.opacity(tintOpacity))
-                    .interactive(isEnabled),
-                in: Capsule(style: .continuous)
-            )
-            .contentShape(Capsule(style: .continuous))
-            .opacity(isEnabled ? 1 : 0.42)
-            .shadow(color: Color.black.opacity(0.12), radius: 1, x: 0, y: 1)
+        Button(action: configuration.trigger) {
+            configuration.label
+        }
+        .buttonStyle(glassStyle)
     }
 }
 
-extension ButtonStyle where Self == AppPrimaryCapsuleButtonStyle {
+extension PrimitiveButtonStyle where Self == AppPrimaryCapsuleButtonStyle {
     static var appPrimaryCapsule: AppPrimaryCapsuleButtonStyle { .init() }
 }
 
