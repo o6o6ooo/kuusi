@@ -21,7 +21,6 @@ struct FeedBottomChromeView: View {
                     }
                 } label: {
                     Image(systemName: "person.2.fill")
-                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(chromePrimaryColor)
                         .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                         .frame(width: 48, height: 48)
@@ -52,7 +51,6 @@ struct FeedBottomChromeView: View {
                 }
             } label: {
                 Image(systemName: "number")
-                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(chromePrimaryColor)
                     .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
                     .frame(width: 48, height: 48)

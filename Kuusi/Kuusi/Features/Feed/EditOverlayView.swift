@@ -106,7 +106,6 @@ struct EditOverlayView: View {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.headline.weight(.semibold))
                         .frame(width: 40, height: 40)
                         .appFeedGlassCircle()
                 }

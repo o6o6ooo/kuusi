@@ -71,16 +71,13 @@ struct FeedTopChromeView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(isSelected ? (selectedForegroundColor ?? Color.clear) : Color.clear)
                 .overlay {
                     if isSelected, let selectedForegroundColor {
                         Image(systemName: systemName)
-                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(selectedForegroundColor)
                     } else {
                         Image(systemName: systemName)
-                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(foregroundColor)
                     }
                 }

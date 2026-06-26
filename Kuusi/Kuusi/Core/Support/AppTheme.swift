@@ -264,14 +264,9 @@ private struct FeedGlassCircleModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+				.font(.system(size: 18, weight: .semibold))
             .glassEffect(glass, in: Circle())
             .contentShape(Circle())
-        .shadow(
-            color: .black.opacity(colorScheme == .dark ? 0.16 : 0.06),
-            radius: 8,
-            x: 0,
-            y: 4
-        )
     }
 
     private var glass: Glass {
