@@ -382,6 +382,10 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
 
         Button(action: configuration.trigger) {
             configuration.label
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .foregroundStyle(isEnabled ? Color.white : Color(uiColor: .systemGray4))
         }
         .buttonStyle(glassStyle)
     }
