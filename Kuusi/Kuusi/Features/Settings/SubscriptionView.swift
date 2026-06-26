@@ -32,14 +32,10 @@ private struct SubscriptionCardButtonStyle: ButtonStyle {
 
 struct SubscriptionView: View {
     @EnvironmentObject private var subscriptionStore: SubscriptionStore
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let usageMB: Double
 
-    private var fieldBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.85)
-    }
     private var currentPlan: AppPlan { displaySnapshot.isPremiumActive ? .premium : .free }
     private var effectiveQuotaMB: Double { currentPlan.quotaMB }
     private var premiumRenewalText: String? {
@@ -195,13 +191,13 @@ struct SubscriptionView: View {
             GeometryReader { proxy in
                 let barWidth = max(0, proxy.size.width * usageRatio)
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(fieldBackground)
+                    Color.clear
                         .frame(height: storageBarHeight)
+                        .glassEffect(.clear, in: Capsule())
                     if barWidth > 0 {
-                        Capsule()
-                            .fill(Color.accentColor)
+                        Color.clear
                             .frame(width: max(barWidth, storageBarHeight), height: storageBarHeight)
+                            .glassEffect(.regular.tint(Color.accentColor), in: Capsule())
                     }
                 }
             }
