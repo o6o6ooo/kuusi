@@ -374,18 +374,35 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.colorScheme) private var colorScheme
 
+    let isLoading: Bool
+
+    init(isLoading: Bool = false) {
+        self.isLoading = isLoading
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         let accent = AppTheme.accent(for: colorScheme)
         let glassStyle: GlassButtonStyle = isEnabled
             ? .glass(.regular.tint(accent))
             : .glass
 
-        Button(action: configuration.trigger) {
-            configuration.label
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .foregroundStyle(isEnabled ? Color.white : Color(uiColor: .systemGray4))
+        Button {
+            guard !isLoading else { return }
+            configuration.trigger()
+        } label: {
+            ZStack {
+                configuration.label
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .foregroundStyle(isEnabled ? Color.white : Color(uiColor: .systemGray4))
+                    .opacity(isLoading ? 0 : 1)
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
         }
         .controlSize(.regular)
         .buttonStyle(glassStyle)
@@ -394,6 +411,9 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
 
 extension PrimitiveButtonStyle where Self == AppPrimaryCapsuleButtonStyle {
     static var appPrimaryCapsule: AppPrimaryCapsuleButtonStyle { .init() }
+    static func appPrimaryCapsule(isLoading: Bool) -> AppPrimaryCapsuleButtonStyle {
+        .init(isLoading: isLoading)
+    }
 }
 
 extension Color {

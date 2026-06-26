@@ -316,15 +316,9 @@ struct UploadOverlayView: View {
         Button {
             Task { await upload() }
         } label: {
-            if isUploading {
-                ProgressView()
-                    .tint(.white)
-                    .frame(minWidth: 54)
-            } else {
-                Text("upload.button")
-            }
+            Text("upload.button")
         }
-        .buttonStyle(.appPrimaryCapsule)
+        .buttonStyle(.appPrimaryCapsule(isLoading: isUploading))
         .disabled(!canUpload)
     }
 

@@ -112,16 +112,14 @@ struct ProfileView: View {
 
                 Spacer()
 
-                if viewModel.isGoogleAccountActionInFlight {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if viewModel.isGoogleLinked {
+                if viewModel.isGoogleLinked {
                     Button("profile.google_photos.disconnect") {
                         Task {
                             await viewModel.disconnectGoogleAccount()
                         }
                     }
-                    .buttonStyle(.appPrimaryCapsule)
+                    .buttonStyle(.appPrimaryCapsule(isLoading: viewModel.isGoogleAccountActionInFlight))
+                    .disabled(viewModel.isGoogleAccountActionInFlight)
                     .accessibilityIdentifier("profile-google-disconnect-button")
                 } else {
                     Button("profile.google_photos.connect") {
@@ -129,7 +127,8 @@ struct ProfileView: View {
                             await viewModel.connectGoogleAccount()
                         }
                     }
-                    .buttonStyle(.appPrimaryCapsule)
+                    .buttonStyle(.appPrimaryCapsule(isLoading: viewModel.isGoogleAccountActionInFlight))
+                    .disabled(viewModel.isGoogleAccountActionInFlight)
                     .accessibilityIdentifier("profile-google-connect-button")
                 }
             }

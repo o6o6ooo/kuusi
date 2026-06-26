@@ -130,7 +130,7 @@ struct EditOverlayView: View {
                 await save()
             }
         }
-        .buttonStyle(.appPrimaryCapsule)
+        .buttonStyle(.appPrimaryCapsule(isLoading: isSaving))
         .disabled(isSaving)
     }
 
