@@ -78,7 +78,9 @@ struct GroupsSectionView: View {
                     .accessibilityIdentifier("groups-scan-qr-menu-action")
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .regular))
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("groups-create-button")
@@ -89,7 +91,7 @@ struct GroupsSectionView: View {
                     }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 19, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
                 }
@@ -223,7 +225,7 @@ struct GroupsSectionView: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 18, weight: .semibold))
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
         }
