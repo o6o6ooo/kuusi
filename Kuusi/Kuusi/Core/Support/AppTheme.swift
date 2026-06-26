@@ -146,32 +146,14 @@ private struct FeedChromeSecondaryModifier: ViewModifier {
 }
 
 private struct CardSurfaceModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
     let cornerRadius: CGFloat
-    let shadowRadius: CGFloat?
-    let shadowYOffset: CGFloat
-    let shadowOpacityMultiplier: Double
 
     func body(content: Content) -> some View {
-        let baseShadowRadius = AppTheme.cardSurfaceShadowRadius(for: colorScheme)
-        let appliedShadowRadius = shadowRadius ?? baseShadowRadius
-        let appliedShadowColor = AppTheme.cardSurfaceShadow(for: colorScheme)
-            .opacity(shadowOpacityMultiplier)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
         content
-            .background(AppTheme.cardSurfaceBackground(for: colorScheme))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(AppTheme.cardSurfaceBorder(for: colorScheme), lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(
-                color: appliedShadowColor,
-                radius: appliedShadowRadius,
-                x: 0,
-                y: shadowYOffset
-            )
+            .glassEffect(.regular, in: shape)
+            .contentShape(shape)
     }
 }
 
@@ -340,18 +322,10 @@ extension View {
         modifier(FeedChromeSecondaryModifier())
     }
 
-    func appCardSurface(
-        cornerRadius: CGFloat,
-        shadowRadius: CGFloat? = nil,
-        shadowYOffset: CGFloat = 1,
-        shadowOpacityMultiplier: Double = 0.6
-    ) -> some View {
+    func appCardSurface(cornerRadius: CGFloat) -> some View {
         modifier(
             CardSurfaceModifier(
-                cornerRadius: cornerRadius,
-                shadowRadius: shadowRadius,
-                shadowYOffset: shadowYOffset,
-                shadowOpacityMultiplier: shadowOpacityMultiplier
+                cornerRadius: cornerRadius
             )
         )
     }
