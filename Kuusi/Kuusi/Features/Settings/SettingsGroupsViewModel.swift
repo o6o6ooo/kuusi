@@ -3,7 +3,7 @@ import CoreImage
 import FirebaseAuth
 import Foundation
 
-private extension GroupServiceError {
+extension GroupServiceError {
     var appMessageID: AppMessage.ID {
         switch self {
         case .groupNotFound:

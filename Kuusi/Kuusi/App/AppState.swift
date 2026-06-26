@@ -105,7 +105,7 @@ struct DebugAccount: Identifiable, Hashable {
 
 @MainActor
 final class AppState: ObservableObject {
-    enum Route {
+    enum Route: Equatable {
         case checkingAuth
         case signedOut
         case locked

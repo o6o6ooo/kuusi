@@ -19,6 +19,7 @@ struct KuusiApp: App {
     @StateObject private var groupStore: GroupStore
     @StateObject private var toastCenter: AppToastCenter
     @StateObject private var subscriptionStore: SubscriptionStore
+    @State private var pendingInvitePayload: String?
 
     init() {
         _appState = StateObject(wrappedValue: AppState())
@@ -66,7 +67,7 @@ struct KuusiApp: App {
                 .environmentObject(toastCenter)
                 .environmentObject(subscriptionStore)
                 .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
+                    handleOpenURL(url)
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     appState.handleScenePhaseChange(newPhase)
@@ -74,6 +75,58 @@ struct KuusiApp: App {
                 .onChange(of: appState.currentUser?.uid) { _, uid in
                     groupStore.handleCurrentUserChanged(to: uid)
                 }
+                .onChange(of: appState.route) { _, route in
+                    guard route == .signedIn else { return }
+                    joinPendingInviteIfNeeded()
+                }
+        }
+    }
+
+    private func handleOpenURL(_ url: URL) {
+        if GIDSignIn.sharedInstance.handle(url) {
+            return
+        }
+
+        guard GroupInvitePayloadParser.extractInviteToken(from: url.absoluteString) != nil else { return }
+        pendingInvitePayload = url.absoluteString
+        joinPendingInviteIfNeeded()
+    }
+
+    private func joinPendingInviteIfNeeded() {
+        guard appState.route == .signedIn else { return }
+        guard let payload = pendingInvitePayload else { return }
+        pendingInvitePayload = nil
+
+        Task {
+            await joinGroup(from: payload)
+        }
+    }
+
+    @MainActor
+    private func joinGroup(from payload: String) async {
+        guard let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: payload) else {
+            appState.toastMessage = AppMessage(.invalidInviteQR, .error)
+            return
+        }
+
+        let currentPlan = PlanAccessPolicy.currentPlan(isPremiumActive: subscriptionStore.isPremiumActive)
+        guard groupStore.groups.count < currentPlan.maxGroups else {
+            appState.toastMessage = AppMessage(
+                .groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups),
+                .error
+            )
+            return
+        }
+
+        do {
+            let inviteGroupService = GroupService()
+            let result = try await inviteGroupService.joinGroup(inviteToken: inviteToken)
+            groupStore.appendGroup(result.group)
+            appState.toastMessage = AppMessage(result.didJoin ? .joinedGroup : .alreadyJoinedGroup, .success)
+        } catch let error as GroupServiceError {
+            appState.toastMessage = AppMessage(error.appMessageID, .error)
+        } catch {
+            appState.toastMessage = AppMessage(.failedToJoinGroup, .error)
         }
     }
 }

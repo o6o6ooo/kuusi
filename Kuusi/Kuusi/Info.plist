@@ -20,6 +20,16 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>app.kuusi.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kuusi</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>

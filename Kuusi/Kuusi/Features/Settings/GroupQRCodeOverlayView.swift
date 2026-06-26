@@ -62,7 +62,13 @@ struct GroupQRCodeOverlayView: View {
         filter.setValue(Data(string.utf8), forKey: "inputMessage")
         filter.setValue("M", forKey: "inputCorrectionLevel")
         guard let outputImage = filter.outputImage else { return nil }
-        let transformed = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+
+        let quietZone: CGFloat = 4
+        let expandedExtent = outputImage.extent.insetBy(dx: -quietZone, dy: -quietZone)
+        let background = CIImage(color: CIColor.white).cropped(to: expandedExtent)
+        let imageWithBackground = outputImage.composited(over: background)
+        let transformed = imageWithBackground.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+
         guard let cgImage = context.createCGImage(transformed, from: transformed.extent) else { return nil }
         return UIImage(cgImage: cgImage)
     }
