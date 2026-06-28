@@ -97,11 +97,12 @@ struct LoginView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
         .appFeedBackground()
-#if DEBUG
         .onAppear {
+            AppTelemetry.setScreen(.login)
+#if DEBUG
             appState.refreshDebugAccounts()
-        }
 #endif
+        }
     }
 
     private func uiTestMarker(_ identifier: String) -> some View {

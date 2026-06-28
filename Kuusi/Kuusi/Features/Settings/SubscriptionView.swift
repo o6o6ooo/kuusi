@@ -312,6 +312,13 @@ struct SubscriptionView: View {
 
     @MainActor
     private func purchasePremium() async {
+        AppTelemetry.setScreen(.subscription)
+        AppTelemetry.setOperation(.subscriptionPurchase)
+        defer {
+            AppTelemetry.clearOperation()
+            AppTelemetry.setScreen(.settings)
+        }
+
         do {
             try await subscriptionStore.purchasePremium()
             billingMessage = AppMessage(.premiumUnlocked, .success)
@@ -327,6 +334,13 @@ struct SubscriptionView: View {
 
     @MainActor
     private func restorePurchases() async {
+        AppTelemetry.setScreen(.subscription)
+        AppTelemetry.setOperation(.subscriptionRestore)
+        defer {
+            AppTelemetry.clearOperation()
+            AppTelemetry.setScreen(.settings)
+        }
+
         do {
             try await subscriptionStore.restorePurchases()
             billingMessage = currentPlan == .premium ? AppMessage(.purchasesRestored, .success) : AppMessage(.noActivePurchasesFound, .success)
@@ -339,6 +353,13 @@ struct SubscriptionView: View {
 
     @MainActor
     private func openManageSubscriptions() async {
+        AppTelemetry.setScreen(.subscription)
+        AppTelemetry.setOperation(.subscriptionManage)
+        defer {
+            AppTelemetry.clearOperation()
+            AppTelemetry.setScreen(.settings)
+        }
+
         let initialSnapshot = displaySnapshot
         pendingManageSubscriptionSnapshot = initialSnapshot
         schedulePendingManageSubscriptionClear()

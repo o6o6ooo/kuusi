@@ -269,6 +269,9 @@ struct UploadOverlayView: View {
                 clearMessageTask = nil
                 googleImportTask?.cancel()
                 googleImportTask = nil
+                if isUploading || isImportingGooglePhotos {
+                    AppTelemetry.clearOperation()
+                }
             }
             .appToastMessage(toastMessage) {
                 toastMessage = nil
@@ -574,7 +577,11 @@ struct UploadOverlayView: View {
         guard let groupID = selectedGroupID else { return }
 
         isUploading = true
-        defer { isUploading = false }
+        AppTelemetry.setOperation(.photoUpload)
+        defer {
+            AppTelemetry.clearOperation()
+            isUploading = false
+        }
 
         do {
             if isPremiumActive {
@@ -640,6 +647,7 @@ struct UploadOverlayView: View {
         }
 
         isImportingGooglePhotos = true
+        AppTelemetry.setOperation(.googlePhotosImport)
         toastMessage = nil
 
         do {
@@ -664,18 +672,21 @@ struct UploadOverlayView: View {
                         pickerItems = []
                         googlePickerSession = nil
                         googleImportTask = nil
+                        AppTelemetry.clearOperation()
                         isImportingGooglePhotos = false
                         toastMessage = AppMessage(.photosImportedFromGooglePhotos(images.count), .success)
                     }
                 } catch is CancellationError {
                     await MainActor.run {
                         googleImportTask = nil
+                        AppTelemetry.clearOperation()
                         isImportingGooglePhotos = false
                     }
                 } catch let error as GooglePhotosPickerError {
                     await MainActor.run {
                         googlePickerSession = nil
                         googleImportTask = nil
+                        AppTelemetry.clearOperation()
                         isImportingGooglePhotos = false
                         toastMessage = AppMessage(error.appMessageID, .error)
                     }
@@ -683,18 +694,22 @@ struct UploadOverlayView: View {
                     await MainActor.run {
                         googlePickerSession = nil
                         googleImportTask = nil
+                        AppTelemetry.clearOperation()
                         isImportingGooglePhotos = false
                         toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
                     }
                 }
             }
         } catch let error as GoogleAccountError {
+            AppTelemetry.clearOperation()
             isImportingGooglePhotos = false
             toastMessage = AppMessage(error.appMessageID, .error)
         } catch let error as GooglePhotosPickerError {
+            AppTelemetry.clearOperation()
             isImportingGooglePhotos = false
             toastMessage = AppMessage(error.appMessageID, .error)
         } catch {
+            AppTelemetry.clearOperation()
             isImportingGooglePhotos = false
             toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
         }

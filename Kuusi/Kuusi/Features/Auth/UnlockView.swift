@@ -33,6 +33,9 @@ struct UnlockView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenTheme()
         .appFeedBackground()
+        .onAppear {
+            AppTelemetry.setScreen(.unlock)
+        }
     }
 
     private func uiTestMarker(_ identifier: String) -> some View {

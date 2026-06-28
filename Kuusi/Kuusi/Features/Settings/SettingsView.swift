@@ -195,6 +195,9 @@ struct SettingsView: View {
             .onDisappear {
                 groupsViewModel.onDisappear()
             }
+            .onAppear {
+                AppTelemetry.setScreen(.settings)
+            }
             .appToastMessage(profileViewModel.toastMessage) {
                 profileViewModel.clearToastMessage()
             }

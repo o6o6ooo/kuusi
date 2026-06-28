@@ -188,6 +188,9 @@ struct FeedView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .appFeedBackground()
+            .onAppear {
+                AppTelemetry.setScreen(.feed)
+            }
             .task {
                 await loadGroupsAndPhotosIfNeeded()
                 if profileViewModel.name.isEmpty {

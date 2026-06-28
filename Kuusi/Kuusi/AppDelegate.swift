@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNU
     ) -> Bool {
         AppCheck.setAppCheckProviderFactory(KuusiAppCheckProviderFactory())
         FirebaseApp.configure()
+        AppTelemetry.configureAppVersion()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         return true

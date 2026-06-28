@@ -118,6 +118,9 @@ struct KuusiApp: App {
             return
         }
 
+        AppTelemetry.setOperation(.groupJoin)
+        defer { AppTelemetry.clearOperation() }
+
         do {
             let inviteGroupService = GroupService()
             let result = try await inviteGroupService.joinGroup(inviteToken: inviteToken)

@@ -450,7 +450,11 @@ final class SettingsGroupsViewModel: ObservableObject {
         }
 
         isJoiningGroup = true
-        defer { isJoiningGroup = false }
+        AppTelemetry.setOperation(.groupJoin)
+        defer {
+            AppTelemetry.clearOperation()
+            isJoiningGroup = false
+        }
 
         do {
             let result = try await groupService.joinGroup(inviteToken: inviteToken)
