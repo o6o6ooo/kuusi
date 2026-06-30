@@ -1,493 +1,532 @@
 import SwiftUI
 
-private extension SubscriptionStoreError {
-    var appMessageID: AppMessage.ID? {
-        switch self {
-        case .productUnavailable:
-            return .subscriptionUnavailable
-        case .purchasePending:
-            return .purchasePendingApproval
-        case .purchaseCancelled:
-            return nil
-        case .purchaseUnverified:
-            return .purchaseCouldNotBeVerified
-        case .manageSubscriptionsUnavailable:
-            return .failedToOpenManageSubscriptions
-        case .subscriptionSyncFailed:
-            return .failedToVerifyPremiumSubscription
-        case .unknown:
-            return .purchaseFailed
-        }
-    }
+extension SubscriptionStoreError {
+	fileprivate var appMessageID: AppMessage.ID? {
+		switch self {
+		case .productUnavailable:
+			return .subscriptionUnavailable
+		case .purchasePending:
+			return .purchasePendingApproval
+		case .purchaseCancelled:
+			return nil
+		case .purchaseUnverified:
+			return .purchaseCouldNotBeVerified
+		case .manageSubscriptionsUnavailable:
+			return .failedToOpenManageSubscriptions
+		case .subscriptionSyncFailed:
+			return .failedToVerifyPremiumSubscription
+		case .unknown:
+			return .purchaseFailed
+		}
+	}
 }
 
 private struct SubscriptionCardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.97 : 1)
-            .scaleEffect(configuration.isPressed ? 0.995 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
+	func makeBody(configuration: Configuration) -> some View {
+		configuration.label
+			.opacity(configuration.isPressed ? 0.97 : 1)
+			.scaleEffect(configuration.isPressed ? 0.995 : 1)
+			.animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+	}
 }
 
 struct SubscriptionView: View {
-    @EnvironmentObject private var subscriptionStore: SubscriptionStore
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+	@EnvironmentObject private var subscriptionStore: SubscriptionStore
+	@Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    let usageMB: Double
+	let usageMB: Double
 
-    private var currentPlan: AppPlan { displaySnapshot.isPremiumActive ? .premium : .free }
-    private var effectiveQuotaMB: Double { currentPlan.quotaMB }
-    private var premiumRenewalText: String? {
-        guard let renewalDate = displaySnapshot.renewalDate else { return nil }
-        let label = displaySnapshot.willAutoRenew ? String(localized: "subscription.renews_on") : String(localized: "subscription.expires_on")
-        return "\(label) \(formatDate(renewalDate))"
-    }
-    private var usageRatio: Double {
-        guard effectiveQuotaMB > 0 else { return 0 }
-        return min(max(usageMB / effectiveQuotaMB, 0), 1)
-    }
-    private var usageText: String {
-        "\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
-    }
-    private var isStorageLimitReached: Bool {
-        PlanAccessPolicy.isStorageLimitReached(
-            usageMB: usageMB,
-            isPremiumActive: displaySnapshot.isPremiumActive
-        )
-    }
-    private var storageBarHeight: CGFloat { 10 }
-    private var planCardWidth: CGFloat {
-        planCardBaseWidth + planCardWidthIncrement
-    }
-    private var planCardHeight: CGFloat {
-        planCardBaseHeight + planCardHeightIncrement
-    }
-    private var planCardBaseWidth: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
-    }
-    private var planCardBaseHeight: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
-    }
-    private var planCardWidthIncrement: CGFloat {
-        switch dynamicTypeSize {
-        case .xSmall, .small, .medium, .large:
-            return 0
-        case .xLarge:
-            return 20
-        case .xxLarge:
-            return 36
-        case .xxxLarge:
-            return 52
-        case .accessibility1:
-            return 84
-        case .accessibility2:
-            return 140
-        case .accessibility3:
-            return 200
-        case .accessibility4:
-            return 260
-        case .accessibility5:
-            return 340
-        @unknown default:
-            return 36
-        }
-    }
-    private var planCardHeightIncrement: CGFloat {
-        switch dynamicTypeSize {
-        case .xSmall:
-            return 8
-				case .small:
-						return 16
-        case .medium:
-            return 24
-				case .large:
-						return 32
-        case .xLarge:
-            return 46
-        case .xxLarge:
-            return 64
-        case .xxxLarge:
-            return 80
-        case .accessibility1:
-            return 116
-        case .accessibility2:
-            return 160
-        case .accessibility3:
-            return 212
-        case .accessibility4:
-            return 264
-        case .accessibility5:
-            return 312
-        @unknown default:
-            return 52
-        }
-    }
-    @State private var billingMessage: AppMessage?
-    @State private var clearBillingMessageTask: Task<Void, Never>?
-    @State private var displaySnapshot = SubscriptionStore.makeEntitlementSnapshot(
-        premiumActive: false,
-        renewalDate: nil,
-        autoRenew: false
-    )
-    @State private var pendingManageSubscriptionSnapshot: SubscriptionStore.EntitlementSnapshot?
-    @State private var pendingManageSubscriptionClearTask: Task<Void, Never>?
+	private var currentPlan: AppPlan {
+		displaySnapshot.isPremiumActive ? .premium : .free
+	}
+	private var effectiveQuotaMB: Double { currentPlan.quotaMB }
+	private var premiumRenewalText: String? {
+		guard let renewalDate = displaySnapshot.renewalDate else { return nil }
+		let label =
+			displaySnapshot.willAutoRenew
+			? String(localized: "subscription.renews_on")
+			: String(localized: "subscription.expires_on")
+		return "\(label) \(formatDate(renewalDate))"
+	}
+	private var usageRatio: Double {
+		guard effectiveQuotaMB > 0 else { return 0 }
+		return min(max(usageMB / effectiveQuotaMB, 0), 1)
+	}
+	private var usageText: String {
+		"\(formatStorage(usageMB))/\(formatStorage(effectiveQuotaMB))"
+	}
+	private var isStorageLimitReached: Bool {
+		PlanAccessPolicy.isStorageLimitReached(
+			usageMB: usageMB,
+			isPremiumActive: displaySnapshot.isPremiumActive
+		)
+	}
+	private var storageBarHeight: CGFloat { 10 }
+	private var planCardWidth: CGFloat {
+		planCardBaseWidth + planCardWidthIncrement
+	}
+	private var planCardHeight: CGFloat {
+		planCardBaseHeight + planCardHeightIncrement
+	}
+	private var planCardBaseWidth: CGFloat {
+		UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+	}
+	private var planCardBaseHeight: CGFloat {
+		UIDevice.current.userInterfaceIdiom == .pad ? 220 : 200
+	}
+	private var planCardWidthIncrement: CGFloat {
+		switch dynamicTypeSize {
+		case .xSmall, .small, .medium, .large:
+			return 0
+		case .xLarge:
+			return 20
+		case .xxLarge:
+			return 36
+		case .xxxLarge:
+			return 52
+		case .accessibility1:
+			return 84
+		case .accessibility2:
+			return 140
+		case .accessibility3:
+			return 200
+		case .accessibility4:
+			return 260
+		case .accessibility5:
+			return 340
+		@unknown default:
+			return 36
+		}
+	}
+	private var planCardHeightIncrement: CGFloat {
+		switch dynamicTypeSize {
+		case .xSmall:
+			return 8
+		case .small:
+			return 16
+		case .medium:
+			return 24
+		case .large:
+			return 32
+		case .xLarge:
+			return 46
+		case .xxLarge:
+			return 64
+		case .xxxLarge:
+			return 80
+		case .accessibility1:
+			return 116
+		case .accessibility2:
+			return 160
+		case .accessibility3:
+			return 212
+		case .accessibility4:
+			return 264
+		case .accessibility5:
+			return 312
+		@unknown default:
+			return 52
+		}
+	}
+	@State private var billingMessage: AppMessage?
+	@State private var clearBillingMessageTask: Task<Void, Never>?
+	@State private var displaySnapshot =
+		SubscriptionStore.makeEntitlementSnapshot(
+			premiumActive: false,
+			renewalDate: nil,
+			autoRenew: false
+		)
+	@State private var pendingManageSubscriptionSnapshot:
+		SubscriptionStore.EntitlementSnapshot?
+	@State private var pendingManageSubscriptionClearTask: Task<Void, Never>?
 
-    private var isSubscriptionUpdatePending: Bool {
-        pendingManageSubscriptionSnapshot != nil
-    }
+	private var isSubscriptionUpdatePending: Bool {
+		pendingManageSubscriptionSnapshot != nil
+	}
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            storageCard
-            subscriptionCard
-        }
-        .overlay(alignment: .topLeading) {
-            Group {
-                Text("ui-screen-subscription")
-                    .accessibilityIdentifier("ui-screen-subscription")
-                Text(displaySnapshot.isPremiumActive ? "ui-subscription-premium" : "ui-subscription-free")
-                    .accessibilityIdentifier(displaySnapshot.isPremiumActive ? "ui-subscription-premium" : "ui-subscription-free")
-            }
-            .font(.caption2)
-            .foregroundStyle(.clear)
-            .frame(width: 0, height: 0)
-            .clipped()
-            .allowsHitTesting(false)
-        }
-        .onAppear {
-            syncDisplaySnapshotFromStore()
-        }
-        .onChange(of: subscriptionStore.entitlementSnapshot) { _, newValue in
-            displaySnapshot = newValue
-            handlePotentialSubscriptionStatusChange(with: newValue)
-        }
-        .onChange(of: billingMessage) { _, newValue in
-            scheduleBillingMessageAutoClear(for: newValue)
-        }
-        .onDisappear {
-            clearBillingMessageTask?.cancel()
-            clearBillingMessageTask = nil
-            pendingManageSubscriptionClearTask?.cancel()
-            pendingManageSubscriptionClearTask = nil
-            pendingManageSubscriptionSnapshot = nil
-        }
-        .appToastMessage(billingMessage) {
-            billingMessage = nil
-        }
-    }
+	var body: some View {
+		VStack(alignment: .leading, spacing: 12) {
+			storageCard
+			subscriptionCard
+		}
+		.overlay(alignment: .topLeading) {
+			Group {
+				Text("ui-screen-subscription")
+					.accessibilityIdentifier("ui-screen-subscription")
+				Text(
+					displaySnapshot.isPremiumActive
+						? "ui-subscription-premium" : "ui-subscription-free"
+				)
+				.accessibilityIdentifier(
+					displaySnapshot.isPremiumActive
+						? "ui-subscription-premium" : "ui-subscription-free"
+				)
+			}
+			.font(.caption2)
+			.foregroundStyle(.clear)
+			.frame(width: 0, height: 0)
+			.clipped()
+			.allowsHitTesting(false)
+		}
+		.onAppear {
+			syncDisplaySnapshotFromStore()
+		}
+		.onChange(of: subscriptionStore.entitlementSnapshot) { _, newValue in
+			displaySnapshot = newValue
+			handlePotentialSubscriptionStatusChange(with: newValue)
+		}
+		.onChange(of: billingMessage) { _, newValue in
+			scheduleBillingMessageAutoClear(for: newValue)
+		}
+		.onDisappear {
+			clearBillingMessageTask?.cancel()
+			clearBillingMessageTask = nil
+			pendingManageSubscriptionClearTask?.cancel()
+			pendingManageSubscriptionClearTask = nil
+			pendingManageSubscriptionSnapshot = nil
+		}
+		.appToastMessage(billingMessage) {
+			billingMessage = nil
+		}
+	}
 
-    private var storageCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("subscription.storage.title")
-                .font(.title3.weight(.bold))
+	private var storageCard: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			Text("subscription.storage.title")
+				.font(.title3.weight(.bold))
 
-            HStack {
-                Spacer()
-                Text(usageText)
-                    .font(.caption.weight(.semibold))
-            }
+			HStack {
+				Spacer()
+				Text(usageText)
+					.font(.caption.weight(.semibold))
+			}
 
-            GeometryReader { proxy in
-                let barWidth = max(0, proxy.size.width * usageRatio)
-                ZStack(alignment: .leading) {
-                    Color.clear
-                        .frame(height: storageBarHeight)
-                        .glassEffect(.clear, in: Capsule())
-                    if barWidth > 0 {
-                        Color.clear
-                            .frame(width: max(barWidth, storageBarHeight), height: storageBarHeight)
-                            .glassEffect(.regular.tint(Color.accentColor), in: Capsule())
-                    }
-                }
-            }
-            .frame(height: storageBarHeight)
+			GeometryReader { proxy in
+				let barWidth = max(0, proxy.size.width * usageRatio)
+				ZStack(alignment: .leading) {
+					Color.clear
+						.frame(height: storageBarHeight)
+						.glassEffect(.clear, in: Capsule())
+					if barWidth > 0 {
+						Color.clear
+							.frame(
+								width: max(barWidth, storageBarHeight),
+								height: storageBarHeight
+							)
+							.glassEffect(.regular.tint(Color.accentColor), in: Capsule())
+					}
+				}
+			}
+			.frame(height: storageBarHeight)
 
-            if isStorageLimitReached {
-                Text("subscription.storage.limit_reached")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
+			if isStorageLimitReached {
+				Text("subscription.storage.limit_reached")
+					.font(.footnote.weight(.medium))
+					.foregroundStyle(.secondary)
+			}
+		}
+	}
 
-    private var subscriptionCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("subscription.title")
-                .font(.title3.weight(.bold))
+	private var subscriptionCard: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			Text("subscription.title")
+				.font(.title3.weight(.bold))
 
-            Text("subscription.description")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.secondary)
+			Text("subscription.description")
+				.font(.footnote.weight(.medium))
+				.foregroundStyle(.secondary)
 
-            if isSubscriptionUpdatePending {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("subscription.updating")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
+			if isSubscriptionUpdatePending {
+				HStack(spacing: 8) {
+					ProgressView()
+						.controlSize(.small)
+					Text("subscription.updating")
+						.font(.footnote.weight(.medium))
+						.foregroundStyle(.secondary)
+				}
+			}
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    planCard(
-                        title: AppPlan.free.title,
-                        features: AppPlan.free.featureLines,
-                        footerText: nil,
-                        footerActionTitle: nil,
-                        isSelected: currentPlan == .free,
-                        action: nil
-                    )
+			ScrollView(.horizontal, showsIndicators: false) {
+				HStack(spacing: 12) {
+					planCard(
+						title: AppPlan.free.title,
+						features: AppPlan.free.featureLines,
+						footerText: nil,
+						footerActionTitle: nil,
+						isSelected: currentPlan == .free,
+						action: nil
+					)
 
-                    if currentPlan == .free {
-                        Button {
-                            Task {
-                                await purchasePremium()
-                            }
-                        } label: {
-                            planCard(
-                                title: AppPlan.premium.title,
-                                features: AppPlan.premium.featureLines,
-                                footerText: subscriptionStore.premiumPriceLabel ?? AppPlan.premium.priceLabel,
-                                footerActionTitle: nil,
-                                isSelected: false,
-                                action: nil
-                            )
-                        }
-                        .buttonStyle(SubscriptionCardButtonStyle())
-                        .accessibilityIdentifier("subscription-premium-card-button")
-                    } else {
-                        planCard(
-                            title: AppPlan.premium.title,
-                            features: AppPlan.premium.featureLines,
-                            footerText: premiumRenewalText,
-                            footerActionTitle: displaySnapshot.willAutoRenew ? String(localized: "subscription.cancel") : String(localized: "subscription.continue"),
-                            isSelected: true,
-                            action: {
-                                Task {
-                                    await openManageSubscriptions()
-                                }
-                            }
-                        )
-                    }
-                }
-            }
+					if currentPlan == .free {
+						Button {
+							Task {
+								await purchasePremium()
+							}
+						} label: {
+							planCard(
+								title: AppPlan.premium.title,
+								features: AppPlan.premium.featureLines,
+								footerText: subscriptionStore.premiumPriceLabel
+									?? AppPlan.premium.priceLabel,
+								footerActionTitle: nil,
+								isSelected: false,
+								action: nil
+							)
+						}
+						.buttonStyle(SubscriptionCardButtonStyle())
+						.accessibilityIdentifier("subscription-premium-card-button")
+					} else {
+						planCard(
+							title: AppPlan.premium.title,
+							features: AppPlan.premium.featureLines,
+							footerText: premiumRenewalText,
+							footerActionTitle: displaySnapshot.willAutoRenew
+								? String(localized: "subscription.cancel")
+								: String(localized: "subscription.continue"),
+							isSelected: true,
+							action: {
+								Task {
+									await openManageSubscriptions()
+								}
+							}
+						)
+					}
+				}
+			}
 
-            if currentPlan == .free {
-                HStack(spacing: 6) {
-                    Text("subscription.already_got_premium")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Button("subscription.restore_purchases") {
-                        Task {
-                            await restorePurchases()
-                        }
-                    }
-                        .buttonStyle(.plain)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityIdentifier("subscription-restore-purchases-button")
-                }
-            }
+			if currentPlan == .free {
+				HStack(spacing: 6) {
+					Text("subscription.already_got_premium")
+						.font(.footnote.weight(.semibold))
+						.foregroundStyle(.secondary)
+					Button("subscription.restore_purchases") {
+						Task {
+							await restorePurchases()
+						}
+					}
+					.buttonStyle(.plain)
+					.font(.footnote.weight(.semibold))
+					.foregroundStyle(Color.accentColor)
+					.accessibilityIdentifier("subscription-restore-purchases-button")
+				}
+			}
 
-            Text(.init(String(localized: "subscription.legal_notice")))
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-                .tint(Color.accentColor)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("subscription-legal-notice")
-        }
-    }
+			Text(.init(String(localized: "subscription.legal_notice")))
+				.font(.caption.weight(.medium))
+				.foregroundStyle(.secondary)
+				.tint(Color.accentColor)
+				.fixedSize(horizontal: false, vertical: true)
+				.accessibilityIdentifier("subscription-legal-notice")
+		}
+	}
 
-    private func scheduleBillingMessageAutoClear(for value: AppMessage?) {
-        clearBillingMessageTask?.cancel()
-        clearBillingMessageTask = AppMessageAutoClear.schedule(
-            for: value,
-            currentMessage: { billingMessage },
-            clear: { billingMessage = nil }
-        )
-    }
+	private func scheduleBillingMessageAutoClear(for value: AppMessage?) {
+		clearBillingMessageTask?.cancel()
+		clearBillingMessageTask = AppMessageAutoClear.schedule(
+			for: value,
+			currentMessage: { billingMessage },
+			clear: { billingMessage = nil }
+		)
+	}
 
-    @MainActor
-    private func purchasePremium() async {
-        AppTelemetry.setScreen(.subscription)
-        AppTelemetry.setOperation(.subscriptionPurchase)
-        defer {
-            AppTelemetry.clearOperation()
-            AppTelemetry.setScreen(.settings)
-        }
+	@MainActor
+	private func purchasePremium() async {
+		AppTelemetry.setScreen(.subscription)
+		AppTelemetry.setOperation(.subscriptionPurchase)
+		defer {
+			AppTelemetry.clearOperation()
+			AppTelemetry.setScreen(.settings)
+		}
 
-        do {
-            try await subscriptionStore.purchasePremium()
-            billingMessage = AppMessage(.premiumUnlocked, .success)
-        } catch let error as SubscriptionStoreError {
-            guard let messageID = error.appMessageID else {
-                return
-            }
-            billingMessage = AppMessage(messageID, .error)
-        } catch {
-            billingMessage = AppMessage(.purchaseFailed, .error)
-        }
-    }
+		do {
+			try await subscriptionStore.purchasePremium()
+			billingMessage = AppMessage(.premiumUnlocked, .success)
+		} catch let error as SubscriptionStoreError {
+			guard let messageID = error.appMessageID else {
+				return
+			}
+			billingMessage = AppMessage(messageID, .error)
+		} catch {
+			billingMessage = AppMessage(.purchaseFailed, .error)
+		}
+	}
 
-    @MainActor
-    private func restorePurchases() async {
-        AppTelemetry.setScreen(.subscription)
-        AppTelemetry.setOperation(.subscriptionRestore)
-        defer {
-            AppTelemetry.clearOperation()
-            AppTelemetry.setScreen(.settings)
-        }
+	@MainActor
+	private func restorePurchases() async {
+		AppTelemetry.setScreen(.subscription)
+		AppTelemetry.setOperation(.subscriptionRestore)
+		defer {
+			AppTelemetry.clearOperation()
+			AppTelemetry.setScreen(.settings)
+		}
 
-        do {
-            try await subscriptionStore.restorePurchases()
-            billingMessage = currentPlan == .premium ? AppMessage(.purchasesRestored, .success) : AppMessage(.noActivePurchasesFound, .success)
-        } catch let error as SubscriptionStoreError {
-            billingMessage = AppMessage(error.appMessageID ?? .failedToRestorePurchases, .error)
-        } catch {
-            billingMessage = AppMessage(.failedToRestorePurchases, .error)
-        }
-    }
+		do {
+			try await subscriptionStore.restorePurchases()
+			billingMessage =
+				currentPlan == .premium
+				? AppMessage(.purchasesRestored, .success)
+				: AppMessage(.noActivePurchasesFound, .success)
+		} catch let error as SubscriptionStoreError {
+			billingMessage = AppMessage(
+				error.appMessageID ?? .failedToRestorePurchases,
+				.error
+			)
+		} catch {
+			billingMessage = AppMessage(.failedToRestorePurchases, .error)
+		}
+	}
 
-    @MainActor
-    private func openManageSubscriptions() async {
-        AppTelemetry.setScreen(.subscription)
-        AppTelemetry.setOperation(.subscriptionManage)
-        defer {
-            AppTelemetry.clearOperation()
-            AppTelemetry.setScreen(.settings)
-        }
+	@MainActor
+	private func openManageSubscriptions() async {
+		AppTelemetry.setScreen(.subscription)
+		AppTelemetry.setOperation(.subscriptionManage)
+		defer {
+			AppTelemetry.clearOperation()
+			AppTelemetry.setScreen(.settings)
+		}
 
-        let initialSnapshot = displaySnapshot
-        pendingManageSubscriptionSnapshot = initialSnapshot
-        schedulePendingManageSubscriptionClear()
+		let initialSnapshot = displaySnapshot
+		pendingManageSubscriptionSnapshot = initialSnapshot
+		schedulePendingManageSubscriptionClear()
 
-        do {
-            try await subscriptionStore.openManageSubscriptions()
-            syncDisplaySnapshotFromStore()
-        } catch let error as SubscriptionStoreError {
-            clearPendingManageSubscriptionTracking()
-            billingMessage = AppMessage(error.appMessageID ?? .failedToOpenManageSubscriptions, .error)
-        } catch {
-            clearPendingManageSubscriptionTracking()
-            billingMessage = AppMessage(.failedToOpenManageSubscriptions, .error)
-        }
-    }
+		do {
+			try await subscriptionStore.openManageSubscriptions()
+			syncDisplaySnapshotFromStore()
+		} catch let error as SubscriptionStoreError {
+			clearPendingManageSubscriptionTracking()
+			billingMessage = AppMessage(
+				error.appMessageID ?? .failedToOpenManageSubscriptions,
+				.error
+			)
+		} catch {
+			clearPendingManageSubscriptionTracking()
+			billingMessage = AppMessage(.failedToOpenManageSubscriptions, .error)
+		}
+	}
 
-    private func formatStorage(_ mb: Double) -> String {
-        if mb >= 1024 {
-            let gb = mb / 1024
-            return String(format: "%.2fGB", gb)
-        }
+	private func formatStorage(_ mb: Double) -> String {
+		if mb >= 1024 {
+			let gb = mb / 1024
+			return String(format: "%.2fGB", gb)
+		}
 
-        return String(format: "%.2fMB", mb)
-    }
+		return String(format: "%.2fMB", mb)
+	}
 
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
+	private func formatDate(_ date: Date) -> String {
+		let formatter = DateFormatter()
+		formatter.locale = Locale.current
+		formatter.dateStyle = .short
+		formatter.timeStyle = .none
+		return formatter.string(from: date)
+	}
 
-    @MainActor
-    private func presentSubscriptionStatusChange(
-        from previousSnapshot: SubscriptionStore.EntitlementSnapshot,
-        currentSnapshot: SubscriptionStore.EntitlementSnapshot
-    ) -> Bool {
-        guard previousSnapshot.willAutoRenew != currentSnapshot.willAutoRenew else {
-            return false
-        }
+	@MainActor
+	private func presentSubscriptionStatusChange(
+		from previousSnapshot: SubscriptionStore.EntitlementSnapshot,
+		currentSnapshot: SubscriptionStore.EntitlementSnapshot
+	) -> Bool {
+		guard previousSnapshot.willAutoRenew != currentSnapshot.willAutoRenew else {
+			return false
+		}
 
-        clearPendingManageSubscriptionTracking()
-        billingMessage = AppMessage(currentSnapshot.willAutoRenew ? .subscriptionResumed : .subscriptionCancelled, .success)
-        return true
-    }
+		clearPendingManageSubscriptionTracking()
+		billingMessage = AppMessage(
+			currentSnapshot.willAutoRenew
+				? .subscriptionResumed : .subscriptionCancelled,
+			.success
+		)
+		return true
+	}
 
-    @MainActor
-    private func syncDisplaySnapshotFromStore() {
-        displaySnapshot = subscriptionStore.entitlementSnapshot
-    }
+	@MainActor
+	private func syncDisplaySnapshotFromStore() {
+		displaySnapshot = subscriptionStore.entitlementSnapshot
+	}
 
-    @MainActor
-    private func handlePotentialSubscriptionStatusChange(with currentSnapshot: SubscriptionStore.EntitlementSnapshot) {
-        guard let previousSnapshot = pendingManageSubscriptionSnapshot else { return }
-        _ = presentSubscriptionStatusChange(from: previousSnapshot, currentSnapshot: currentSnapshot)
-    }
+	@MainActor
+	private func handlePotentialSubscriptionStatusChange(
+		with currentSnapshot: SubscriptionStore.EntitlementSnapshot
+	) {
+		guard let previousSnapshot = pendingManageSubscriptionSnapshot else {
+			return
+		}
+		_ = presentSubscriptionStatusChange(
+			from: previousSnapshot,
+			currentSnapshot: currentSnapshot
+		)
+	}
 
-    @MainActor
-    private func clearPendingManageSubscriptionTracking() {
-        pendingManageSubscriptionClearTask?.cancel()
-        pendingManageSubscriptionClearTask = nil
-        pendingManageSubscriptionSnapshot = nil
-    }
+	@MainActor
+	private func clearPendingManageSubscriptionTracking() {
+		pendingManageSubscriptionClearTask?.cancel()
+		pendingManageSubscriptionClearTask = nil
+		pendingManageSubscriptionSnapshot = nil
+	}
 
-    private func schedulePendingManageSubscriptionClear() {
-        pendingManageSubscriptionClearTask?.cancel()
-        pendingManageSubscriptionClearTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 30_000_000_000)
-            if Task.isCancelled { return }
-            pendingManageSubscriptionSnapshot = nil
-            pendingManageSubscriptionClearTask = nil
-        }
-    }
+	private func schedulePendingManageSubscriptionClear() {
+		pendingManageSubscriptionClearTask?.cancel()
+		pendingManageSubscriptionClearTask = Task { @MainActor in
+			try? await Task.sleep(nanoseconds: 30_000_000_000)
+			if Task.isCancelled { return }
+			pendingManageSubscriptionSnapshot = nil
+			pendingManageSubscriptionClearTask = nil
+		}
+	}
 
-    private func planCard(
-        title: String,
-        features: [String],
-        footerText: String?,
-        footerActionTitle: String?,
-        isSelected: Bool,
-        action: (() -> Void)?
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.title3.weight(.bold))
+	private func planCard(
+		title: String,
+		features: [String],
+		footerText: String?,
+		footerActionTitle: String?,
+		isSelected: Bool,
+		action: (() -> Void)?
+	) -> some View {
+		VStack(alignment: .leading, spacing: 18) {
+			HStack(alignment: .firstTextBaseline) {
+				Text(title)
+					.font(.title3.weight(.bold))
 
-                Spacer(minLength: 12)
+				Spacer(minLength: 12)
 
-                Image(systemName: "checkmark")
-                    .font(.system(size: 20, weight: .medium))
-                    .opacity(isSelected ? 1 : 0)
-            }
+				Image(systemName: "checkmark")
+					.font(.system(size: 20, weight: .medium))
+					.opacity(isSelected ? 1 : 0)
+			}
 
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(features, id: \.self) { feature in
-                    Text("•  \(feature)")
-                        .font(.body.weight(.medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.88)
-                        .allowsTightening(true)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+			VStack(alignment: .leading, spacing: 8) {
+				ForEach(features, id: \.self) { feature in
+					Text("•  \(feature)")
+						.font(.body.weight(.medium))
+						.lineLimit(1)
+						.minimumScaleFactor(0.88)
+						.allowsTightening(true)
+						.fixedSize(horizontal: false, vertical: true)
+				}
+			}
 
-            VStack(alignment: .leading, spacing: 6) {
-                if let footerText {
-                    Text(footerText)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.88)
-                        .foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
-                }
+			VStack(alignment: .leading, spacing: 6) {
+				if let footerText {
+					Text(footerText)
+						.font(.callout.weight(.medium))
+						.lineLimit(1)
+						.minimumScaleFactor(0.88)
+						.foregroundStyle(footerActionTitle == nil ? .primary : .secondary)
+				}
 
-                if let footerActionTitle, let action {
-                    Button(footerActionTitle, action: action)
-                        .buttonStyle(.plain)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.88)
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-        }
-        .padding(18)
-        .frame(width: planCardWidth, alignment: .topLeading)
-        .frame(height: planCardHeight, alignment: .topLeading)
-        .appGlassCard()
-    }
+				if let footerActionTitle, let action {
+					Button(footerActionTitle, action: action)
+						.buttonStyle(.plain)
+						.font(.callout.weight(.medium))
+						.lineLimit(1)
+						.minimumScaleFactor(0.88)
+						.foregroundStyle(Color.accentColor)
+				}
+			}
+		}
+		.padding(18)
+		.frame(width: planCardWidth, alignment: .topLeading)
+		.frame(height: planCardHeight, alignment: .topLeading)
+		.appGlassCard()
+	}
 }

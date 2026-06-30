@@ -4,582 +4,667 @@ import FirebaseAuth
 import Foundation
 
 extension GroupServiceError {
-    var appMessageID: AppMessage.ID {
-        switch self {
-        case .groupNotFound:
-            return .groupNotFound
-        case .ownerCannotLeave:
-            return .ownerCannotLeave
-        case .ownerCannotBeRemoved:
-            return .ownerCannotBeRemoved
-        case let .memberLimitReached(maxMembers):
-            return .groupMemberLimitReached(maxMembers: maxMembers)
-        case .onlyOwnerCanRemoveMembers:
-            return .onlyOwnerCanRemoveMembers
-        case .invalidInvite:
-            return .invalidInviteQR
-        case .inviteExpired:
-            return .inviteQRCodeExpired
-        }
-    }
+	var appMessageID: AppMessage.ID {
+		switch self {
+		case .groupNotFound:
+			return .groupNotFound
+		case .ownerCannotLeave:
+			return .ownerCannotLeave
+		case .ownerCannotBeRemoved:
+			return .ownerCannotBeRemoved
+		case .memberLimitReached(let maxMembers):
+			return .groupMemberLimitReached(maxMembers: maxMembers)
+		case .onlyOwnerCanRemoveMembers:
+			return .onlyOwnerCanRemoveMembers
+		case .invalidInvite:
+			return .invalidInviteQR
+		case .inviteExpired:
+			return .inviteQRCodeExpired
+		}
+	}
 }
 
 enum GroupInvitePayloadParser {
-    static func extractInviteToken(from payload: String) -> String? {
-        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+	static func extractInviteToken(from payload: String) -> String? {
+		let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !trimmed.isEmpty else { return nil }
 
-        if let url = URL(string: trimmed) {
-            if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite" {
-                let inviteToken = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                return inviteToken.isEmpty ? nil : inviteToken.lowercased()
-            }
+		if let url = URL(string: trimmed) {
+			if url.scheme?.lowercased() == "kuusi", url.host?.lowercased() == "invite"
+			{
+				let inviteToken = url.path.trimmingCharacters(
+					in: CharacterSet(charactersIn: "/")
+				)
+				return inviteToken.isEmpty ? nil : inviteToken.lowercased()
+			}
 
-            let parts = url.pathComponents.filter { $0 != "/" }
-            if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
-                let inviteToken = parts[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-                return inviteToken.isEmpty ? nil : inviteToken.lowercased()
-            }
-        }
+			let parts = url.pathComponents.filter { $0 != "/" }
+			if let idx = parts.firstIndex(of: "invite"), idx + 1 < parts.count {
+				let inviteToken = parts[idx + 1].trimmingCharacters(
+					in: .whitespacesAndNewlines
+				)
+				return inviteToken.isEmpty ? nil : inviteToken.lowercased()
+			}
+		}
 
-        return trimmed.lowercased()
-    }
+		return trimmed.lowercased()
+	}
 }
 
 enum GroupDestructiveAction {
-    case delete
-    case leave
+	case delete
+	case leave
 }
 
 protocol SettingsGroupsServicing: GroupStoreServicing {
-    func createInvitePayload(groupID: String) async throws -> String
-    func loadMemberPreviews(groupID: String, limit: Int?) async throws -> [GroupMemberPreview]
-    func cachedMemberList(for groupID: String) -> [GroupMemberPreview]?
-    func setCachedMemberList(_ members: [GroupMemberPreview], for groupID: String)
-    func createGroup(groupName: String, ownerUID: String) async throws -> GroupSummary
-    func updateGroupName(groupID: String, name: String) async throws
-    func deleteGroup(groupID: String) async throws
-    func leaveGroup(groupID: String, uid: String) async throws
-    func joinGroup(inviteToken: String) async throws -> JoinGroupResult
-    func removeMember(groupID: String, memberUID: String, requesterUID: String) async throws
+	func createInvitePayload(groupID: String) async throws -> String
+	func loadMemberPreviews(groupID: String, limit: Int?) async throws
+		-> [GroupMemberPreview]
+	func cachedMemberList(for groupID: String) -> [GroupMemberPreview]?
+	func setCachedMemberList(_ members: [GroupMemberPreview], for groupID: String)
+	func createGroup(groupName: String, ownerUID: String) async throws
+		-> GroupSummary
+	func updateGroupName(groupID: String, name: String) async throws
+	func deleteGroup(groupID: String) async throws
+	func leaveGroup(groupID: String, uid: String) async throws
+	func joinGroup(inviteToken: String) async throws -> JoinGroupResult
+	func removeMember(groupID: String, memberUID: String, requesterUID: String)
+		async throws
 }
 
 extension GroupService: SettingsGroupsServicing {}
 
 @MainActor
 final class SettingsGroupsViewModel: ObservableObject {
-    @Published var createGroupName = ""
-    @Published var editableGroupName = ""
-    @Published var createStatusMessage: AppMessage?
-    @Published var saveStatusMessage: AppMessage?
-    @Published var isCreating = false
-    @Published var isLoadingGroups = false
-    @Published var isSavingGroupName = false
-    @Published var isDeletingGroup = false
-    @Published var isDeleteConfirmPresented = false
-    @Published var selectedDestructiveAction: GroupDestructiveAction?
-    @Published var isPhotoPickerPresented = false
-    @Published var isQRCodeScannerPresented = false
-    @Published var isGroupQRCodeOverlayPresented = false
-    @Published var isPreparingGroupQRCode = false
-    @Published var isMemberListPresented = false
-    @Published var isJoiningGroup = false
-    @Published private(set) var selectedGroupInvitePayload: String?
-    @Published private(set) var removingMemberID: String?
-    @Published private(set) var isRefreshingMembers = false
-    @Published private(set) var currentPlan: AppPlan = .free
-    @Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
+	@Published var createGroupName = ""
+	@Published var editableGroupName = ""
+	@Published var createStatusMessage: AppMessage?
+	@Published var saveStatusMessage: AppMessage?
+	@Published var isCreating = false
+	@Published var isLoadingGroups = false
+	@Published var isSavingGroupName = false
+	@Published var isDeletingGroup = false
+	@Published var isDeleteConfirmPresented = false
+	@Published var selectedDestructiveAction: GroupDestructiveAction?
+	@Published var isPhotoPickerPresented = false
+	@Published var isQRCodeScannerPresented = false
+	@Published var isGroupQRCodeOverlayPresented = false
+	@Published var isPreparingGroupQRCode = false
+	@Published var isMemberListPresented = false
+	@Published var isJoiningGroup = false
+	@Published private(set) var selectedGroupInvitePayload: String?
+	@Published private(set) var removingMemberID: String?
+	@Published private(set) var isRefreshingMembers = false
+	@Published private(set) var currentPlan: AppPlan = .free
+	@Published private(set) var selectedGroupMembers: [GroupMemberPreview] = []
 
-    private let groupService: SettingsGroupsServicing
-    private var groupStore: GroupStore
-    private let currentUserIDProvider: @MainActor () -> String?
-    private var clearCreateMessageTask: Task<Void, Never>?
-    private var clearSaveMessageTask: Task<Void, Never>?
-    private var groupStoreCancellable: AnyCancellable?
-    private var previewLoadedGroupIDs: Set<String> = []
+	private let groupService: SettingsGroupsServicing
+	private var groupStore: GroupStore
+	private let currentUserIDProvider: @MainActor () -> String?
+	private var clearCreateMessageTask: Task<Void, Never>?
+	private var clearSaveMessageTask: Task<Void, Never>?
+	private var groupStoreCancellable: AnyCancellable?
+	private var previewLoadedGroupIDs: Set<String> = []
 
-    init(
-        groupService: SettingsGroupsServicing,
-        groupStore: GroupStore,
-        currentUserIDProvider: @escaping @MainActor () -> String?
-    ) {
-        self.groupService = groupService
-        self.groupStore = groupStore
-        self.currentUserIDProvider = currentUserIDProvider
-        groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
-            Task { @MainActor in
-                self?.objectWillChange.send()
-            }
-        }
-    }
+	init(
+		groupService: SettingsGroupsServicing,
+		groupStore: GroupStore,
+		currentUserIDProvider: @escaping @MainActor () -> String?
+	) {
+		self.groupService = groupService
+		self.groupStore = groupStore
+		self.currentUserIDProvider = currentUserIDProvider
+		groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
+			Task { @MainActor in
+				self?.objectWillChange.send()
+			}
+		}
+	}
 
-    convenience init() {
-        let groupService = GroupService()
-#if DEBUG
-        if let groupService = UITestEnvironment.makeGroupService() {
-            self.init(
-                groupService: groupService,
-                groupStore: GroupStore(
-                    groupService: groupService,
-                    currentUserIDProvider: { UITestEnvironment.currentUserID }
-                ),
-                currentUserIDProvider: { UITestEnvironment.currentUserID }
-            )
-            return
-        }
-#endif
-        self.init(
-            groupService: groupService,
-            groupStore: GroupStore(groupService: groupService),
-            currentUserIDProvider: {
-                return Auth.auth().currentUser?.uid
-            }
-        )
-    }
+	convenience init() {
+		let groupService = GroupService()
+		#if DEBUG
+			if let groupService = UITestEnvironment.makeGroupService() {
+				self.init(
+					groupService: groupService,
+					groupStore: GroupStore(
+						groupService: groupService,
+						currentUserIDProvider: { UITestEnvironment.currentUserID }
+					),
+					currentUserIDProvider: { UITestEnvironment.currentUserID }
+				)
+				return
+			}
+		#endif
+		self.init(
+			groupService: groupService,
+			groupStore: GroupStore(groupService: groupService),
+			currentUserIDProvider: {
+				return Auth.auth().currentUser?.uid
+			}
+		)
+	}
 
-    var selectedGroup: GroupSummary? {
-        groupStore.selectedGroup
-    }
+	var selectedGroup: GroupSummary? {
+		groupStore.selectedGroup
+	}
 
-    var groups: [GroupSummary] {
-        get { groupStore.groups }
-        set { groupStore.replaceGroups(newValue) }
-    }
+	var groups: [GroupSummary] {
+		get { groupStore.groups }
+		set { groupStore.replaceGroups(newValue) }
+	}
 
-    var selectedGroupID: String? {
-        get { groupStore.selectedGroupID }
-        set { groupStore.selectedGroupID = newValue }
-    }
+	var selectedGroupID: String? {
+		get { groupStore.selectedGroupID }
+		set { groupStore.selectedGroupID = newValue }
+	}
 
-    var currentUserIsSelectedGroupOwner: Bool {
-        guard
-            let uid = currentUserIDProvider(),
-            let selectedGroup
-        else {
-            return false
-        }
-        return selectedGroup.ownerUID == uid
-    }
+	var currentUserIsSelectedGroupOwner: Bool {
+		guard
+			let uid = currentUserIDProvider(),
+			let selectedGroup
+		else {
+			return false
+		}
+		return selectedGroup.ownerUID == uid
+	}
 
-    var destructiveActionTitle: String {
-        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.title") : String(localized: "alert.leave_group.title")
-    }
+	var destructiveActionTitle: String {
+		selectedOrDefaultDestructiveAction == .delete
+			? String(localized: "alert.delete_group.title")
+			: String(localized: "alert.leave_group.title")
+	}
 
-    var destructiveActionMessage: String {
-        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.message") : leaveGroupMessage
-    }
+	var destructiveActionMessage: String {
+		selectedOrDefaultDestructiveAction == .delete
+			? String(localized: "alert.delete_group.message") : leaveGroupMessage
+	}
 
-    var destructiveActionButtonTitle: String {
-        selectedOrDefaultDestructiveAction == .delete ? String(localized: "alert.delete_group.confirm") : String(localized: "alert.leave_group.confirm")
-    }
+	var destructiveActionButtonTitle: String {
+		selectedOrDefaultDestructiveAction == .delete
+			? String(localized: "alert.delete_group.confirm")
+			: String(localized: "alert.leave_group.confirm")
+	}
 
-    var selectedOrDefaultDestructiveAction: GroupDestructiveAction {
-        selectedDestructiveAction ?? (currentUserIsSelectedGroupOwner ? .delete : .leave)
-    }
+	var selectedOrDefaultDestructiveAction: GroupDestructiveAction {
+		selectedDestructiveAction
+			?? (currentUserIsSelectedGroupOwner ? .delete : .leave)
+	}
 
-    private var leaveGroupMessage: String {
-        currentUserIsSelectedGroupOwner
-            ? String(localized: "alert.leave_owned_group.message")
-            : String(localized: "alert.leave_group.message")
-    }
+	private var leaveGroupMessage: String {
+		currentUserIsSelectedGroupOwner
+			? String(localized: "alert.leave_owned_group.message")
+			: String(localized: "alert.leave_group.message")
+	}
 
-    let appShareURL = URL(string: "https://apps.apple.com/gb/app/kuusi/id6761270044")!
+	let appShareURL = URL(
+		string: "https://apps.apple.com/gb/app/kuusi/id6761270044"
+	)!
 
-    func onDisappear() {
-        clearCreateMessageTask?.cancel()
-        clearCreateMessageTask = nil
-        clearSaveMessageTask?.cancel()
-        clearSaveMessageTask = nil
-    }
+	func onDisappear() {
+		clearCreateMessageTask?.cancel()
+		clearCreateMessageTask = nil
+		clearSaveMessageTask?.cancel()
+		clearSaveMessageTask = nil
+	}
 
-    func updateCurrentPlan(_ plan: AppPlan) {
-        currentPlan = plan
-    }
+	func updateCurrentPlan(_ plan: AppPlan) {
+		currentPlan = plan
+	}
 
-    func bindGroupStore(_ groupStore: GroupStore) {
-        guard self.groupStore !== groupStore else { return }
-        self.groupStore = groupStore
-        groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
-            Task { @MainActor in
-                self?.objectWillChange.send()
-            }
-        }
-        objectWillChange.send()
-    }
+	func bindGroupStore(_ groupStore: GroupStore) {
+		guard self.groupStore !== groupStore else { return }
+		self.groupStore = groupStore
+		groupStoreCancellable = groupStore.objectWillChange.sink { [weak self] _ in
+			Task { @MainActor in
+				self?.objectWillChange.send()
+			}
+		}
+		objectWillChange.send()
+	}
 
-    func presentGroupQRCode(for group: GroupSummary) async {
-        selectedGroupID = group.id
-        editableGroupName = group.name
-        isPreparingGroupQRCode = true
-        defer { isPreparingGroupQRCode = false }
+	func presentGroupQRCode(for group: GroupSummary) async {
+		selectedGroupID = group.id
+		editableGroupName = group.name
+		isPreparingGroupQRCode = true
+		defer { isPreparingGroupQRCode = false }
 
-        do {
-            selectedGroupInvitePayload = try await groupService.createInvitePayload(groupID: group.id)
-            isGroupQRCodeOverlayPresented = true
-        } catch let error as GroupServiceError {
-            selectedGroupInvitePayload = nil
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            selectedGroupInvitePayload = nil
-            setSaveStatus(AppMessage(.failedToGenerateQRCode, .error))
-        }
-    }
+		do {
+			selectedGroupInvitePayload = try await groupService.createInvitePayload(
+				groupID: group.id
+			)
+			isGroupQRCodeOverlayPresented = true
+		} catch let error as GroupServiceError {
+			selectedGroupInvitePayload = nil
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			selectedGroupInvitePayload = nil
+			setSaveStatus(AppMessage(.failedToGenerateQRCode, .error))
+		}
+	}
 
-    func presentMemberList() async {
-        guard let selectedGroupID else { return }
+	func presentMemberList() async {
+		guard let selectedGroupID else { return }
 
-        if let cachedMembers = groupService.cachedMemberList(for: selectedGroupID) {
-            selectedGroupMembers = cachedMembers
-            updateGroupPreviewFromFullMemberList(cachedMembers, groupID: selectedGroupID)
-            isMemberListPresented = true
-            return
-        }
+		if let cachedMembers = groupService.cachedMemberList(for: selectedGroupID) {
+			selectedGroupMembers = cachedMembers
+			updateGroupPreviewFromFullMemberList(
+				cachedMembers,
+				groupID: selectedGroupID
+			)
+			isMemberListPresented = true
+			return
+		}
 
-        await loadSelectedGroupMembers(groupID: selectedGroupID, presentOnSuccess: true)
-    }
+		await loadSelectedGroupMembers(
+			groupID: selectedGroupID,
+			presentOnSuccess: true
+		)
+	}
 
-    func refreshSelectedGroupMembers() async {
-        guard let selectedGroupID else { return }
-        await loadSelectedGroupMembers(groupID: selectedGroupID, presentOnSuccess: false)
-    }
+	func refreshSelectedGroupMembers() async {
+		guard let selectedGroupID else { return }
+		await loadSelectedGroupMembers(
+			groupID: selectedGroupID,
+			presentOnSuccess: false
+		)
+	}
 
-    private func loadSelectedGroupMembers(groupID: String, presentOnSuccess: Bool) async {
-        isRefreshingMembers = true
-        defer { isRefreshingMembers = false }
+	private func loadSelectedGroupMembers(groupID: String, presentOnSuccess: Bool)
+		async
+	{
+		isRefreshingMembers = true
+		defer { isRefreshingMembers = false }
 
-        do {
-            let members = try await groupService.loadMemberPreviews(groupID: groupID, limit: nil)
-            selectedGroupMembers = members
-            groupService.setCachedMemberList(members, for: groupID)
-            updateGroupPreviewFromFullMemberList(members, groupID: groupID)
-            if presentOnSuccess {
-                isMemberListPresented = true
-            }
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToLoadGroupMembers, .error))
-        }
-    }
+		do {
+			let members = try await groupService.loadMemberPreviews(
+				groupID: groupID,
+				limit: nil
+			)
+			selectedGroupMembers = members
+			groupService.setCachedMemberList(members, for: groupID)
+			updateGroupPreviewFromFullMemberList(members, groupID: groupID)
+			if presentOnSuccess {
+				isMemberListPresented = true
+			}
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToLoadGroupMembers, .error))
+		}
+	}
 
-    func createGroup() async {
-        guard let uid = currentUserIDProvider() else {
-            setCreateStatus(AppMessage(.pleaseSignInFirst, .error))
-            return
-        }
-        guard groups.count < currentPlan.maxGroups else {
-            setCreateStatus(AppMessage(.groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups), .error))
-            return
-        }
+	func createGroup() async {
+		guard let uid = currentUserIDProvider() else {
+			setCreateStatus(AppMessage(.pleaseSignInFirst, .error))
+			return
+		}
+		guard groups.count < currentPlan.maxGroups else {
+			setCreateStatus(
+				AppMessage(
+					.groupLimitReached(
+						title: currentPlan.title,
+						maxGroups: currentPlan.maxGroups
+					),
+					.error
+				)
+			)
+			return
+		}
 
-        let cleanName = createGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else {
-            setCreateStatus(AppMessage(.fillInGroupName, .error))
-            return
-        }
+		let cleanName = createGroupName.trimmingCharacters(
+			in: .whitespacesAndNewlines
+		)
+		guard !cleanName.isEmpty else {
+			setCreateStatus(AppMessage(.fillInGroupName, .error))
+			return
+		}
 
-        isCreating = true
-        defer { isCreating = false }
+		isCreating = true
+		defer { isCreating = false }
 
-        do {
-            let created = try await groupService.createGroup(groupName: cleanName, ownerUID: uid)
-            createGroupName = ""
-            groupStore.appendGroup(created)
-            editableGroupName = created.name
-            previewLoadedGroupIDs.remove(created.id)
-            await loadGroupPreviewIfNeeded(for: created.id, force: true)
-            setCreateStatus(AppMessage(.groupCreated, .success))
-        } catch {
-            setCreateStatus(AppMessage(.failedToCreateGroup, .error))
-        }
-    }
+		do {
+			let created = try await groupService.createGroup(
+				groupName: cleanName,
+				ownerUID: uid
+			)
+			createGroupName = ""
+			groupStore.appendGroup(created)
+			editableGroupName = created.name
+			previewLoadedGroupIDs.remove(created.id)
+			await loadGroupPreviewIfNeeded(for: created.id, force: true)
+			setCreateStatus(AppMessage(.groupCreated, .success))
+		} catch {
+			setCreateStatus(AppMessage(.failedToCreateGroup, .error))
+		}
+	}
 
-    func loadGroups() async {
-        await loadGroups(fetchFromSource: false)
-    }
+	func loadGroups() async {
+		await loadGroups(fetchFromSource: false)
+	}
 
-    func refreshGroups() async {
-        await loadGroups(fetchFromSource: true)
-    }
+	func refreshGroups() async {
+		await loadGroups(fetchFromSource: true)
+	}
 
-    private func loadGroups(fetchFromSource: Bool) async {
-        guard currentUserIDProvider() != nil else { return }
-        isLoadingGroups = true
-        defer { isLoadingGroups = false }
+	private func loadGroups(fetchFromSource: Bool) async {
+		guard currentUserIDProvider() != nil else { return }
+		isLoadingGroups = true
+		defer { isLoadingGroups = false }
 
-        do {
-            if fetchFromSource {
-                try await groupStore.refreshFromFirestore()
-                previewLoadedGroupIDs.removeAll()
-            } else {
-                try await groupStore.loadCachedThenFetchIfNeeded()
-            }
-            let fetched = groupStore.groups
+		do {
+			if fetchFromSource {
+				try await groupStore.refreshFromFirestore()
+				previewLoadedGroupIDs.removeAll()
+			} else {
+				try await groupStore.loadCachedThenFetchIfNeeded()
+			}
+			let fetched = groupStore.groups
 
-            if selectedGroupID == nil || !fetched.contains(where: { $0.id == selectedGroupID }) {
-                selectedGroupID = fetched.first?.id
-            }
+			if selectedGroupID == nil
+				|| !fetched.contains(where: { $0.id == selectedGroupID })
+			{
+				selectedGroupID = fetched.first?.id
+			}
 
-            if let selectedGroupID,
-               let selectedGroup = fetched.first(where: { $0.id == selectedGroupID }) {
-                editableGroupName = selectedGroup.name
-            } else {
-                editableGroupName = ""
-            }
-            await loadAllGroupPreviews(force: fetchFromSource)
-        } catch {
-            setCreateStatus(AppMessage(.failedToLoadGroups, .error))
-        }
-    }
+			if let selectedGroupID,
+				let selectedGroup = fetched.first(where: { $0.id == selectedGroupID })
+			{
+				editableGroupName = selectedGroup.name
+			} else {
+				editableGroupName = ""
+			}
+			await loadAllGroupPreviews(force: fetchFromSource)
+		} catch {
+			setCreateStatus(AppMessage(.failedToLoadGroups, .error))
+		}
+	}
 
-    func selectGroup(_ id: String) async {
-        guard selectedGroupID != id else { return }
-        selectedGroupID = id
-        if let selected = groups.first(where: { $0.id == id }) {
-            editableGroupName = selected.name
-        }
-        await loadGroupPreviewIfNeeded(for: id, force: false)
-    }
+	func selectGroup(_ id: String) async {
+		guard selectedGroupID != id else { return }
+		selectedGroupID = id
+		if let selected = groups.first(where: { $0.id == id }) {
+			editableGroupName = selected.name
+		}
+		await loadGroupPreviewIfNeeded(for: id, force: false)
+	}
 
-    func saveGroupName() async {
-        guard let selectedGroupID else { return }
-        let trimmed = editableGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            setSaveStatus(AppMessage(.fillInGroupName, .error))
-            return
-        }
+	func saveGroupName() async {
+		guard let selectedGroupID else { return }
+		let trimmed = editableGroupName.trimmingCharacters(
+			in: .whitespacesAndNewlines
+		)
+		guard !trimmed.isEmpty else {
+			setSaveStatus(AppMessage(.fillInGroupName, .error))
+			return
+		}
 
-        isSavingGroupName = true
-        defer { isSavingGroupName = false }
+		isSavingGroupName = true
+		defer { isSavingGroupName = false }
 
-        do {
-            try await groupService.updateGroupName(groupID: selectedGroupID, name: trimmed)
-            groupStore.renameGroup(id: selectedGroupID, name: trimmed)
-            setSaveStatus(AppMessage(.groupUpdated, .success))
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToUpdateGroup, .error))
-        }
-    }
+		do {
+			try await groupService.updateGroupName(
+				groupID: selectedGroupID,
+				name: trimmed
+			)
+			groupStore.renameGroup(id: selectedGroupID, name: trimmed)
+			setSaveStatus(AppMessage(.groupUpdated, .success))
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToUpdateGroup, .error))
+		}
+	}
 
-    func deleteSelectedGroup() async {
-        guard let selectedGroupID else { return }
+	func deleteSelectedGroup() async {
+		guard let selectedGroupID else { return }
 
-        isDeletingGroup = true
-        defer { isDeletingGroup = false }
+		isDeletingGroup = true
+		defer { isDeletingGroup = false }
 
-        do {
-            try await groupService.deleteGroup(groupID: selectedGroupID)
-            groupStore.removeGroup(id: selectedGroupID)
-            selectedDestructiveAction = nil
-            previewLoadedGroupIDs.remove(selectedGroupID)
-            editableGroupName = groups.first?.name ?? ""
-            if let nextGroupID = self.selectedGroupID {
-                await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
-            }
-            setSaveStatus(AppMessage(.groupDeleted, .success))
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToDeleteGroup, .error))
-        }
-    }
+		do {
+			try await groupService.deleteGroup(groupID: selectedGroupID)
+			groupStore.removeGroup(id: selectedGroupID)
+			selectedDestructiveAction = nil
+			previewLoadedGroupIDs.remove(selectedGroupID)
+			editableGroupName = groups.first?.name ?? ""
+			if let nextGroupID = self.selectedGroupID {
+				await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
+			}
+			setSaveStatus(AppMessage(.groupDeleted, .success))
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToDeleteGroup, .error))
+		}
+	}
 
-    func leaveSelectedGroup() async {
-        guard
-            let selectedGroupID,
-            let uid = currentUserIDProvider()
-        else {
-            return
-        }
+	func leaveSelectedGroup() async {
+		guard
+			let selectedGroupID,
+			let uid = currentUserIDProvider()
+		else {
+			return
+		}
 
-        isDeletingGroup = true
-        defer { isDeletingGroup = false }
+		isDeletingGroup = true
+		defer { isDeletingGroup = false }
 
-        do {
-            try await groupService.leaveGroup(groupID: selectedGroupID, uid: uid)
-            groupStore.removeGroup(id: selectedGroupID)
-            selectedDestructiveAction = nil
-            previewLoadedGroupIDs.remove(selectedGroupID)
-            editableGroupName = groups.first?.name ?? ""
-            if let nextGroupID = self.selectedGroupID {
-                await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
-            }
-            setSaveStatus(AppMessage(.leftGroup, .success))
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToLeaveGroup, .error))
-        }
-    }
+		do {
+			try await groupService.leaveGroup(groupID: selectedGroupID, uid: uid)
+			groupStore.removeGroup(id: selectedGroupID)
+			selectedDestructiveAction = nil
+			previewLoadedGroupIDs.remove(selectedGroupID)
+			editableGroupName = groups.first?.name ?? ""
+			if let nextGroupID = self.selectedGroupID {
+				await loadGroupPreviewIfNeeded(for: nextGroupID, force: false)
+			}
+			setSaveStatus(AppMessage(.leftGroup, .success))
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToLeaveGroup, .error))
+		}
+	}
 
-    func handleSelectedQRCodePhotoData(_ data: Data?) async {
-        guard let data else {
-            setSaveStatus(AppMessage(.failedToLoadImage, .error))
-            return
-        }
-        guard let payload = decodeQRCodePayload(from: data) else {
-            setSaveStatus(AppMessage(.qrCodeNotFoundInImage, .error))
-            return
-        }
-        await joinGroupFromQRCodePayload(payload)
-    }
+	func handleSelectedQRCodePhotoData(_ data: Data?) async {
+		guard let data else {
+			setSaveStatus(AppMessage(.failedToLoadImage, .error))
+			return
+		}
+		guard let payload = decodeQRCodePayload(from: data) else {
+			setSaveStatus(AppMessage(.qrCodeNotFoundInImage, .error))
+			return
+		}
+		await joinGroupFromQRCodePayload(payload)
+	}
 
-    func handleQRCodeScannerError(_ error: QRCodeScannerError) {
-        switch error {
-        case .cameraAccessDenied:
-            setSaveStatus(AppMessage(.cameraAccessDenied, .error))
-        case .cameraUnavailable:
-            setSaveStatus(AppMessage(.cameraUnavailable, .error))
-        }
-    }
+	func handleQRCodeScannerError(_ error: QRCodeScannerError) {
+		switch error {
+		case .cameraAccessDenied:
+			setSaveStatus(AppMessage(.cameraAccessDenied, .error))
+		case .cameraUnavailable:
+			setSaveStatus(AppMessage(.cameraUnavailable, .error))
+		}
+	}
 
-    func joinGroupFromQRCodePayload(_ payload: String) async {
-        guard currentUserIDProvider() != nil else {
-            setSaveStatus(AppMessage(.pleaseSignInFirst, .error))
-            return
-        }
-        guard let inviteToken = GroupInvitePayloadParser.extractInviteToken(from: payload) else {
-            setSaveStatus(AppMessage(.invalidInviteQR, .error))
-            return
-        }
-        guard groups.count < currentPlan.maxGroups else {
-            setSaveStatus(AppMessage(.groupLimitReached(title: currentPlan.title, maxGroups: currentPlan.maxGroups), .error))
-            return
-        }
+	func joinGroupFromQRCodePayload(_ payload: String) async {
+		guard currentUserIDProvider() != nil else {
+			setSaveStatus(AppMessage(.pleaseSignInFirst, .error))
+			return
+		}
+		guard
+			let inviteToken = GroupInvitePayloadParser.extractInviteToken(
+				from: payload
+			)
+		else {
+			setSaveStatus(AppMessage(.invalidInviteQR, .error))
+			return
+		}
+		guard groups.count < currentPlan.maxGroups else {
+			setSaveStatus(
+				AppMessage(
+					.groupLimitReached(
+						title: currentPlan.title,
+						maxGroups: currentPlan.maxGroups
+					),
+					.error
+				)
+			)
+			return
+		}
 
-        isJoiningGroup = true
-        AppTelemetry.setOperation(.groupJoin)
-        defer {
-            AppTelemetry.clearOperation()
-            isJoiningGroup = false
-        }
+		isJoiningGroup = true
+		AppTelemetry.setOperation(.groupJoin)
+		defer {
+			AppTelemetry.clearOperation()
+			isJoiningGroup = false
+		}
 
-        do {
-            let result = try await groupService.joinGroup(inviteToken: inviteToken)
-            groupStore.appendGroup(result.group)
-            editableGroupName = result.group.name
-            previewLoadedGroupIDs.remove(result.group.id)
-            await loadGroupPreviewIfNeeded(for: result.group.id, force: true)
-            setSaveStatus(AppMessage(result.didJoin ? .joinedGroup : .alreadyJoinedGroup, .success))
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToJoinGroup, .error))
-        }
-    }
+		do {
+			let result = try await groupService.joinGroup(inviteToken: inviteToken)
+			groupStore.appendGroup(result.group)
+			editableGroupName = result.group.name
+			previewLoadedGroupIDs.remove(result.group.id)
+			await loadGroupPreviewIfNeeded(for: result.group.id, force: true)
+			setSaveStatus(
+				AppMessage(
+					result.didJoin ? .joinedGroup : .alreadyJoinedGroup,
+					.success
+				)
+			)
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToJoinGroup, .error))
+		}
+	}
 
-    func removeMemberFromSelectedGroup(_ member: GroupMemberPreview) async {
-        guard
-            let selectedGroupID,
-            let requesterUID = currentUserIDProvider()
-        else {
-            return
-        }
+	func removeMemberFromSelectedGroup(_ member: GroupMemberPreview) async {
+		guard
+			let selectedGroupID,
+			let requesterUID = currentUserIDProvider()
+		else {
+			return
+		}
 
-        removingMemberID = member.id
-        defer { removingMemberID = nil }
+		removingMemberID = member.id
+		defer { removingMemberID = nil }
 
-        do {
-            try await groupService.removeMember(
-                groupID: selectedGroupID,
-                memberUID: member.id,
-                requesterUID: requesterUID
-            )
+		do {
+			try await groupService.removeMember(
+				groupID: selectedGroupID,
+				memberUID: member.id,
+				requesterUID: requesterUID
+			)
 
-            selectedGroupMembers.removeAll { $0.id == member.id }
-            groupService.setCachedMemberList(selectedGroupMembers, for: selectedGroupID)
-            updateGroupPreviewFromFullMemberList(selectedGroupMembers, groupID: selectedGroupID)
-            setSaveStatus(AppMessage(.memberRemoved, .success))
-        } catch let error as GroupServiceError {
-            setSaveStatus(AppMessage(error.appMessageID, .error))
-        } catch {
-            setSaveStatus(AppMessage(.failedToRemoveMember, .error))
-        }
-    }
+			selectedGroupMembers.removeAll { $0.id == member.id }
+			groupService.setCachedMemberList(
+				selectedGroupMembers,
+				for: selectedGroupID
+			)
+			updateGroupPreviewFromFullMemberList(
+				selectedGroupMembers,
+				groupID: selectedGroupID
+			)
+			setSaveStatus(AppMessage(.memberRemoved, .success))
+		} catch let error as GroupServiceError {
+			setSaveStatus(AppMessage(error.appMessageID, .error))
+		} catch {
+			setSaveStatus(AppMessage(.failedToRemoveMember, .error))
+		}
+	}
 
-    private func decodeQRCodePayload(from data: Data) -> String? {
-        guard let ciImage = CIImage(data: data) else { return nil }
-        let detector = CIDetector(
-            ofType: CIDetectorTypeQRCode,
-            context: nil,
-            options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]
-        )
-        let features = detector?.features(in: ciImage) as? [CIQRCodeFeature]
-        return features?.first?.messageString
-    }
+	private func decodeQRCodePayload(from data: Data) -> String? {
+		guard let ciImage = CIImage(data: data) else { return nil }
+		let detector = CIDetector(
+			ofType: CIDetectorTypeQRCode,
+			context: nil,
+			options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]
+		)
+		let features = detector?.features(in: ciImage) as? [CIQRCodeFeature]
+		return features?.first?.messageString
+	}
 
-    private func setCreateStatus(_ message: AppMessage) {
-        clearCreateMessageTask?.cancel()
-        createStatusMessage = message
-        clearCreateMessageTask = AppMessageAutoClear.schedule(
-            for: message,
-            currentMessage: { [weak self] in
-                self?.createStatusMessage
-            },
-            clear: { [weak self] in
-                self?.createStatusMessage = nil
-            }
-        )
-    }
+	private func setCreateStatus(_ message: AppMessage) {
+		clearCreateMessageTask?.cancel()
+		createStatusMessage = message
+		clearCreateMessageTask = AppMessageAutoClear.schedule(
+			for: message,
+			currentMessage: { [weak self] in
+				self?.createStatusMessage
+			},
+			clear: { [weak self] in
+				self?.createStatusMessage = nil
+			}
+		)
+	}
 
-    private func setSaveStatus(_ message: AppMessage) {
-        clearSaveMessageTask?.cancel()
-        saveStatusMessage = message
-        clearSaveMessageTask = AppMessageAutoClear.schedule(
-            for: message,
-            currentMessage: { [weak self] in
-                self?.saveStatusMessage
-            },
-            clear: { [weak self] in
-                self?.saveStatusMessage = nil
-            }
-        )
-    }
+	private func setSaveStatus(_ message: AppMessage) {
+		clearSaveMessageTask?.cancel()
+		saveStatusMessage = message
+		clearSaveMessageTask = AppMessageAutoClear.schedule(
+			for: message,
+			currentMessage: { [weak self] in
+				self?.saveStatusMessage
+			},
+			clear: { [weak self] in
+				self?.saveStatusMessage = nil
+			}
+		)
+	}
 
-    private func loadAllGroupPreviews(force: Bool) async {
-        for group in groups {
-            if force {
-                await loadGroupPreviewIfNeeded(for: group.id, force: true)
-            } else {
-                applyCachedMemberListPreviewIfAvailable(for: group.id)
-            }
-        }
-    }
+	private func loadAllGroupPreviews(force: Bool) async {
+		for group in groups {
+			if force {
+				await loadGroupPreviewIfNeeded(for: group.id, force: true)
+			} else {
+				applyCachedMemberListPreviewIfAvailable(for: group.id)
+			}
+		}
+	}
 
-    private func loadGroupPreviewIfNeeded(for groupID: String, force: Bool) async {
-        if !force && previewLoadedGroupIDs.contains(groupID) { return }
-        guard let group = groups.first(where: { $0.id == groupID }) else { return }
-        if !force && !group.members.isEmpty {
-            previewLoadedGroupIDs.insert(groupID)
-            return
-        }
-        if !force {
-            applyCachedMemberListPreviewIfAvailable(for: groupID)
-            return
-        }
+	private func loadGroupPreviewIfNeeded(for groupID: String, force: Bool) async
+	{
+		if !force && previewLoadedGroupIDs.contains(groupID) { return }
+		guard let group = groups.first(where: { $0.id == groupID }) else { return }
+		if !force && !group.members.isEmpty {
+			previewLoadedGroupIDs.insert(groupID)
+			return
+		}
+		if !force {
+			applyCachedMemberListPreviewIfAvailable(for: groupID)
+			return
+		}
 
-        do {
-            let previews = try await groupService.loadMemberPreviews(groupID: groupID, limit: 3)
-            groupStore.updateMembers(groupID: groupID, members: previews)
-            previewLoadedGroupIDs.insert(groupID)
-        } catch {
-            previewLoadedGroupIDs.remove(groupID)
-        }
-    }
+		do {
+			let previews = try await groupService.loadMemberPreviews(
+				groupID: groupID,
+				limit: 3
+			)
+			groupStore.updateMembers(groupID: groupID, members: previews)
+			previewLoadedGroupIDs.insert(groupID)
+		} catch {
+			previewLoadedGroupIDs.remove(groupID)
+		}
+	}
 
-    private func updateGroupPreviewFromFullMemberList(_ members: [GroupMemberPreview], groupID: String) {
-        groupStore.updateMembers(
-            groupID: groupID,
-            members: Array(members.prefix(3)),
-            totalMemberCount: members.count
-        )
-        previewLoadedGroupIDs.insert(groupID)
-    }
+	private func updateGroupPreviewFromFullMemberList(
+		_ members: [GroupMemberPreview],
+		groupID: String
+	) {
+		groupStore.updateMembers(
+			groupID: groupID,
+			members: Array(members.prefix(3)),
+			totalMemberCount: members.count
+		)
+		previewLoadedGroupIDs.insert(groupID)
+	}
 
-    private func applyCachedMemberListPreviewIfAvailable(for groupID: String) {
-        guard let cachedMembers = groupService.cachedMemberList(for: groupID) else { return }
-        updateGroupPreviewFromFullMemberList(cachedMembers, groupID: groupID)
-    }
+	private func applyCachedMemberListPreviewIfAvailable(for groupID: String) {
+		guard let cachedMembers = groupService.cachedMemberList(for: groupID) else {
+			return
+		}
+		updateGroupPreviewFromFullMemberList(cachedMembers, groupID: groupID)
+	}
 }

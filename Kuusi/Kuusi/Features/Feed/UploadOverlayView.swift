@@ -3,771 +3,800 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-private extension GoogleAccountError {
-    var appMessageID: AppMessage.ID {
-        switch self {
-        case .missingFirebaseUser:
-            return .pleaseSignInFirst
-        case .missingClientID:
-            return .googleSignInNotConfigured
-        case .missingGoogleIDToken:
-            return .googleSignInReturnedInvalidToken
-        case .missingGoogleEmail:
-            return .googleSignInReturnedIncompleteAccount
-        case .noLinkedGoogleAccount:
-            return .noLinkedGoogleAccount
-        case .mismatchedLinkedAccount:
-            return .googleAccountMismatch
-        }
-    }
+extension GoogleAccountError {
+	fileprivate var appMessageID: AppMessage.ID {
+		switch self {
+		case .missingFirebaseUser:
+			return .pleaseSignInFirst
+		case .missingClientID:
+			return .googleSignInNotConfigured
+		case .missingGoogleIDToken:
+			return .googleSignInReturnedInvalidToken
+		case .missingGoogleEmail:
+			return .googleSignInReturnedIncompleteAccount
+		case .noLinkedGoogleAccount:
+			return .noLinkedGoogleAccount
+		case .mismatchedLinkedAccount:
+			return .googleAccountMismatch
+		}
+	}
 }
 
-private extension GooglePhotosPickerError {
-    var appMessageID: AppMessage.ID {
-        switch self {
-        case .invalidSessionURL:
-            return .googlePhotosPickerReturnedInvalidLink
-        case .noSelectedPhotos:
-            return .noPhotosSelectedFromGooglePhotos
-        case .timedOut:
-            return .googlePhotosPickerTimedOut
-        case .invalidResponse, .requestFailed:
-            return .googlePhotosRequestFailed
-        }
-    }
+extension GooglePhotosPickerError {
+	fileprivate var appMessageID: AppMessage.ID {
+		switch self {
+		case .invalidSessionURL:
+			return .googlePhotosPickerReturnedInvalidLink
+		case .noSelectedPhotos:
+			return .noPhotosSelectedFromGooglePhotos
+		case .timedOut:
+			return .googlePhotosPickerTimedOut
+		case .invalidResponse, .requestFailed:
+			return .googlePhotosRequestFailed
+		}
+	}
 }
 
 enum UploadOverlayRules {
-    static func canUpload(
-        selectedImageCount: Int,
-        isUploading: Bool,
-        isImportingGooglePhotos: Bool,
-        isEstimatingUploadSize: Bool,
-        didFailUploadSizeEstimation: Bool = false,
-        selectedGroupID: String?,
-        effectiveUsageMB: Double,
-        estimatedUploadSizeMB: Double,
-        isPremiumActive: Bool
-    ) -> Bool {
-        selectedImageCount > 0 &&
-        !isUploading &&
-        !isImportingGooglePhotos &&
-        !isEstimatingUploadSize &&
-        !didFailUploadSizeEstimation &&
-        selectedGroupID != nil &&
-        !PlanAccessPolicy.isStorageLimitReached(
-            usageMB: effectiveUsageMB,
-            isPremiumActive: isPremiumActive
-        ) &&
-        PlanAccessPolicy.canUpload(
-            currentUsageMB: effectiveUsageMB,
-            additionalUsageMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive
-        )
-    }
+	static func canUpload(
+		selectedImageCount: Int,
+		isUploading: Bool,
+		isImportingGooglePhotos: Bool,
+		isEstimatingUploadSize: Bool,
+		didFailUploadSizeEstimation: Bool = false,
+		selectedGroupID: String?,
+		effectiveUsageMB: Double,
+		estimatedUploadSizeMB: Double,
+		isPremiumActive: Bool
+	) -> Bool {
+		selectedImageCount > 0 && !isUploading && !isImportingGooglePhotos
+			&& !isEstimatingUploadSize && !didFailUploadSizeEstimation
+			&& selectedGroupID != nil
+			&& !PlanAccessPolicy.isStorageLimitReached(
+				usageMB: effectiveUsageMB,
+				isPremiumActive: isPremiumActive
+			)
+			&& PlanAccessPolicy.canUpload(
+				currentUsageMB: effectiveUsageMB,
+				additionalUsageMB: estimatedUploadSizeMB,
+				isPremiumActive: isPremiumActive
+			)
+	}
 
-    static func uploadValidationMessageID(
-        currentUserID: String?,
-        selectedGroupID: String?,
-        effectiveUsageMB: Double,
-        estimatedUploadSizeMB: Double,
-        isPremiumActive: Bool,
-        didFailUploadSizeEstimation: Bool = false
-    ) -> AppMessage.ID? {
-        if PlanAccessPolicy.isStorageLimitReached(
-            usageMB: effectiveUsageMB,
-            isPremiumActive: isPremiumActive
-        ) {
-            return .storageLimitReached
-        }
-        guard currentUserID != nil else { return .pleaseSignInFirst }
-        guard selectedGroupID != nil else { return .selectGroup }
-        guard !didFailUploadSizeEstimation else { return .networkUnavailable }
-        guard PlanAccessPolicy.canUpload(
-            currentUsageMB: effectiveUsageMB,
-            additionalUsageMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive
-        ) else {
-            return .storageLimitReached
-        }
-        return nil
-    }
+	static func uploadValidationMessageID(
+		currentUserID: String?,
+		selectedGroupID: String?,
+		effectiveUsageMB: Double,
+		estimatedUploadSizeMB: Double,
+		isPremiumActive: Bool,
+		didFailUploadSizeEstimation: Bool = false
+	) -> AppMessage.ID? {
+		if PlanAccessPolicy.isStorageLimitReached(
+			usageMB: effectiveUsageMB,
+			isPremiumActive: isPremiumActive
+		) {
+			return .storageLimitReached
+		}
+		guard currentUserID != nil else { return .pleaseSignInFirst }
+		guard selectedGroupID != nil else { return .selectGroup }
+		guard !didFailUploadSizeEstimation else { return .networkUnavailable }
+		guard
+			PlanAccessPolicy.canUpload(
+				currentUsageMB: effectiveUsageMB,
+				additionalUsageMB: estimatedUploadSizeMB,
+				isPremiumActive: isPremiumActive
+			)
+		else {
+			return .storageLimitReached
+		}
+		return nil
+	}
 
-    static func normalizedHashtags(from input: String) -> [String] {
-        let separators = CharacterSet(charactersIn: ",\n\t ")
-        return input
-            .components(separatedBy: separators)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .map { token -> String in
-                let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
-                return clean.lowercased()
-            }
-    }
+	static func normalizedHashtags(from input: String) -> [String] {
+		let separators = CharacterSet(charactersIn: ",\n\t ")
+		return
+			input
+			.components(separatedBy: separators)
+			.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+			.filter { !$0.isEmpty }
+			.map { token -> String in
+				let clean = token.hasPrefix("#") ? String(token.dropFirst()) : token
+				return clean.lowercased()
+			}
+	}
 
-    static func normalizedCaption(from input: String) -> String? {
-        FeedPhotoMetadataUpdate.normalizedCaption(input)
-    }
+	static func normalizedCaption(from input: String) -> String? {
+		FeedPhotoMetadataUpdate.normalizedCaption(input)
+	}
 }
 
 struct UploadOverlayView: View {
-    private static let uploadSizeEstimationTimeout: TimeInterval = 15
+	private static let uploadSizeEstimationTimeout: TimeInterval = 15
 
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @EnvironmentObject private var groupStore: GroupStore
-    @EnvironmentObject private var subscriptionStore: SubscriptionStore
+	@Environment(\.dismiss) private var dismiss
+	@Environment(\.colorScheme) private var colorScheme
+	@EnvironmentObject private var groupStore: GroupStore
+	@EnvironmentObject private var subscriptionStore: SubscriptionStore
 
-    @State private var pickerItems: [PhotosPickerItem] = []
-    @State private var selectedImages: [UIImage] = []
-    @State private var selectedGroupID: String?
-    @State private var captionInput = ""
-    @State private var hashtagInput = ""
-    @State private var hashtags: [String] = []
-    @State private var isUploading = false
-    @State private var isImportingGooglePhotos = false
-    @State private var toastMessage: AppMessage?
-    @State private var googlePickerSession: GooglePhotosPickingSession?
-    @State private var clearMessageTask: Task<Void, Never>?
-    @State private var googleImportTask: Task<Void, Never>?
-    @State private var estimatedUploadSizeMB = 0.0
-    @State private var isEstimatingUploadSize = false
-    @State private var didFailUploadSizeEstimation = false
-    @State private var effectiveUsageMB = 0.0
+	@State private var pickerItems: [PhotosPickerItem] = []
+	@State private var selectedImages: [UIImage] = []
+	@State private var selectedGroupID: String?
+	@State private var captionInput = ""
+	@State private var hashtagInput = ""
+	@State private var hashtags: [String] = []
+	@State private var isUploading = false
+	@State private var isImportingGooglePhotos = false
+	@State private var toastMessage: AppMessage?
+	@State private var googlePickerSession: GooglePhotosPickingSession?
+	@State private var clearMessageTask: Task<Void, Never>?
+	@State private var googleImportTask: Task<Void, Never>?
+	@State private var estimatedUploadSizeMB = 0.0
+	@State private var isEstimatingUploadSize = false
+	@State private var didFailUploadSizeEstimation = false
+	@State private var effectiveUsageMB = 0.0
 
-    private let uploadService = UploadService()
-    private let googleAccountService = GoogleAccountService()
-    private let googlePhotosPickerService = GooglePhotosPickerService()
-    let currentUsageMB: Double
-    let isPremiumActive: Bool
-    let onUploadCompleted: ([FeedPhoto]) -> Void
+	private let uploadService = UploadService()
+	private let googleAccountService = GoogleAccountService()
+	private let googlePhotosPickerService = GooglePhotosPickerService()
+	let currentUsageMB: Double
+	let isPremiumActive: Bool
+	let onUploadCompleted: ([FeedPhoto]) -> Void
 
-    init(currentUsageMB: Double, isPremiumActive: Bool, onUploadCompleted: @escaping ([FeedPhoto]) -> Void = { _ in }) {
-        self.currentUsageMB = currentUsageMB
-        self.isPremiumActive = isPremiumActive
-        self.onUploadCompleted = onUploadCompleted
-        _effectiveUsageMB = State(initialValue: currentUsageMB)
-    }
+	init(
+		currentUsageMB: Double,
+		isPremiumActive: Bool,
+		onUploadCompleted: @escaping ([FeedPhoto]) -> Void = { _ in }
+	) {
+		self.currentUsageMB = currentUsageMB
+		self.isPremiumActive = isPremiumActive
+		self.onUploadCompleted = onUploadCompleted
+		_effectiveUsageMB = State(initialValue: currentUsageMB)
+	}
 
-    private var surfaceBackground: Color {
-        AppTheme.cardSurfaceBackground(for: colorScheme)
-    }
-    private var surfaceBorder: Color { AppTheme.cardSurfaceBorder(for: colorScheme) }
-    private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
+	private var surfaceBackground: Color {
+		AppTheme.cardSurfaceBackground(for: colorScheme)
+	}
+	private var surfaceBorder: Color {
+		AppTheme.cardSurfaceBorder(for: colorScheme)
+	}
+	private var primaryText: Color { AppTheme.primaryText(for: colorScheme) }
 
-    private var selectedGroupName: String {
-        guard let selectedGroupID else { return String(localized: "upload.group_placeholder") }
-        return groupStore.groups.first(where: { $0.id == selectedGroupID })?.name ?? String(localized: "upload.group_placeholder")
-    }
+	private var selectedGroupName: String {
+		guard let selectedGroupID else {
+			return String(localized: "upload.group_placeholder")
+		}
+		return groupStore.groups.first(where: { $0.id == selectedGroupID })?.name
+			?? String(localized: "upload.group_placeholder")
+	}
 
-    private var canUpload: Bool {
-        UploadOverlayRules.canUpload(
-            selectedImageCount: selectedImages.count,
-            isUploading: isUploading,
-            isImportingGooglePhotos: isImportingGooglePhotos,
-            isEstimatingUploadSize: isEstimatingUploadSize,
-            didFailUploadSizeEstimation: didFailUploadSizeEstimation,
-            selectedGroupID: selectedGroupID,
-            effectiveUsageMB: effectiveUsageMB,
-            estimatedUploadSizeMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive
-        )
-    }
+	private var canUpload: Bool {
+		UploadOverlayRules.canUpload(
+			selectedImageCount: selectedImages.count,
+			isUploading: isUploading,
+			isImportingGooglePhotos: isImportingGooglePhotos,
+			isEstimatingUploadSize: isEstimatingUploadSize,
+			didFailUploadSizeEstimation: didFailUploadSizeEstimation,
+			selectedGroupID: selectedGroupID,
+			effectiveUsageMB: effectiveUsageMB,
+			estimatedUploadSizeMB: estimatedUploadSizeMB,
+			isPremiumActive: isPremiumActive
+		)
+	}
 
-    private var wouldExceedStorageLimit: Bool {
-        !selectedImages.isEmpty &&
-        !PlanAccessPolicy.canUpload(
-            currentUsageMB: effectiveUsageMB,
-            additionalUsageMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive
-        )
-    }
+	private var wouldExceedStorageLimit: Bool {
+		!selectedImages.isEmpty
+			&& !PlanAccessPolicy.canUpload(
+				currentUsageMB: effectiveUsageMB,
+				additionalUsageMB: estimatedUploadSizeMB,
+				isPremiumActive: isPremiumActive
+			)
+	}
 
-    private var isStorageLimitReached: Bool {
-        PlanAccessPolicy.isStorageLimitReached(
-            usageMB: effectiveUsageMB,
-            isPremiumActive: isPremiumActive
-        )
-    }
+	private var isStorageLimitReached: Bool {
+		PlanAccessPolicy.isStorageLimitReached(
+			usageMB: effectiveUsageMB,
+			isPremiumActive: isPremiumActive
+		)
+	}
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
+	var body: some View {
+		NavigationStack {
+			ScrollView {
+				VStack(alignment: .leading, spacing: 18) {
+					header
 
-                    topContent
+					topContent
 
-                    VStack(spacing: 12) {
-                        groupPicker
-                        captionField
-                        hashtagsField
-                    }
+					VStack(spacing: 12) {
+						groupPicker
+						captionField
+						hashtagsField
+					}
 
-                    if !hashtags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(hashtags, id: \.self) { tag in
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "xmark")
-                                            .font(.caption.weight(.medium))
-                                        Text(tag)
-                                            .font(.subheadline.weight(.semibold))
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
-                                    .background(Color.accentColor)
-                                    .foregroundStyle(.white)
-                                    .clipShape(Capsule())
-                                    .onTapGesture {
-                                        hashtags.removeAll { $0 == tag }
-                                    }
-                                }
-                            }
-                        }
-                    }
+					if !hashtags.isEmpty {
+						ScrollView(.horizontal, showsIndicators: false) {
+							HStack(spacing: 10) {
+								ForEach(hashtags, id: \.self) { tag in
+									HStack(spacing: 6) {
+										Image(systemName: "xmark")
+											.font(.caption.weight(.medium))
+										Text(tag)
+											.font(.subheadline.weight(.semibold))
+									}
+									.padding(.horizontal, 14)
+									.padding(.vertical, 8)
+									.background(Color.accentColor)
+									.foregroundStyle(.white)
+									.clipShape(Capsule())
+									.onTapGesture {
+										hashtags.removeAll { $0 == tag }
+									}
+								}
+							}
+						}
+					}
 
-                    if isImportingGooglePhotos {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("upload.importing_google_photos")
-                                .font(.footnote.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+					if isImportingGooglePhotos {
+						HStack(spacing: 10) {
+							ProgressView()
+								.controlSize(.small)
+							Text("upload.importing_google_photos")
+								.font(.footnote.weight(.medium))
+								.foregroundStyle(.secondary)
+						}
+					}
 
-                    if isEstimatingUploadSize {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("upload.checking_storage")
-                                .font(.footnote.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+					if isEstimatingUploadSize {
+						HStack(spacing: 10) {
+							ProgressView()
+								.controlSize(.small)
+							Text("upload.checking_storage")
+								.font(.footnote.weight(.medium))
+								.foregroundStyle(.secondary)
+						}
+					}
 
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .padding(.top, 12)
-                .foregroundStyle(primaryText)
-            }
-            .appOverlayTheme()
-            .toolbar(.hidden, for: .navigationBar)
-            .onChange(of: pickerItems) { _, newValue in
-                Task { await loadImages(from: newValue) }
-            }
-            .onChange(of: selectedImages.count) { _, _ in
-                Task { await refreshEstimatedUploadSize() }
-            }
-            .onChange(of: toastMessage) { _, newValue in
-                scheduleMessageAutoClear(for: newValue)
-            }
-            .onDisappear {
-                clearMessageTask?.cancel()
-                clearMessageTask = nil
-                googleImportTask?.cancel()
-                googleImportTask = nil
-                if isUploading || isImportingGooglePhotos {
-                    AppTelemetry.clearOperation()
-                }
-            }
-            .appToastMessage(toastMessage) {
-                toastMessage = nil
-            }
-            .appToastHost()
-            .task {
-                syncSelectedGroupIfNeeded()
-                await showStorageLimitToastIfNeeded()
-            }
-            .onChange(of: groupStore.groups.map(\.id)) { _, _ in
-                syncSelectedGroupIfNeeded()
-            }
-            .sheet(item: $googlePickerSession) { session in
-                SafariSheetView(url: session.pickerURL)
-            }
-        }
-    }
+				}
+				.padding(.horizontal, 16)
+				.padding(.vertical, 12)
+				.padding(.top, 12)
+				.foregroundStyle(primaryText)
+			}
+			.appOverlayTheme()
+			.toolbar(.hidden, for: .navigationBar)
+			.onChange(of: pickerItems) { _, newValue in
+				Task { await loadImages(from: newValue) }
+			}
+			.onChange(of: selectedImages.count) { _, _ in
+				Task { await refreshEstimatedUploadSize() }
+			}
+			.onChange(of: toastMessage) { _, newValue in
+				scheduleMessageAutoClear(for: newValue)
+			}
+			.onDisappear {
+				clearMessageTask?.cancel()
+				clearMessageTask = nil
+				googleImportTask?.cancel()
+				googleImportTask = nil
+				if isUploading || isImportingGooglePhotos {
+					AppTelemetry.clearOperation()
+				}
+			}
+			.appToastMessage(toastMessage) {
+				toastMessage = nil
+			}
+			.appToastHost()
+			.task {
+				syncSelectedGroupIfNeeded()
+				await showStorageLimitToastIfNeeded()
+			}
+			.onChange(of: groupStore.groups.map(\.id)) { _, _ in
+				syncSelectedGroupIfNeeded()
+			}
+			.sheet(item: $googlePickerSession) { session in
+				SafariSheetView(url: session.pickerURL)
+			}
+		}
+	}
 
-    private var header: some View {
-        ZStack {
-            HStack {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .appDismissGlassCircle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("common.close")
+	private var header: some View {
+		ZStack {
+			HStack {
+				Button {
+					dismiss()
+				} label: {
+					Image(systemName: "xmark")
+						.appDismissGlassCircle()
+				}
+				.buttonStyle(.plain)
+				.accessibilityLabel("common.close")
 
-                Spacer()
+				Spacer()
 
-                uploadButton
-            }
+				uploadButton
+			}
 
-            Text("upload.button")
-                .font(.title3.weight(.bold))
-        }
-        .padding(.bottom, 4)
-    }
+			Text("upload.button")
+				.font(.title3.weight(.bold))
+		}
+		.padding(.bottom, 4)
+	}
 
-    private var uploadButton: some View {
-        Button {
-            Task { await upload() }
-        } label: {
-            Text("upload.button")
-        }
-        .buttonStyle(.appPrimaryCapsule(isLoading: isUploading))
-        .disabled(!canUpload)
-    }
+	private var uploadButton: some View {
+		Button {
+			Task { await upload() }
+		} label: {
+			Text("upload.button")
+		}
+		.buttonStyle(.appPrimaryCapsule(isLoading: isUploading))
+		.disabled(!canUpload)
+	}
 
-    @ViewBuilder
-    private var topContent: some View {
-        if selectedImages.isEmpty {
-            VStack(spacing: 12) {
-                PhotosPicker(
-                    selection: $pickerItems,
-                    maxSelectionCount: 10,
-                    matching: .images
-                ) {
-                    importRow(
-                        title: String(localized: "upload.import_photo_library"),
-                        systemImage: "photo.on.rectangle"
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 6)
+	@ViewBuilder
+	private var topContent: some View {
+		if selectedImages.isEmpty {
+			VStack(spacing: 12) {
+				PhotosPicker(
+					selection: $pickerItems,
+					maxSelectionCount: 10,
+					matching: .images
+				) {
+					importRow(
+						title: String(localized: "upload.import_photo_library"),
+						systemImage: "photo.on.rectangle"
+					)
+				}
+				.buttonStyle(.plain)
+				.padding(.top, 6)
 
-                Button {
-                    Task { await importFromGooglePhotos() }
-                } label: {
-                    importRow(
-                        title: String(localized: "upload.import_google_photos"),
-                        systemImage: "globe",
-                        showsProgress: isImportingGooglePhotos
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isImportingGooglePhotos)
-            }
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(Array(selectedImages.enumerated()), id: \.offset) { idx, image in
-                        ZStack(alignment: .topLeading) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 120, height: 120)
-                                .clipShape(RoundedRectangle(cornerRadius: 18))
+				Button {
+					Task { await importFromGooglePhotos() }
+				} label: {
+					importRow(
+						title: String(localized: "upload.import_google_photos"),
+						systemImage: "globe",
+						showsProgress: isImportingGooglePhotos
+					)
+				}
+				.buttonStyle(.plain)
+				.disabled(isImportingGooglePhotos)
+			}
+		} else {
+			ScrollView(.horizontal, showsIndicators: false) {
+				HStack(spacing: 12) {
+					ForEach(Array(selectedImages.enumerated()), id: \.offset) {
+						idx,
+						image in
+						ZStack(alignment: .topLeading) {
+							Image(uiImage: image)
+								.resizable()
+								.scaledToFill()
+								.frame(width: 120, height: 120)
+								.clipShape(RoundedRectangle(cornerRadius: 18))
 
-                            Button {
-                                selectedImages.remove(at: idx)
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .foregroundStyle(primaryText)
-                                    .appFeedGlassCircle(size: 28, font: .caption.weight(.semibold))
-                            }
-                            .buttonStyle(.plain)
-                            .offset(x: -8, y: -8)
-                        }
-                    }
-                }
-                .padding(.top, 10)
-                .padding(.leading, 8)
-            }
-            .frame(height: 138)
-        }
-    }
+							Button {
+								selectedImages.remove(at: idx)
+							} label: {
+								Image(systemName: "xmark")
+									.foregroundStyle(primaryText)
+									.appFeedGlassCircle(
+										size: 28,
+										font: .caption.weight(.semibold)
+									)
+							}
+							.buttonStyle(.plain)
+							.offset(x: -8, y: -8)
+						}
+					}
+				}
+				.padding(.top, 10)
+				.padding(.leading, 8)
+			}
+			.frame(height: 138)
+		}
+	}
 
-    private func importRow(
-        title: String,
-        systemImage: String,
-        showsProgress: Bool = false
-    ) -> some View {
-        HStack(spacing: 10) {
-            if showsProgress {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 24)
-            } else {
-                Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 24)
-            }
+	private func importRow(
+		title: String,
+		systemImage: String,
+		showsProgress: Bool = false
+	) -> some View {
+		HStack(spacing: 10) {
+			if showsProgress {
+				ProgressView()
+					.controlSize(.small)
+					.frame(width: 24)
+			} else {
+				Image(systemName: systemImage)
+					.font(.title3.weight(.semibold))
+					.frame(width: 24)
+			}
 
-            Text(title)
-                .font(.headline.weight(.semibold))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(surfaceBackground)
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(surfaceBorder, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-            radius: colorScheme == .dark ? 12 : 16,
-            x: 0,
-            y: 4
-        )
-    }
+			Text(title)
+				.font(.headline.weight(.semibold))
+		}
+		.frame(maxWidth: .infinity)
+		.padding(.vertical, 16)
+		.background(surfaceBackground)
+		.overlay {
+			RoundedRectangle(cornerRadius: 18)
+				.stroke(surfaceBorder, lineWidth: 1)
+		}
+		.clipShape(RoundedRectangle(cornerRadius: 18))
+		.shadow(
+			color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+			radius: colorScheme == .dark ? 12 : 16,
+			x: 0,
+			y: 4
+		)
+	}
 
-    private func liftedField<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        HStack(spacing: 12) {
-            content()
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 62)
-        .background(surfaceBackground)
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(surfaceBorder, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-            radius: colorScheme == .dark ? 10 : 14,
-            x: 0,
-            y: 4
-        )
-    }
+	private func liftedField<Content: View>(
+		@ViewBuilder content: () -> Content
+	) -> some View {
+		HStack(spacing: 12) {
+			content()
+		}
+		.padding(.horizontal, 16)
+		.frame(height: 62)
+		.background(surfaceBackground)
+		.overlay {
+			RoundedRectangle(cornerRadius: 16)
+				.stroke(surfaceBorder, lineWidth: 1)
+		}
+		.clipShape(RoundedRectangle(cornerRadius: 16))
+		.shadow(
+			color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+			radius: colorScheme == .dark ? 10 : 14,
+			x: 0,
+			y: 4
+		)
+	}
 
-    private var groupPicker: some View {
-        Menu {
-            if groupStore.groups.isEmpty {
-                Text("groups.empty")
-            } else {
-                ForEach(groupStore.groups) { group in
-                    Button(group.name) {
-                        selectedGroupID = group.id
-                    }
-                }
-            }
-        } label: {
-            liftedField {
-                Text(selectedGroupName)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
+	private var groupPicker: some View {
+		Menu {
+			if groupStore.groups.isEmpty {
+				Text("groups.empty")
+			} else {
+				ForEach(groupStore.groups) { group in
+					Button(group.name) {
+						selectedGroupID = group.id
+					}
+				}
+			}
+		} label: {
+			liftedField {
+				Text(selectedGroupName)
+					.foregroundStyle(.secondary)
+				Spacer()
+				Image(systemName: "chevron.up.chevron.down")
+					.font(.headline.weight(.semibold))
+					.foregroundStyle(.secondary)
+			}
+		}
+		.buttonStyle(.plain)
+	}
 
-    private var hashtagsField: some View {
-        TextField("photo.hashtags.placeholder", text: $hashtagInput)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled(true)
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(surfaceBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(surfaceBorder, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-                radius: colorScheme == .dark ? 10 : 14,
-                x: 0,
-                y: 4
-            )
-            .onSubmit {
-                addHashtagsFromInput()
-            }
-            .onChange(of: hashtagInput) { _, newValue in
-                if newValue.contains("\n") || newValue.contains(",") {
-                    addHashtagsFromInput()
-                }
-            }
-    }
+	private var hashtagsField: some View {
+		TextField("photo.hashtags.placeholder", text: $hashtagInput)
+			.textInputAutocapitalization(.never)
+			.autocorrectionDisabled(true)
+			.padding(.horizontal, 16)
+			.frame(height: 62)
+			.background(surfaceBackground)
+			.overlay {
+				RoundedRectangle(cornerRadius: 16)
+					.stroke(surfaceBorder, lineWidth: 1)
+			}
+			.clipShape(RoundedRectangle(cornerRadius: 16))
+			.shadow(
+				color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+				radius: colorScheme == .dark ? 10 : 14,
+				x: 0,
+				y: 4
+			)
+			.onSubmit {
+				addHashtagsFromInput()
+			}
+			.onChange(of: hashtagInput) { _, newValue in
+				if newValue.contains("\n") || newValue.contains(",") {
+					addHashtagsFromInput()
+				}
+			}
+	}
 
-    private var captionField: some View {
-        TextField("photo.caption.placeholder", text: $captionInput)
-            .lineLimit(1)
-            .foregroundStyle(primaryText)
-            .padding(.horizontal, 16)
-            .frame(height: 62)
-            .background(surfaceBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(surfaceBorder, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
-                radius: colorScheme == .dark ? 10 : 14,
-                x: 0,
-                y: 4
-            )
-            .onChange(of: captionInput) { _, newValue in
-                limitCaptionInput(newValue)
-            }
-    }
+	private var captionField: some View {
+		TextField("photo.caption.placeholder", text: $captionInput)
+			.lineLimit(1)
+			.foregroundStyle(primaryText)
+			.padding(.horizontal, 16)
+			.frame(height: 62)
+			.background(surfaceBackground)
+			.overlay {
+				RoundedRectangle(cornerRadius: 16)
+					.stroke(surfaceBorder, lineWidth: 1)
+			}
+			.clipShape(RoundedRectangle(cornerRadius: 16))
+			.shadow(
+				color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+				radius: colorScheme == .dark ? 10 : 14,
+				x: 0,
+				y: 4
+			)
+			.onChange(of: captionInput) { _, newValue in
+				limitCaptionInput(newValue)
+			}
+	}
 
-    private func syncSelectedGroupIfNeeded() {
-        if let selectedGroupID, groupStore.groups.contains(where: { $0.id == selectedGroupID }) {
-            return
-        }
-        selectedGroupID = groupStore.selectedGroupID ?? groupStore.groups.first?.id
-    }
+	private func syncSelectedGroupIfNeeded() {
+		if let selectedGroupID,
+			groupStore.groups.contains(where: { $0.id == selectedGroupID })
+		{
+			return
+		}
+		selectedGroupID = groupStore.selectedGroupID ?? groupStore.groups.first?.id
+	}
 
-    private func addHashtagsFromInput() {
-        let tokens = UploadOverlayRules.normalizedHashtags(from: hashtagInput)
+	private func addHashtagsFromInput() {
+		let tokens = UploadOverlayRules.normalizedHashtags(from: hashtagInput)
 
-        for token in tokens where !hashtags.contains(token) {
-            hashtags.append(token)
-        }
-        hashtagInput = ""
-    }
+		for token in tokens where !hashtags.contains(token) {
+			hashtags.append(token)
+		}
+		hashtagInput = ""
+	}
 
-    private func loadImages(from items: [PhotosPickerItem]) async {
-        let loaded = await withTaskGroup(of: (Int, UIImage?).self) { group in
-            for (index, item) in items.enumerated() {
-                group.addTask {
-                    guard let data = try? await item.loadTransferable(type: Data.self),
-                          let image = UIImage(data: data) else {
-                        return (index, nil)
-                    }
-                    return (index, image)
-                }
-            }
+	private func loadImages(from items: [PhotosPickerItem]) async {
+		let loaded = await withTaskGroup(of: (Int, UIImage?).self) { group in
+			for (index, item) in items.enumerated() {
+				group.addTask {
+					guard let data = try? await item.loadTransferable(type: Data.self),
+						let image = UIImage(data: data)
+					else {
+						return (index, nil)
+					}
+					return (index, image)
+				}
+			}
 
-            var imagesByIndex: [Int: UIImage] = [:]
-            for await (index, image) in group {
-                if let image {
-                    imagesByIndex[index] = image
-                }
-            }
+			var imagesByIndex: [Int: UIImage] = [:]
+			for await (index, image) in group {
+				if let image {
+					imagesByIndex[index] = image
+				}
+			}
 
-            return imagesByIndex
-                .sorted { $0.key < $1.key }
-                .map(\.value)
-        }
+			return
+				imagesByIndex
+				.sorted { $0.key < $1.key }
+				.map(\.value)
+		}
 
-        await MainActor.run {
-            selectedImages = loaded
-        }
-    }
+		await MainActor.run {
+			selectedImages = loaded
+		}
+	}
 
-    @MainActor
-    private func upload() async {
-        if let messageID = UploadOverlayRules.uploadValidationMessageID(
-            currentUserID: currentUserID,
-            selectedGroupID: selectedGroupID,
-            effectiveUsageMB: effectiveUsageMB,
-            estimatedUploadSizeMB: estimatedUploadSizeMB,
-            isPremiumActive: isPremiumActive,
-            didFailUploadSizeEstimation: didFailUploadSizeEstimation
-        ) {
-            toastMessage = AppMessage(messageID, .error)
-            return
-        }
+	@MainActor
+	private func upload() async {
+		if let messageID = UploadOverlayRules.uploadValidationMessageID(
+			currentUserID: currentUserID,
+			selectedGroupID: selectedGroupID,
+			effectiveUsageMB: effectiveUsageMB,
+			estimatedUploadSizeMB: estimatedUploadSizeMB,
+			isPremiumActive: isPremiumActive,
+			didFailUploadSizeEstimation: didFailUploadSizeEstimation
+		) {
+			toastMessage = AppMessage(messageID, .error)
+			return
+		}
 
-        guard let uid = currentUserID else { return }
-        guard let groupID = selectedGroupID else { return }
+		guard let uid = currentUserID else { return }
+		guard let groupID = selectedGroupID else { return }
 
-        isUploading = true
-        AppTelemetry.setOperation(.photoUpload)
-        defer {
-            AppTelemetry.clearOperation()
-            isUploading = false
-        }
+		isUploading = true
+		AppTelemetry.setOperation(.photoUpload)
+		defer {
+			AppTelemetry.clearOperation()
+			isUploading = false
+		}
 
-        do {
-            if isPremiumActive {
-                try await subscriptionStore.syncSubscription()
-            }
+		do {
+			if isPremiumActive {
+				try await subscriptionStore.syncSubscription()
+			}
 
-            let uploadedPhotos = try await uploadService.upload(
-                images: selectedImages,
-                userID: uid,
-                groupID: groupID,
-                hashtags: hashtags,
-                caption: UploadOverlayRules.normalizedCaption(from: captionInput)
-            )
-            onUploadCompleted(uploadedPhotos)
-            selectedImages = []
-            pickerItems = []
-            captionInput = ""
-            hashtagInput = ""
-            hashtags = []
-            effectiveUsageMB += uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) }
-            estimatedUploadSizeMB = 0
-            didFailUploadSizeEstimation = false
-            toastMessage = AppMessage(.uploadCompleted, .success)
-        } catch SubscriptionStoreError.subscriptionSyncFailed {
-            toastMessage = AppMessage(.failedToVerifyPremiumSubscription, .error)
-        } catch {
-            toastMessage = AppMessage(.failedToLoadImage, .error)
-        }
-    }
+			let uploadedPhotos = try await uploadService.upload(
+				images: selectedImages,
+				userID: uid,
+				groupID: groupID,
+				hashtags: hashtags,
+				caption: UploadOverlayRules.normalizedCaption(from: captionInput)
+			)
+			onUploadCompleted(uploadedPhotos)
+			selectedImages = []
+			pickerItems = []
+			captionInput = ""
+			hashtagInput = ""
+			hashtags = []
+			effectiveUsageMB += uploadedPhotos.reduce(0) { $0 + ($1.sizeMB ?? 0) }
+			estimatedUploadSizeMB = 0
+			didFailUploadSizeEstimation = false
+			toastMessage = AppMessage(.uploadCompleted, .success)
+		} catch SubscriptionStoreError.subscriptionSyncFailed {
+			toastMessage = AppMessage(.failedToVerifyPremiumSubscription, .error)
+		} catch {
+			toastMessage = AppMessage(.failedToLoadImage, .error)
+		}
+	}
 
-    private var currentUserID: String? {
-#if DEBUG
-        UITestEnvironment.currentUserID ?? Auth.auth().currentUser?.uid
-#else
-        Auth.auth().currentUser?.uid
-#endif
-    }
+	private var currentUserID: String? {
+		#if DEBUG
+			UITestEnvironment.currentUserID ?? Auth.auth().currentUser?.uid
+		#else
+			Auth.auth().currentUser?.uid
+		#endif
+	}
 
-    private func scheduleMessageAutoClear(for value: AppMessage?) {
-        clearMessageTask?.cancel()
-        clearMessageTask = AppMessageAutoClear.schedule(
-            for: value,
-            currentMessage: { toastMessage },
-            clear: { toastMessage = nil }
-        )
-    }
+	private func scheduleMessageAutoClear(for value: AppMessage?) {
+		clearMessageTask?.cancel()
+		clearMessageTask = AppMessageAutoClear.schedule(
+			for: value,
+			currentMessage: { toastMessage },
+			clear: { toastMessage = nil }
+		)
+	}
 
-    private func limitCaptionInput(_ value: String) {
-        guard value.count > FeedPhotoMetadataUpdate.captionCharacterLimit else { return }
-        captionInput = String(value.prefix(FeedPhotoMetadataUpdate.captionCharacterLimit))
-    }
+	private func limitCaptionInput(_ value: String) {
+		guard value.count > FeedPhotoMetadataUpdate.captionCharacterLimit else {
+			return
+		}
+		captionInput = String(
+			value.prefix(FeedPhotoMetadataUpdate.captionCharacterLimit)
+		)
+	}
 
-    @MainActor
-    private func importFromGooglePhotos() async {
-        guard !isStorageLimitReached else {
-            toastMessage = AppMessage(.storageLimitReached, .error)
-            return
-        }
+	@MainActor
+	private func importFromGooglePhotos() async {
+		guard !isStorageLimitReached else {
+			toastMessage = AppMessage(.storageLimitReached, .error)
+			return
+		}
 
-        guard let presentingViewController = UIApplication.topViewController() else {
-            toastMessage = AppMessage(.couldNotOpenGooglePhotos, .error)
-            return
-        }
+		guard let presentingViewController = UIApplication.topViewController()
+		else {
+			toastMessage = AppMessage(.couldNotOpenGooglePhotos, .error)
+			return
+		}
 
-        isImportingGooglePhotos = true
-        AppTelemetry.setOperation(.googlePhotosImport)
-        toastMessage = nil
+		isImportingGooglePhotos = true
+		AppTelemetry.setOperation(.googlePhotosImport)
+		toastMessage = nil
 
-        do {
-            let authorizedSession = try await googleAccountService.preparePickerAuthorization(
-                presentingViewController: presentingViewController
-            )
-            let session = try await googlePhotosPickerService.createSession(
-                accessToken: authorizedSession.accessToken,
-                maxItemCount: 10
-            )
+		do {
+			let authorizedSession =
+				try await googleAccountService.preparePickerAuthorization(
+					presentingViewController: presentingViewController
+				)
+			let session = try await googlePhotosPickerService.createSession(
+				accessToken: authorizedSession.accessToken,
+				maxItemCount: 10
+			)
 
-            googlePickerSession = session
-            googleImportTask?.cancel()
-            googleImportTask = Task {
-                do {
-                    let images = try await googlePhotosPickerService.waitForSelection(
-                        session: session,
-                        accessToken: authorizedSession.accessToken
-                    )
-                    await MainActor.run {
-                        selectedImages = images
-                        pickerItems = []
-                        googlePickerSession = nil
-                        googleImportTask = nil
-                        AppTelemetry.clearOperation()
-                        isImportingGooglePhotos = false
-                        toastMessage = AppMessage(.photosImportedFromGooglePhotos(images.count), .success)
-                    }
-                } catch is CancellationError {
-                    await MainActor.run {
-                        googleImportTask = nil
-                        AppTelemetry.clearOperation()
-                        isImportingGooglePhotos = false
-                    }
-                } catch let error as GooglePhotosPickerError {
-                    await MainActor.run {
-                        googlePickerSession = nil
-                        googleImportTask = nil
-                        AppTelemetry.clearOperation()
-                        isImportingGooglePhotos = false
-                        toastMessage = AppMessage(error.appMessageID, .error)
-                    }
-                } catch {
-                    await MainActor.run {
-                        googlePickerSession = nil
-                        googleImportTask = nil
-                        AppTelemetry.clearOperation()
-                        isImportingGooglePhotos = false
-                        toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
-                    }
-                }
-            }
-        } catch let error as GoogleAccountError {
-            AppTelemetry.clearOperation()
-            isImportingGooglePhotos = false
-            toastMessage = AppMessage(error.appMessageID, .error)
-        } catch let error as GooglePhotosPickerError {
-            AppTelemetry.clearOperation()
-            isImportingGooglePhotos = false
-            toastMessage = AppMessage(error.appMessageID, .error)
-        } catch {
-            AppTelemetry.clearOperation()
-            isImportingGooglePhotos = false
-            toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
-        }
-    }
+			googlePickerSession = session
+			googleImportTask?.cancel()
+			googleImportTask = Task {
+				do {
+					let images = try await googlePhotosPickerService.waitForSelection(
+						session: session,
+						accessToken: authorizedSession.accessToken
+					)
+					await MainActor.run {
+						selectedImages = images
+						pickerItems = []
+						googlePickerSession = nil
+						googleImportTask = nil
+						AppTelemetry.clearOperation()
+						isImportingGooglePhotos = false
+						toastMessage = AppMessage(
+							.photosImportedFromGooglePhotos(images.count),
+							.success
+						)
+					}
+				} catch is CancellationError {
+					await MainActor.run {
+						googleImportTask = nil
+						AppTelemetry.clearOperation()
+						isImportingGooglePhotos = false
+					}
+				} catch let error as GooglePhotosPickerError {
+					await MainActor.run {
+						googlePickerSession = nil
+						googleImportTask = nil
+						AppTelemetry.clearOperation()
+						isImportingGooglePhotos = false
+						toastMessage = AppMessage(error.appMessageID, .error)
+					}
+				} catch {
+					await MainActor.run {
+						googlePickerSession = nil
+						googleImportTask = nil
+						AppTelemetry.clearOperation()
+						isImportingGooglePhotos = false
+						toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
+					}
+				}
+			}
+		} catch let error as GoogleAccountError {
+			AppTelemetry.clearOperation()
+			isImportingGooglePhotos = false
+			toastMessage = AppMessage(error.appMessageID, .error)
+		} catch let error as GooglePhotosPickerError {
+			AppTelemetry.clearOperation()
+			isImportingGooglePhotos = false
+			toastMessage = AppMessage(error.appMessageID, .error)
+		} catch {
+			AppTelemetry.clearOperation()
+			isImportingGooglePhotos = false
+			toastMessage = AppMessage(.failedToImportFromGooglePhotos, .error)
+		}
+	}
 
-    @MainActor
-    private func refreshEstimatedUploadSize() async {
-        guard !selectedImages.isEmpty else {
-            estimatedUploadSizeMB = 0
-            isEstimatingUploadSize = false
-            didFailUploadSizeEstimation = false
-            return
-        }
+	@MainActor
+	private func refreshEstimatedUploadSize() async {
+		guard !selectedImages.isEmpty else {
+			estimatedUploadSizeMB = 0
+			isEstimatingUploadSize = false
+			didFailUploadSizeEstimation = false
+			return
+		}
 
-        isEstimatingUploadSize = true
-        didFailUploadSizeEstimation = false
-        defer { isEstimatingUploadSize = false }
+		isEstimatingUploadSize = true
+		didFailUploadSizeEstimation = false
+		defer { isEstimatingUploadSize = false }
 
-        let images = selectedImages
-        do {
-            estimatedUploadSizeMB = try await withTimeout(seconds: Self.uploadSizeEstimationTimeout) {
-                try await uploadService.estimatedUploadSizeMB(for: images)
-            }
-            didFailUploadSizeEstimation = false
-            if wouldExceedStorageLimit {
-                toastMessage = AppMessage(.storageLimitReached, .error)
-            }
-        } catch {
-            estimatedUploadSizeMB = 0
-            didFailUploadSizeEstimation = true
-            toastMessage = AppMessage(.networkUnavailable, .error)
-        }
-    }
+		let images = selectedImages
+		do {
+			estimatedUploadSizeMB = try await withTimeout(
+				seconds: Self.uploadSizeEstimationTimeout
+			) {
+				try await uploadService.estimatedUploadSizeMB(for: images)
+			}
+			didFailUploadSizeEstimation = false
+			if wouldExceedStorageLimit {
+				toastMessage = AppMessage(.storageLimitReached, .error)
+			}
+		} catch {
+			estimatedUploadSizeMB = 0
+			didFailUploadSizeEstimation = true
+			toastMessage = AppMessage(.networkUnavailable, .error)
+		}
+	}
 
-    @MainActor
-    private func showStorageLimitToastIfNeeded() async {
-        guard isStorageLimitReached else { return }
-        toastMessage = AppMessage(.storageLimitReached, .error)
-    }
+	@MainActor
+	private func showStorageLimitToastIfNeeded() async {
+		guard isStorageLimitReached else { return }
+		toastMessage = AppMessage(.storageLimitReached, .error)
+	}
 
-    private func withTimeout<T: Sendable>(
-        seconds: TimeInterval,
-        operation: @escaping @Sendable () async throws -> T
-    ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw CancellationError()
-            }
+	private func withTimeout<T: Sendable>(
+		seconds: TimeInterval,
+		operation: @escaping @Sendable () async throws -> T
+	) async throws -> T {
+		try await withThrowingTaskGroup(of: T.self) { group in
+			group.addTask {
+				try await operation()
+			}
+			group.addTask {
+				try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+				throw CancellationError()
+			}
 
-            guard let result = try await group.next() else {
-                throw CancellationError()
-            }
-            group.cancelAll()
-            return result
-        }
-    }
+			guard let result = try await group.next() else {
+				throw CancellationError()
+			}
+			group.cancelAll()
+			return result
+		}
+	}
 }

@@ -6,596 +6,640 @@ import GoogleSignIn
 import SwiftUI
 
 protocol BiometricAuthServicing {
-    func authenticate(reason: String) async -> Bool
+	func authenticate(reason: String) async -> Bool
 }
 
 extension BiometricAuthService: BiometricAuthServicing {}
 
 enum DebugCredentialsError: LocalizedError {
-    case missingEnvironmentVariables
+	case missingEnvironmentVariables
 
-    var errorDescription: String? {
-        switch self {
-        case .missingEnvironmentVariables:
-            return "Set DEBUG_TEST_EMAIL/DEBUG_TEST_PASSWORD or DEBUG_TEST_USER_{N}_EMAIL/_PASSWORD in Xcode Scheme > Run > Environment Variables."
-        }
-    }
+	var errorDescription: String? {
+		switch self {
+		case .missingEnvironmentVariables:
+			return
+				"Set DEBUG_TEST_EMAIL/DEBUG_TEST_PASSWORD or DEBUG_TEST_USER_{N}_EMAIL/_PASSWORD in Xcode Scheme > Run > Environment Variables."
+		}
+	}
 }
 
-private extension AuthServiceError {
-    var appMessageID: AppMessage.ID {
-        switch self {
-        case .missingResult, .missingCurrentUser:
-            return .appleSignInFailed
-        }
-    }
+extension AuthServiceError {
+	fileprivate var appMessageID: AppMessage.ID {
+		switch self {
+		case .missingResult, .missingCurrentUser:
+			return .appleSignInFailed
+		}
+	}
 }
 
 protocol AccountDeletionServicing {
-    func deleteCurrentUserData() async throws
-    func deleteAuthCurrentUser() async throws
+	func deleteCurrentUserData() async throws
+	func deleteAuthCurrentUser() async throws
 }
 
 protocol SignOutServicing {
-    func signOut() throws
+	func signOut() throws
 }
 
 final class SignOutService: SignOutServicing {
-    func signOut() throws {
-        GIDSignIn.sharedInstance.signOut()
-        try Auth.auth().signOut()
-    }
+	func signOut() throws {
+		GIDSignIn.sharedInstance.signOut()
+		try Auth.auth().signOut()
+	}
 }
 
 final class AccountDeletionService: AccountDeletionServicing {
-    private let userService = UserService()
+	private let userService = UserService()
 
-    func deleteCurrentUserData() async throws {
-        try await userService.deleteCurrentUserData()
-    }
+	func deleteCurrentUserData() async throws {
+		try await userService.deleteCurrentUserData()
+	}
 
-    func deleteAuthCurrentUser() async throws {
-        guard let user = Auth.auth().currentUser else {
-            throw AuthServiceError.missingCurrentUser
-        }
+	func deleteAuthCurrentUser() async throws {
+		guard let user = Auth.auth().currentUser else {
+			throw AuthServiceError.missingCurrentUser
+		}
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            user.delete { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: ())
-            }
-        }
-    }
+		try await withCheckedThrowingContinuation {
+			(continuation: CheckedContinuation<Void, Error>) in
+			user.delete { error in
+				if let error {
+					continuation.resume(throwing: error)
+					return
+				}
+				continuation.resume(returning: ())
+			}
+		}
+	}
 }
 
 private enum UITestRouteOverride {
-    case signedOut
-    case locked
-    case signedIn
+	case signedOut
+	case locked
+	case signedIn
 
-    init?(launchArguments: [String]) {
-        if launchArguments.contains("UI_TEST_ROUTE_SIGNED_OUT") {
-            self = .signedOut
-        } else if launchArguments.contains("UI_TEST_ROUTE_LOCKED") {
-            self = .locked
-        } else if launchArguments.contains("UI_TEST_ROUTE_SIGNED_IN") {
-            self = .signedIn
-        } else {
-            return nil
-        }
-    }
+	init?(launchArguments: [String]) {
+		if launchArguments.contains("UI_TEST_ROUTE_SIGNED_OUT") {
+			self = .signedOut
+		} else if launchArguments.contains("UI_TEST_ROUTE_LOCKED") {
+			self = .locked
+		} else if launchArguments.contains("UI_TEST_ROUTE_SIGNED_IN") {
+			self = .signedIn
+		} else {
+			return nil
+		}
+	}
 }
 
 struct DebugAccount: Identifiable, Hashable {
-    let id: String
-    let email: String
-    let password: String
-    let suggestedName: String?
+	let id: String
+	let email: String
+	let password: String
+	let suggestedName: String?
 
-    var displayLabel: String {
-        if let suggestedName, !suggestedName.isEmpty {
-            return suggestedName
-        }
-        return email
-    }
+	var displayLabel: String {
+		if let suggestedName, !suggestedName.isEmpty {
+			return suggestedName
+		}
+		return email
+	}
 }
 
 @MainActor
 final class AppState: ObservableObject {
-    enum Route: Equatable {
-        case checkingAuth
-        case signedOut
-        case locked
-        case signedIn
-    }
+	enum Route: Equatable {
+		case checkingAuth
+		case signedOut
+		case locked
+		case signedIn
+	}
 
-    @Published var route: Route = .signedOut
-    @Published var toastMessage: AppMessage?
-    @Published private(set) var isDeletingAccount = false
-    @Published private(set) var currentUser: User?
-    @Published private(set) var signedInContentResetToken = 0
-#if DEBUG
-    @Published private(set) var debugAccounts: [DebugAccount] = []
-    @Published var selectedDebugAccountID: String?
-#endif
+	@Published var route: Route = .signedOut
+	@Published var toastMessage: AppMessage?
+	@Published private(set) var isDeletingAccount = false
+	@Published private(set) var currentUser: User?
+	@Published private(set) var signedInContentResetToken = 0
+	#if DEBUG
+		@Published private(set) var debugAccounts: [DebugAccount] = []
+		@Published var selectedDebugAccountID: String?
+	#endif
 
-    private let authService: AppleAuthServicing
-    private let userService = UserService()
-    private let biometricAuthService: BiometricAuthServicing
-    private let notificationService: NotificationServicing
-    private let accountDeletionService: AccountDeletionServicing
-    private let currentAuthUserID: () -> String?
-    private let signOutService: SignOutServicing
-    private let groupService = GroupService()
-    private var authHandle: AuthStateDidChangeListenerHandle?
-    private var prefetchedGroupsUID: String?
-    private var shouldUnlockAfterInteractiveSignIn = false
-    private let uiTestRouteOverride: UITestRouteOverride?
-    private let now: () -> Date
-    private let relockInterval: TimeInterval
-    private var backgroundEnteredAt: Date?
-#if DEBUG
-    private let debugAccountsLoader: @MainActor () -> [DebugAccount]
-#endif
+	private let authService: AppleAuthServicing
+	private let userService = UserService()
+	private let biometricAuthService: BiometricAuthServicing
+	private let notificationService: NotificationServicing
+	private let accountDeletionService: AccountDeletionServicing
+	private let currentAuthUserID: () -> String?
+	private let signOutService: SignOutServicing
+	private let groupService = GroupService()
+	private var authHandle: AuthStateDidChangeListenerHandle?
+	private var prefetchedGroupsUID: String?
+	private var shouldUnlockAfterInteractiveSignIn = false
+	private let uiTestRouteOverride: UITestRouteOverride?
+	private let now: () -> Date
+	private let relockInterval: TimeInterval
+	private var backgroundEnteredAt: Date?
+	#if DEBUG
+		private let debugAccountsLoader: @MainActor () -> [DebugAccount]
+	#endif
 
-    var isRunningUITests: Bool {
-        uiTestRouteOverride != nil
-    }
+	var isRunningUITests: Bool {
+		uiTestRouteOverride != nil
+	}
 
-    init(
-        launchArguments: [String],
-        biometricAuthService: BiometricAuthServicing,
-        shouldObserveAuthState: Bool,
-        now: @escaping () -> Date = Date.init,
-        relockInterval: TimeInterval? = nil,
-        notificationService: NotificationServicing,
-        authService: AppleAuthServicing? = nil,
-        accountDeletionService: AccountDeletionServicing? = nil,
-        currentAuthUserID: @escaping () -> String? = { Auth.auth().currentUser?.uid },
-        signOutService: SignOutServicing? = nil,
-        debugAccountsLoader: (@MainActor () -> [DebugAccount])? = nil
-    ) {
-        self.authService = authService ?? AppleAuthService()
-        self.biometricAuthService = biometricAuthService
-        self.notificationService = notificationService
-        self.accountDeletionService = accountDeletionService ?? AccountDeletionService()
-        self.currentAuthUserID = currentAuthUserID
-        self.signOutService = signOutService ?? SignOutService()
-        self.uiTestRouteOverride = UITestRouteOverride(launchArguments: launchArguments)
-        self.now = now
-        self.relockInterval = relockInterval ?? 5 * 60
-#if DEBUG
-        self.debugAccountsLoader = debugAccountsLoader ?? AppState.loadDebugAccounts
-        let loadedAccounts = self.debugAccountsLoader()
-        debugAccounts = loadedAccounts
-        selectedDebugAccountID = loadedAccounts.first?.id
-#else
-        _ = debugAccountsLoader
-#endif
-        if let uiTestRouteOverride {
-            route = switch uiTestRouteOverride {
-            case .signedOut:
-                .signedOut
-            case .locked:
-                .locked
-            case .signedIn:
-                .signedIn
-            }
-            return
-        }
-        if shouldObserveAuthState {
-            route = .checkingAuth
-            self.observeAuthState()
-        }
-    }
+	init(
+		launchArguments: [String],
+		biometricAuthService: BiometricAuthServicing,
+		shouldObserveAuthState: Bool,
+		now: @escaping () -> Date = Date.init,
+		relockInterval: TimeInterval? = nil,
+		notificationService: NotificationServicing,
+		authService: AppleAuthServicing? = nil,
+		accountDeletionService: AccountDeletionServicing? = nil,
+		currentAuthUserID: @escaping () -> String? = {
+			Auth.auth().currentUser?.uid
+		},
+		signOutService: SignOutServicing? = nil,
+		debugAccountsLoader: (@MainActor () -> [DebugAccount])? = nil
+	) {
+		self.authService = authService ?? AppleAuthService()
+		self.biometricAuthService = biometricAuthService
+		self.notificationService = notificationService
+		self.accountDeletionService =
+			accountDeletionService ?? AccountDeletionService()
+		self.currentAuthUserID = currentAuthUserID
+		self.signOutService = signOutService ?? SignOutService()
+		self.uiTestRouteOverride = UITestRouteOverride(
+			launchArguments: launchArguments
+		)
+		self.now = now
+		self.relockInterval = relockInterval ?? 5 * 60
+		#if DEBUG
+			self.debugAccountsLoader =
+				debugAccountsLoader ?? AppState.loadDebugAccounts
+			let loadedAccounts = self.debugAccountsLoader()
+			debugAccounts = loadedAccounts
+			selectedDebugAccountID = loadedAccounts.first?.id
+		#else
+			_ = debugAccountsLoader
+		#endif
+		if let uiTestRouteOverride {
+			route =
+				switch uiTestRouteOverride {
+				case .signedOut:
+					.signedOut
+				case .locked:
+					.locked
+				case .signedIn:
+					.signedIn
+				}
+			return
+		}
+		if shouldObserveAuthState {
+			route = .checkingAuth
+			self.observeAuthState()
+		}
+	}
 
-    convenience init() {
-        self.init(
-            launchArguments: ProcessInfo.processInfo.arguments,
-            biometricAuthService: BiometricAuthService(),
-            shouldObserveAuthState: true,
-            notificationService: NotificationService.shared
-        )
-    }
+	convenience init() {
+		self.init(
+			launchArguments: ProcessInfo.processInfo.arguments,
+			biometricAuthService: BiometricAuthService(),
+			shouldObserveAuthState: true,
+			notificationService: NotificationService.shared
+		)
+	}
 
-    deinit {
-        if let authHandle {
-            Auth.auth().removeStateDidChangeListener(authHandle)
-        }
-    }
+	deinit {
+		if let authHandle {
+			Auth.auth().removeStateDidChangeListener(authHandle)
+		}
+	}
 
-    @discardableResult
-    func reauthenticateWithAppleAndDelete(credential: ASAuthorizationAppleIDCredential, rawNonce: String) async -> Bool {
-        guard
-            let tokenData = credential.identityToken,
-            let tokenString = String(data: tokenData, encoding: .utf8)
-        else {
-            toastMessage = AppMessage(.failedToDeleteAccount, .error)
-            return false
-        }
+	@discardableResult
+	func reauthenticateWithAppleAndDelete(
+		credential: ASAuthorizationAppleIDCredential,
+		rawNonce: String
+	) async -> Bool {
+		guard
+			let tokenData = credential.identityToken,
+			let tokenString = String(data: tokenData, encoding: .utf8)
+		else {
+			toastMessage = AppMessage(.failedToDeleteAccount, .error)
+			return false
+		}
 
-        let payload = AppleSignInPayload(
-            idToken: tokenString,
-            rawNonce: rawNonce,
-            fullName: nil
-        )
-        return await reauthenticateWithAppleAndDelete(payload: payload)
-    }
+		let payload = AppleSignInPayload(
+			idToken: tokenString,
+			rawNonce: rawNonce,
+			fullName: nil
+		)
+		return await reauthenticateWithAppleAndDelete(payload: payload)
+	}
 
-    @discardableResult
-    func reauthenticateWithAppleAndDelete(payload: AppleSignInPayload) async -> Bool {
-        guard !isDeletingAccount else { return false }
-        isDeletingAccount = true
-        defer { isDeletingAccount = false }
+	@discardableResult
+	func reauthenticateWithAppleAndDelete(payload: AppleSignInPayload) async
+		-> Bool
+	{
+		guard !isDeletingAccount else { return false }
+		isDeletingAccount = true
+		defer { isDeletingAccount = false }
 
-        do {
-            let uid = try await authService.reauthenticateCurrentUser(payload: payload)
-            try await finishDeletingCurrentUserAccount(uid: uid)
-            return true
-        } catch let nsError as NSError
-            where nsError.domain == AuthErrorDomain &&
-                  nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
-            toastMessage = AppMessage(.recentLoginRequired, .error)
-            return false
-        } catch {
-            toastMessage = AppMessage(.failedToDeleteAccount, .error)
-            return false
-        }
-    }
+		do {
+			let uid = try await authService.reauthenticateCurrentUser(
+				payload: payload
+			)
+			try await finishDeletingCurrentUserAccount(uid: uid)
+			return true
+		} catch let nsError as NSError
+			where nsError.domain == AuthErrorDomain
+			&& nsError.code == AuthErrorCode.requiresRecentLogin.rawValue
+		{
+			toastMessage = AppMessage(.recentLoginRequired, .error)
+			return false
+		} catch {
+			toastMessage = AppMessage(.failedToDeleteAccount, .error)
+			return false
+		}
+	}
 
-    func signInWithApple(credential: ASAuthorizationAppleIDCredential, rawNonce: String) async {
-        guard
-            let tokenData = credential.identityToken,
-            let tokenString = String(data: tokenData, encoding: .utf8)
-        else {
-            toastMessage = AppMessage(.appleTokenUnavailable, .error)
-            return
-        }
+	func signInWithApple(
+		credential: ASAuthorizationAppleIDCredential,
+		rawNonce: String
+	) async {
+		guard
+			let tokenData = credential.identityToken,
+			let tokenString = String(data: tokenData, encoding: .utf8)
+		else {
+			toastMessage = AppMessage(.appleTokenUnavailable, .error)
+			return
+		}
 
-        do {
-            shouldUnlockAfterInteractiveSignIn = true
-            let payload = AppleSignInPayload(
-                idToken: tokenString,
-                rawNonce: rawNonce,
-                fullName: credential.fullName
-            )
-            let user = try await authService.signIn(payload: payload)
+		do {
+			shouldUnlockAfterInteractiveSignIn = true
+			let payload = AppleSignInPayload(
+				idToken: tokenString,
+				rawNonce: rawNonce,
+				fullName: credential.fullName
+			)
+			let user = try await authService.signIn(payload: payload)
 
-            toastMessage = nil
-            currentUser = user
-            route = .signedIn
-            await notificationService.handleSignedInUser(user.uid)
-        } catch let error as AuthServiceError {
-            shouldUnlockAfterInteractiveSignIn = false
-            toastMessage = AppMessage(error.appMessageID, .error)
-        } catch {
-            shouldUnlockAfterInteractiveSignIn = false
-            toastMessage = AppMessage(.appleSignInFailed, .error)
-        }
-    }
+			toastMessage = nil
+			currentUser = user
+			route = .signedIn
+			await notificationService.handleSignedInUser(user.uid)
+		} catch let error as AuthServiceError {
+			shouldUnlockAfterInteractiveSignIn = false
+			toastMessage = AppMessage(error.appMessageID, .error)
+		} catch {
+			shouldUnlockAfterInteractiveSignIn = false
+			toastMessage = AppMessage(.appleSignInFailed, .error)
+		}
+	}
 
-    func unlockApp() async {
-        let shouldResetSignedInContent = route == .locked
+	func unlockApp() async {
+		let shouldResetSignedInContent = route == .locked
 
-        if uiTestRouteOverride != nil {
-            if shouldResetSignedInContent {
-                resetSignedInContent()
-            }
-            route = .signedIn
-            toastMessage = nil
-            backgroundEnteredAt = nil
-            return
-        }
+		if uiTestRouteOverride != nil {
+			if shouldResetSignedInContent {
+				resetSignedInContent()
+			}
+			route = .signedIn
+			toastMessage = nil
+			backgroundEnteredAt = nil
+			return
+		}
 
-        let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
-        if ok {
-            if shouldResetSignedInContent {
-                resetSignedInContent()
-            }
-            route = .signedIn
-            toastMessage = nil
-            backgroundEnteredAt = nil
-            if let uid = currentUser?.uid {
-                await notificationService.handleSignedInUser(uid)
-            }
-        } else {
-            toastMessage = AppMessage(.biometricAuthenticationFailed, .error)
-        }
-    }
+		let ok = await biometricAuthService.authenticate(reason: "Unlock Kuusi")
+		if ok {
+			if shouldResetSignedInContent {
+				resetSignedInContent()
+			}
+			route = .signedIn
+			toastMessage = nil
+			backgroundEnteredAt = nil
+			if let uid = currentUser?.uid {
+				await notificationService.handleSignedInUser(uid)
+			}
+		} else {
+			toastMessage = AppMessage(.biometricAuthenticationFailed, .error)
+		}
+	}
 
-    func signOut() async {
-        do {
-            let signedOutUID = currentUser?.uid ?? currentAuthUserID()
-            await notificationService.handleSignedOutUser(signedOutUID)
-            try signOutService.signOut()
-            currentUser = nil
-            route = .signedOut
-            toastMessage = nil
-            prefetchedGroupsUID = nil
-            backgroundEnteredAt = nil
-        } catch {
-            toastMessage = AppMessage(.failedToSignOut, .error)
-        }
-    }
+	func signOut() async {
+		do {
+			let signedOutUID = currentUser?.uid ?? currentAuthUserID()
+			await notificationService.handleSignedOutUser(signedOutUID)
+			try signOutService.signOut()
+			currentUser = nil
+			route = .signedOut
+			toastMessage = nil
+			prefetchedGroupsUID = nil
+			backgroundEnteredAt = nil
+		} catch {
+			toastMessage = AppMessage(.failedToSignOut, .error)
+		}
+	}
 
-    func deleteCurrentUserAccount() async {
-        guard let uid = currentUser?.uid ?? currentAuthUserID() else {
-            toastMessage = AppMessage(.pleaseSignInFirst, .error)
-            return
-        }
+	func deleteCurrentUserAccount() async {
+		guard let uid = currentUser?.uid ?? currentAuthUserID() else {
+			toastMessage = AppMessage(.pleaseSignInFirst, .error)
+			return
+		}
 
-        do {
-            try await finishDeletingCurrentUserAccount(uid: uid)
-        } catch let nsError as NSError
-            where nsError.domain == AuthErrorDomain &&
-                  nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
-            toastMessage = AppMessage(.recentLoginRequired, .error)
-        } catch {
-            toastMessage = AppMessage(.failedToDeleteAccount, .error)
-        }
-    }
+		do {
+			try await finishDeletingCurrentUserAccount(uid: uid)
+		} catch let nsError as NSError
+			where nsError.domain == AuthErrorDomain
+			&& nsError.code == AuthErrorCode.requiresRecentLogin.rawValue
+		{
+			toastMessage = AppMessage(.recentLoginRequired, .error)
+		} catch {
+			toastMessage = AppMessage(.failedToDeleteAccount, .error)
+		}
+	}
 
-    private func finishDeletingCurrentUserAccount(uid: String) async throws {
-        await notificationService.handleSignedOutUser(uid)
-        try await accountDeletionService.deleteCurrentUserData()
-        try await accountDeletionService.deleteAuthCurrentUser()
+	private func finishDeletingCurrentUserAccount(uid: String) async throws {
+		await notificationService.handleSignedOutUser(uid)
+		try await accountDeletionService.deleteCurrentUserData()
+		try await accountDeletionService.deleteAuthCurrentUser()
 
-        GIDSignIn.sharedInstance.signOut()
-        groupService.clearCachedGroups(for: uid)
-        PhotoCollectionViewModel.clearCachedPhotos(for: uid)
-        userService.clearCachedUserProfile(for: uid)
-        await FeedImageCacheMaintenance.clearDiskCache()
-        currentUser = nil
-        route = .signedOut
-        toastMessage = nil
-        prefetchedGroupsUID = nil
-        backgroundEnteredAt = nil
-    }
+		GIDSignIn.sharedInstance.signOut()
+		groupService.clearCachedGroups(for: uid)
+		PhotoCollectionViewModel.clearCachedPhotos(for: uid)
+		userService.clearCachedUserProfile(for: uid)
+		await FeedImageCacheMaintenance.clearDiskCache()
+		currentUser = nil
+		route = .signedOut
+		toastMessage = nil
+		prefetchedGroupsUID = nil
+		backgroundEnteredAt = nil
+	}
 
-#if DEBUG
-    func refreshDebugAccounts() {
-        let loadedAccounts = debugAccountsLoader()
-        debugAccounts = loadedAccounts
-        if !loadedAccounts.contains(where: { $0.id == selectedDebugAccountID }) {
-            selectedDebugAccountID = loadedAccounts.first?.id
-        }
-    }
+	#if DEBUG
+		func refreshDebugAccounts() {
+			let loadedAccounts = debugAccountsLoader()
+			debugAccounts = loadedAccounts
+			if !loadedAccounts.contains(where: { $0.id == selectedDebugAccountID }) {
+				selectedDebugAccountID = loadedAccounts.first?.id
+			}
+		}
 
-    func debugEnterMainTabs(selectedAccountID: String? = nil) async {
-        do {
-            let selected = selectedAccountID ?? selectedDebugAccountID
-            let account = try resolveDebugAccount(id: selected)
-            shouldUnlockAfterInteractiveSignIn = true
-            let user = try await signInOrCreateDebugUser(account: account)
+		func debugEnterMainTabs(selectedAccountID: String? = nil) async {
+			do {
+				let selected = selectedAccountID ?? selectedDebugAccountID
+				let account = try resolveDebugAccount(id: selected)
+				shouldUnlockAfterInteractiveSignIn = true
+				let user = try await signInOrCreateDebugUser(account: account)
 
-            currentUser = user
-            toastMessage = nil
-            route = .signedIn
-            await notificationService.handleSignedInUser(user.uid)
-        } catch {
-            shouldUnlockAfterInteractiveSignIn = false
-            if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
-               nsError.code == AuthErrorCode.operationNotAllowed.rawValue {
-                toastMessage = AppMessage(.debugEmailPasswordProviderDisabled, .error)
-            } else if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
-                      nsError.code == AuthErrorCode.invalidCredential.rawValue {
-                toastMessage = AppMessage(.debugInvalidCredentials, .error)
-            } else {
-                toastMessage = AppMessage(.debugSignInFailed, .error)
-            }
-        }
-    }
-#endif
+				currentUser = user
+				toastMessage = nil
+				route = .signedIn
+				await notificationService.handleSignedInUser(user.uid)
+			} catch {
+				shouldUnlockAfterInteractiveSignIn = false
+				if let nsError = error as NSError?, nsError.domain == AuthErrorDomain,
+					nsError.code == AuthErrorCode.operationNotAllowed.rawValue
+				{
+					toastMessage = AppMessage(.debugEmailPasswordProviderDisabled, .error)
+				} else if let nsError = error as NSError?,
+					nsError.domain == AuthErrorDomain,
+					nsError.code == AuthErrorCode.invalidCredential.rawValue
+				{
+					toastMessage = AppMessage(.debugInvalidCredentials, .error)
+				} else {
+					toastMessage = AppMessage(.debugSignInFailed, .error)
+				}
+			}
+		}
+	#endif
 
-    func handleScenePhaseChange(_ newPhase: ScenePhase) {
-        switch newPhase {
-        case .background:
-            guard route == .signedIn else { return }
-            backgroundEnteredAt = now()
-            toastMessage = nil
-        case .active:
-            guard let backgroundEnteredAt, route == .signedIn else { return }
-            self.backgroundEnteredAt = nil
-            guard now().timeIntervalSince(backgroundEnteredAt) >= relockInterval else { return }
-            route = .locked
-            toastMessage = nil
-        case .inactive:
-            break
-        @unknown default:
-            break
-        }
-    }
+	func handleScenePhaseChange(_ newPhase: ScenePhase) {
+		switch newPhase {
+		case .background:
+			guard route == .signedIn else { return }
+			backgroundEnteredAt = now()
+			toastMessage = nil
+		case .active:
+			guard let backgroundEnteredAt, route == .signedIn else { return }
+			self.backgroundEnteredAt = nil
+			guard now().timeIntervalSince(backgroundEnteredAt) >= relockInterval
+			else { return }
+			route = .locked
+			toastMessage = nil
+		case .inactive:
+			break
+		@unknown default:
+			break
+		}
+	}
 
-    func clearToastMessage() {
-        toastMessage = nil
-    }
+	func clearToastMessage() {
+		toastMessage = nil
+	}
 
-    private func observeAuthState() {
-        authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            guard let self else { return }
-            Task { @MainActor in
-                let previousUID = self.currentUser?.uid
-                guard let user else {
-                    await self.notificationService.handleSignedOutUser(previousUID)
-                    self.currentUser = nil
-                    self.route = .signedOut
-                    self.prefetchedGroupsUID = nil
-                    self.backgroundEnteredAt = nil
-                    return
-                }
+	private func observeAuthState() {
+		authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+			guard let self else { return }
+			Task { @MainActor in
+				let previousUID = self.currentUser?.uid
+				guard let user else {
+					await self.notificationService.handleSignedOutUser(previousUID)
+					self.currentUser = nil
+					self.route = .signedOut
+					self.prefetchedGroupsUID = nil
+					self.backgroundEnteredAt = nil
+					return
+				}
 
-                let validSession = await self.validateCurrentUserSession(user)
-                if !validSession {
-                    await self.notificationService.handleSignedOutUser(previousUID ?? user.uid)
-                    try? Auth.auth().signOut()
-                    self.currentUser = nil
-                    self.route = .signedOut
-                    self.toastMessage = nil
-                    self.backgroundEnteredAt = nil
-                    return
-                }
+				let validSession = await self.validateCurrentUserSession(user)
+				if !validSession {
+					await self.notificationService.handleSignedOutUser(
+						previousUID ?? user.uid
+					)
+					try? Auth.auth().signOut()
+					self.currentUser = nil
+					self.route = .signedOut
+					self.toastMessage = nil
+					self.backgroundEnteredAt = nil
+					return
+				}
 
-                do {
-                    try await self.ensureUserDocumentIfNeeded(for: user)
-                } catch {
-                    await self.handleUserBootstrapFailure()
-                    return
-                }
-                await self.prefetchGroupsIfNeeded(for: user.uid)
-                self.currentUser = user
-                if self.shouldUnlockAfterInteractiveSignIn {
-                    self.route = .signedIn
-                    self.shouldUnlockAfterInteractiveSignIn = false
-                } else {
-                    self.route = .locked
-                }
-            }
-        }
-    }
+				do {
+					try await self.ensureUserDocumentIfNeeded(for: user)
+				} catch {
+					await self.handleUserBootstrapFailure()
+					return
+				}
+				await self.prefetchGroupsIfNeeded(for: user.uid)
+				self.currentUser = user
+				if self.shouldUnlockAfterInteractiveSignIn {
+					self.route = .signedIn
+					self.shouldUnlockAfterInteractiveSignIn = false
+				} else {
+					self.route = .locked
+				}
+			}
+		}
+	}
 
-    private func signInAnonymously() async throws -> User {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<User, Error>) in
-            Auth.auth().signInAnonymously { result, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let user = result?.user else {
-                    continuation.resume(throwing: NSError(domain: "Auth", code: -1))
-                    return
-                }
-                continuation.resume(returning: user)
-            }
-        }
-    }
+	private func signInAnonymously() async throws -> User {
+		try await withCheckedThrowingContinuation {
+			(continuation: CheckedContinuation<User, Error>) in
+			Auth.auth().signInAnonymously { result, error in
+				if let error {
+					continuation.resume(throwing: error)
+					return
+				}
+				guard let user = result?.user else {
+					continuation.resume(throwing: NSError(domain: "Auth", code: -1))
+					return
+				}
+				continuation.resume(returning: user)
+			}
+		}
+	}
 
-#if DEBUG
-    private func resolveDebugAccount(id: String?) throws -> DebugAccount {
-        guard !debugAccounts.isEmpty else {
-            throw DebugCredentialsError.missingEnvironmentVariables
-        }
-        if let id, let account = debugAccounts.first(where: { $0.id == id }) {
-            return account
-        }
-        return debugAccounts[0]
-    }
+	#if DEBUG
+		private func resolveDebugAccount(id: String?) throws -> DebugAccount {
+			guard !debugAccounts.isEmpty else {
+				throw DebugCredentialsError.missingEnvironmentVariables
+			}
+			if let id, let account = debugAccounts.first(where: { $0.id == id }) {
+				return account
+			}
+			return debugAccounts[0]
+		}
 
-    private func signInOrCreateDebugUser(account: DebugAccount) async throws -> User {
+		private func signInOrCreateDebugUser(account: DebugAccount) async throws
+			-> User
+		{
 
-        // Ensure a clean auth state before switching to fixed debug credentials.
-        if Auth.auth().currentUser != nil {
-            try? Auth.auth().signOut()
-        }
+			// Ensure a clean auth state before switching to fixed debug credentials.
+			if Auth.auth().currentUser != nil {
+				try? Auth.auth().signOut()
+			}
 
-        return try await signInWithEmail(email: account.email, password: account.password)
-    }
+			return try await signInWithEmail(
+				email: account.email,
+				password: account.password
+			)
+		}
 
-    private func signInWithEmail(email: String, password: String) async throws -> User {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<User, Error>) in
-            Auth.auth().signIn(withEmail: email, password: password) { result, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let user = result?.user else {
-                    continuation.resume(throwing: NSError(domain: "Auth", code: -2))
-                    return
-                }
-                continuation.resume(returning: user)
-            }
-        }
-    }
+		private func signInWithEmail(email: String, password: String) async throws
+			-> User
+		{
+			try await withCheckedThrowingContinuation {
+				(continuation: CheckedContinuation<User, Error>) in
+				Auth.auth().signIn(withEmail: email, password: password) {
+					result,
+					error in
+					if let error {
+						continuation.resume(throwing: error)
+						return
+					}
+					guard let user = result?.user else {
+						continuation.resume(throwing: NSError(domain: "Auth", code: -2))
+						return
+					}
+					continuation.resume(returning: user)
+				}
+			}
+		}
 
-    private static func loadDebugAccounts() -> [DebugAccount] {
-        let env = ProcessInfo.processInfo.environment
-        var accountsByIndex: [Int: DebugAccount] = [:]
+		private static func loadDebugAccounts() -> [DebugAccount] {
+			let env = ProcessInfo.processInfo.environment
+			var accountsByIndex: [Int: DebugAccount] = [:]
 
-        for (key, value) in env where key.hasPrefix("DEBUG_TEST_USER_") && key.hasSuffix("_EMAIL") {
-            let prefix = "DEBUG_TEST_USER_"
-            let suffix = "_EMAIL"
-            let start = key.index(key.startIndex, offsetBy: prefix.count)
-            let end = key.index(key.endIndex, offsetBy: -suffix.count)
-            let indexString = String(key[start..<end])
-            guard let index = Int(indexString), !value.isEmpty else { continue }
+			for (key, value) in env
+			where key.hasPrefix("DEBUG_TEST_USER_") && key.hasSuffix("_EMAIL") {
+				let prefix = "DEBUG_TEST_USER_"
+				let suffix = "_EMAIL"
+				let start = key.index(key.startIndex, offsetBy: prefix.count)
+				let end = key.index(key.endIndex, offsetBy: -suffix.count)
+				let indexString = String(key[start..<end])
+				guard let index = Int(indexString), !value.isEmpty else { continue }
 
-            let passwordKey = "DEBUG_TEST_USER_\(index)_PASSWORD"
-            guard let password = env[passwordKey], !password.isEmpty else { continue }
-            let name = env["DEBUG_TEST_USER_\(index)_NAME"]
-            accountsByIndex[index] = DebugAccount(
-                id: "debug_user_\(index)",
-                email: value,
-                password: password,
-                suggestedName: name
-            )
-        }
+				let passwordKey = "DEBUG_TEST_USER_\(index)_PASSWORD"
+				guard let password = env[passwordKey], !password.isEmpty else {
+					continue
+				}
+				let name = env["DEBUG_TEST_USER_\(index)_NAME"]
+				accountsByIndex[index] = DebugAccount(
+					id: "debug_user_\(index)",
+					email: value,
+					password: password,
+					suggestedName: name
+				)
+			}
 
-        let orderedAccounts = accountsByIndex
-            .sorted(by: { $0.key < $1.key })
-            .map(\.value)
-        if !orderedAccounts.isEmpty {
-            return orderedAccounts
-        }
+			let orderedAccounts =
+				accountsByIndex
+				.sorted(by: { $0.key < $1.key })
+				.map(\.value)
+			if !orderedAccounts.isEmpty {
+				return orderedAccounts
+			}
 
-        if
-            let email = env["DEBUG_TEST_EMAIL"],
-            let password = env["DEBUG_TEST_PASSWORD"],
-            !email.isEmpty,
-            !password.isEmpty
-        {
-            let name = env["DEBUG_TEST_NAME"]
-            return [DebugAccount(
-                id: "debug_default",
-                email: email,
-                password: password,
-                suggestedName: name
-            )]
-        }
+			if let email = env["DEBUG_TEST_EMAIL"],
+				let password = env["DEBUG_TEST_PASSWORD"],
+				!email.isEmpty,
+				!password.isEmpty
+			{
+				let name = env["DEBUG_TEST_NAME"]
+				return [
+					DebugAccount(
+						id: "debug_default",
+						email: email,
+						password: password,
+						suggestedName: name
+					)
+				]
+			}
 
-        return []
-    }
+			return []
+		}
 
-#endif
+	#endif
 
-    private func validateCurrentUserSession(_ user: User) async -> Bool {
-        await withCheckedContinuation { continuation in
-            user.getIDTokenForcingRefresh(true) { _, error in
-                continuation.resume(returning: error == nil)
-            }
-        }
-    }
+	private func validateCurrentUserSession(_ user: User) async -> Bool {
+		await withCheckedContinuation { continuation in
+			user.getIDTokenForcingRefresh(true) { _, error in
+				continuation.resume(returning: error == nil)
+			}
+		}
+	}
 
-    private func ensureUserDocumentIfNeeded(for user: User) async throws {
-        let suggestedName = user.displayName?.isEmpty == false ? user.displayName : nil
-        try await userService.ensureUserDocument(
-            for: user,
-            suggestedName: suggestedName
-        )
-    }
+	private func ensureUserDocumentIfNeeded(for user: User) async throws {
+		let suggestedName =
+			user.displayName?.isEmpty == false ? user.displayName : nil
+		try await userService.ensureUserDocument(
+			for: user,
+			suggestedName: suggestedName
+		)
+	}
 
-    private func handleUserBootstrapFailure() async {
-        try? Auth.auth().signOut()
-        currentUser = nil
-        route = .signedOut
-        toastMessage = AppMessage(.failedToSetUpAccount, .error)
-        prefetchedGroupsUID = nil
-        shouldUnlockAfterInteractiveSignIn = false
-        backgroundEnteredAt = nil
-    }
+	private func handleUserBootstrapFailure() async {
+		try? Auth.auth().signOut()
+		currentUser = nil
+		route = .signedOut
+		toastMessage = AppMessage(.failedToSetUpAccount, .error)
+		prefetchedGroupsUID = nil
+		shouldUnlockAfterInteractiveSignIn = false
+		backgroundEnteredAt = nil
+	}
 
-    private func prefetchGroupsIfNeeded(for uid: String) async {
-        guard prefetchedGroupsUID != uid else { return }
-        do {
-            _ = try await groupService.fetchGroups(for: uid)
-            prefetchedGroupsUID = uid
-        } catch {
-            // Keep retrying on next auth-state callback if prefetch fails.
-        }
-    }
+	private func prefetchGroupsIfNeeded(for uid: String) async {
+		guard prefetchedGroupsUID != uid else { return }
+		do {
+			_ = try await groupService.fetchGroups(for: uid)
+			prefetchedGroupsUID = uid
+		} catch {
+			// Keep retrying on next auth-state callback if prefetch fails.
+		}
+	}
 
-    private func resetSignedInContent() {
-        signedInContentResetToken &+= 1
-    }
+	private func resetSignedInContent() {
+		signedInContentResetToken &+= 1
+	}
 }

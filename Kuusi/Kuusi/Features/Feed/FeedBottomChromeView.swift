@@ -1,123 +1,130 @@
 import SwiftUI
 
 struct FeedBottomChromeView: View {
-    @Environment(\.colorScheme) private var colorScheme
+	@Environment(\.colorScheme) private var colorScheme
 
-    let groups: [GroupSummary]
-    let availableHashtags: [String]
-    @Binding var selectedHashtag: String?
-    @Binding var isHashtagBarExpanded: Bool
-    let onSelectGroup: (String) -> Void
+	let groups: [GroupSummary]
+	let availableHashtags: [String]
+	@Binding var selectedHashtag: String?
+	@Binding var isHashtagBarExpanded: Bool
+	let onSelectGroup: (String) -> Void
 
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            if !groups.isEmpty {
-                Menu {
-                    ForEach(groups) { group in
-                        Button(group.name) {
-                            onSelectGroup(group.id)
-                        }
-                        .accessibilityIdentifier("feed-group-menu-\(group.id)")
-                    }
-                } label: {
-                    Image(systemName: "person.2.fill")
-                        .foregroundStyle(chromePrimaryColor)
-                        .appFeedGlassCircle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("feed-group-button")
-            }
+	var body: some View {
+		HStack(alignment: .bottom, spacing: 12) {
+			if !groups.isEmpty {
+				Menu {
+					ForEach(groups) { group in
+						Button(group.name) {
+							onSelectGroup(group.id)
+						}
+						.accessibilityIdentifier("feed-group-menu-\(group.id)")
+					}
+				} label: {
+					Image(systemName: "person.2.fill")
+						.foregroundStyle(chromePrimaryColor)
+						.appFeedGlassCircle()
+				}
+				.buttonStyle(.plain)
+				.accessibilityIdentifier("feed-group-button")
+			}
 
-            Spacer(minLength: 0)
+			Spacer(minLength: 0)
 
-            if !availableHashtags.isEmpty {
-                hashtagBar
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 10)
-        .padding(.bottom, 0)
-        .background(.clear)
-    }
+			if !availableHashtags.isEmpty {
+				hashtagBar
+					.transition(.move(edge: .trailing).combined(with: .opacity))
+			}
+		}
+		.padding(.horizontal, 18)
+		.padding(.top, 10)
+		.padding(.bottom, 0)
+		.background(.clear)
+	}
 
-    private var hashtagBar: some View {
-        HStack(spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                    isHashtagBarExpanded.toggle()
-                }
-            } label: {
-                Image(systemName: "number")
-                    .foregroundStyle(chromePrimaryColor)
-                    .appFeedGlassCircle()
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("feed-hashtag-toggle-button")
+	private var hashtagBar: some View {
+		HStack(spacing: 10) {
+			Button {
+				withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+					isHashtagBarExpanded.toggle()
+				}
+			} label: {
+				Image(systemName: "number")
+					.foregroundStyle(chromePrimaryColor)
+					.appFeedGlassCircle()
+			}
+			.buttonStyle(.plain)
+			.accessibilityIdentifier("feed-hashtag-toggle-button")
 
-            if isHashtagBarExpanded {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        hashtagChip(
-                            title: "All",
-                            accessibilityIdentifier: "feed-hashtag-chip-all",
-                            isSelected: selectedHashtag == nil,
-                            action: { selectedHashtag = nil }
-                        )
+			if isHashtagBarExpanded {
+				ScrollView(.horizontal, showsIndicators: false) {
+					HStack(spacing: 8) {
+						hashtagChip(
+							title: "All",
+							accessibilityIdentifier: "feed-hashtag-chip-all",
+							isSelected: selectedHashtag == nil,
+							action: { selectedHashtag = nil }
+						)
 
-                        ForEach(availableHashtags, id: \.self) { hashtag in
-                            hashtagChip(
-                                title: "#\(hashtag)",
-                                accessibilityIdentifier: "feed-hashtag-chip-\(hashtag)",
-                                isSelected: selectedHashtag == hashtag,
-                                action: { selectedHashtag = hashtag }
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-                .frame(height: 48)
-                .frame(maxWidth: 280)
-                .padding(.horizontal, 6)
-                .appFeedGlassPill()
-            }
-        }
-    }
+						ForEach(availableHashtags, id: \.self) { hashtag in
+							hashtagChip(
+								title: "#\(hashtag)",
+								accessibilityIdentifier: "feed-hashtag-chip-\(hashtag)",
+								isSelected: selectedHashtag == hashtag,
+								action: { selectedHashtag = hashtag }
+							)
+						}
+					}
+					.padding(.horizontal, 8)
+				}
+				.frame(height: 48)
+				.frame(maxWidth: 280)
+				.padding(.horizontal, 6)
+				.appFeedGlassPill()
+			}
+		}
+	}
 
-    private func hashtagChip(
-        title: String,
-        accessibilityIdentifier: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(chromePrimaryColor)
-                .shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
-                .lineLimit(1)
-                .padding(.horizontal, 8)
-                .frame(height: 36)
-                .glassEffect(selectedChipGlass(isSelected: isSelected), in: Capsule())
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityIdentifier)
-        .animation(.spring(response: 0.12, dampingFraction: 0.86), value: selectedHashtag)
-    }
+	private func hashtagChip(
+		title: String,
+		accessibilityIdentifier: String,
+		isSelected: Bool,
+		action: @escaping () -> Void
+	) -> some View {
+		Button(action: action) {
+			Text(title)
+				.font(.subheadline.weight(.semibold))
+				.foregroundStyle(chromePrimaryColor)
+				.shadow(color: chromeShadowColor.opacity(0.9), radius: 8, x: 0, y: 3)
+				.lineLimit(1)
+				.padding(.horizontal, 8)
+				.frame(height: 36)
+				.glassEffect(selectedChipGlass(isSelected: isSelected), in: Capsule())
+				.contentShape(Capsule())
+		}
+		.buttonStyle(.plain)
+		.accessibilityIdentifier(accessibilityIdentifier)
+		.animation(
+			.spring(response: 0.12, dampingFraction: 0.86),
+			value: selectedHashtag
+		)
+	}
 
-    private func selectedChipGlass(isSelected: Bool) -> Glass {
-        guard isSelected else { return .identity }
+	private func selectedChipGlass(isSelected: Bool) -> Glass {
+		guard isSelected else { return .identity }
 
-        return .regular
-            .tint(AppTheme.accent(for: colorScheme).opacity(colorScheme == .dark ? 0.32 : 0.28))
-    }
+		return .regular
+			.tint(
+				AppTheme.accent(for: colorScheme).opacity(
+					colorScheme == .dark ? 0.32 : 0.28
+				)
+			)
+	}
 
-    private var chromePrimaryColor: Color {
-        Color.white.opacity(0.94)
-    }
+	private var chromePrimaryColor: Color {
+		Color.white.opacity(0.94)
+	}
 
-    private var chromeShadowColor: Color {
-        Color.black.opacity(colorScheme == .dark ? 0.38 : 0.22)
-    }
+	private var chromeShadowColor: Color {
+		Color.black.opacity(colorScheme == .dark ? 0.38 : 0.22)
+	}
 }

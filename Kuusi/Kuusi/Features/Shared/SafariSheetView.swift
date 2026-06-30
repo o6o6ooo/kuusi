@@ -2,13 +2,16 @@ import SafariServices
 import SwiftUI
 
 struct SafariSheetView: UIViewControllerRepresentable {
-    let url: URL
+	let url: URL
 
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        let controller = SFSafariViewController(url: url)
-        controller.dismissButtonStyle = .close
-        return controller
-    }
+	func makeUIViewController(context: Context) -> SFSafariViewController {
+		let controller = SFSafariViewController(url: url)
+		controller.dismissButtonStyle = .close
+		return controller
+	}
 
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
+	func updateUIViewController(
+		_ uiViewController: SFSafariViewController,
+		context: Context
+	) {}
 }

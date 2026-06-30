@@ -1,323 +1,359 @@
 import SwiftUI
 
 private struct MasonryExpandedKey: LayoutValueKey {
-    nonisolated static let defaultValue = false
+	nonisolated static let defaultValue = false
 }
 
 private struct MasonryColumnSpanKey: LayoutValueKey {
-    nonisolated static let defaultValue = 1
+	nonisolated static let defaultValue = 1
 }
 
 private struct LoadMoreSentinelKey: PreferenceKey {
-    static var defaultValue: CGFloat {
-        CGFloat.greatestFiniteMagnitude
-    }
+	static var defaultValue: CGFloat {
+		CGFloat.greatestFiniteMagnitude
+	}
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
+	static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+		value = nextValue()
+	}
 }
 
 private struct MasonryGridLayout: Layout {
-    struct Cache {
-        var width: CGFloat = 0
-        var expandedStates: [Bool] = []
-        var frames: [CGRect] = []
-    }
+	struct Cache {
+		var width: CGFloat = 0
+		var expandedStates: [Bool] = []
+		var frames: [CGRect] = []
+	}
 
-    let columnCount: Int
-    let spacing: CGFloat
+	let columnCount: Int
+	let spacing: CGFloat
 
-    func makeCache(subviews: Subviews) -> Cache {
-        Cache()
-    }
+	func makeCache(subviews: Subviews) -> Cache {
+		Cache()
+	}
 
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout Cache
-    ) -> CGSize {
-        let width = proposal.width ?? 0
-        let frames = resolveFrames(for: subviews, width: width, cache: &cache)
-        let height = frames.map(\.maxY).max() ?? 0
-        return CGSize(width: width, height: height)
-    }
+	func sizeThatFits(
+		proposal: ProposedViewSize,
+		subviews: Subviews,
+		cache: inout Cache
+	) -> CGSize {
+		let width = proposal.width ?? 0
+		let frames = resolveFrames(for: subviews, width: width, cache: &cache)
+		let height = frames.map(\.maxY).max() ?? 0
+		return CGSize(width: width, height: height)
+	}
 
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout Cache
-    ) {
-        let frames = resolveFrames(for: subviews, width: bounds.width, cache: &cache)
+	func placeSubviews(
+		in bounds: CGRect,
+		proposal: ProposedViewSize,
+		subviews: Subviews,
+		cache: inout Cache
+	) {
+		let frames = resolveFrames(
+			for: subviews,
+			width: bounds.width,
+			cache: &cache
+		)
 
-        for (index, subview) in subviews.enumerated() {
-            guard index < frames.count else { continue }
-            let frame = frames[index]
-            subview.place(
-                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
-                proposal: ProposedViewSize(width: frame.width, height: frame.height)
-            )
-        }
-    }
+		for (index, subview) in subviews.enumerated() {
+			guard index < frames.count else { continue }
+			let frame = frames[index]
+			subview.place(
+				at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+				proposal: ProposedViewSize(width: frame.width, height: frame.height)
+			)
+		}
+	}
 
-    private func resolveFrames(for subviews: Subviews, width: CGFloat, cache: inout Cache) -> [CGRect] {
-        let expandedStates = subviews.map { $0[MasonryExpandedKey.self] }
-        if cache.width == width, cache.expandedStates == expandedStates, cache.frames.count == subviews.count {
-            return cache.frames
-        }
+	private func resolveFrames(
+		for subviews: Subviews,
+		width: CGFloat,
+		cache: inout Cache
+	) -> [CGRect] {
+		let expandedStates = subviews.map { $0[MasonryExpandedKey.self] }
+		if cache.width == width, cache.expandedStates == expandedStates,
+			cache.frames.count == subviews.count
+		{
+			return cache.frames
+		}
 
-        let frames = makeFrames(for: subviews, width: width)
-        cache.width = width
-        cache.expandedStates = expandedStates
-        cache.frames = frames
-        return frames
-    }
+		let frames = makeFrames(for: subviews, width: width)
+		cache.width = width
+		cache.expandedStates = expandedStates
+		cache.frames = frames
+		return frames
+	}
 
-    private func makeFrames(for subviews: Subviews, width: CGFloat) -> [CGRect] {
-        guard columnCount > 0, width > 0 else {
-            return Array(repeating: .zero, count: subviews.count)
-        }
+	private func makeFrames(for subviews: Subviews, width: CGFloat) -> [CGRect] {
+		guard columnCount > 0, width > 0 else {
+			return Array(repeating: .zero, count: subviews.count)
+		}
 
-        let totalSpacing = spacing * CGFloat(columnCount - 1)
-        let columnWidth = max(80, (width - totalSpacing) / CGFloat(columnCount))
-        let fullWidth = columnWidth * CGFloat(columnCount) + totalSpacing
+		let totalSpacing = spacing * CGFloat(columnCount - 1)
+		let columnWidth = max(80, (width - totalSpacing) / CGFloat(columnCount))
+		let fullWidth = columnWidth * CGFloat(columnCount) + totalSpacing
 
-        var frames: [CGRect] = []
-        frames.reserveCapacity(subviews.count)
+		var frames: [CGRect] = []
+		frames.reserveCapacity(subviews.count)
 
-        var columnHeights = Array(repeating: CGFloat.zero, count: columnCount)
+		var columnHeights = Array(repeating: CGFloat.zero, count: columnCount)
 
-        for subview in subviews {
-            let isExpanded = subview[MasonryExpandedKey.self]
-            let columnSpan = min(max(subview[MasonryColumnSpanKey.self], 1), columnCount)
+		for subview in subviews {
+			let isExpanded = subview[MasonryExpandedKey.self]
+			let columnSpan = min(
+				max(subview[MasonryColumnSpanKey.self], 1),
+				columnCount
+			)
 
-            if isExpanded {
-                let y = columnHeights.max() ?? 0
-                let size = subview.sizeThatFits(.init(width: fullWidth, height: nil))
-                let height = size.height
-                frames.append(CGRect(x: 0, y: y, width: fullWidth, height: height))
-                let nextY = y + height + spacing
-                for index in columnHeights.indices {
-                    columnHeights[index] = nextY
-                }
-            } else if columnSpan > 1 {
-                let span = min(columnSpan, columnCount)
-                let spanWidth = columnWidth * CGFloat(span) + spacing * CGFloat(span - 1)
-                var bestStartIndex = 0
-                var bestY = CGFloat.greatestFiniteMagnitude
+			if isExpanded {
+				let y = columnHeights.max() ?? 0
+				let size = subview.sizeThatFits(.init(width: fullWidth, height: nil))
+				let height = size.height
+				frames.append(CGRect(x: 0, y: y, width: fullWidth, height: height))
+				let nextY = y + height + spacing
+				for index in columnHeights.indices {
+					columnHeights[index] = nextY
+				}
+			} else if columnSpan > 1 {
+				let span = min(columnSpan, columnCount)
+				let spanWidth =
+					columnWidth * CGFloat(span) + spacing * CGFloat(span - 1)
+				var bestStartIndex = 0
+				var bestY = CGFloat.greatestFiniteMagnitude
 
-                for startIndex in 0...(columnCount - span) {
-                    let y = columnHeights[startIndex..<(startIndex + span)].max() ?? 0
-                    if y < bestY {
-                        bestY = y
-                        bestStartIndex = startIndex
-                    }
-                }
+				for startIndex in 0...(columnCount - span) {
+					let y = columnHeights[startIndex..<(startIndex + span)].max() ?? 0
+					if y < bestY {
+						bestY = y
+						bestStartIndex = startIndex
+					}
+				}
 
-                let x = CGFloat(bestStartIndex) * (columnWidth + spacing)
-                let size = subview.sizeThatFits(.init(width: spanWidth, height: nil))
-                let height = size.height
-                frames.append(CGRect(x: x, y: bestY, width: spanWidth, height: height))
-                let nextY = bestY + height + spacing
-                for index in bestStartIndex..<(bestStartIndex + span) {
-                    columnHeights[index] = nextY
-                }
-            } else {
-                let columnIndex = columnHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-                let x = CGFloat(columnIndex) * (columnWidth + spacing)
-                let y = columnHeights[columnIndex]
-                let size = subview.sizeThatFits(.init(width: columnWidth, height: nil))
-                let height = size.height
-                frames.append(CGRect(x: x, y: y, width: columnWidth, height: height))
-                columnHeights[columnIndex] = y + height + spacing
-            }
-        }
+				let x = CGFloat(bestStartIndex) * (columnWidth + spacing)
+				let size = subview.sizeThatFits(.init(width: spanWidth, height: nil))
+				let height = size.height
+				frames.append(CGRect(x: x, y: bestY, width: spanWidth, height: height))
+				let nextY = bestY + height + spacing
+				for index in bestStartIndex..<(bestStartIndex + span) {
+					columnHeights[index] = nextY
+				}
+			} else {
+				let columnIndex =
+					columnHeights.enumerated().min(by: { $0.element < $1.element })?
+					.offset ?? 0
+				let x = CGFloat(columnIndex) * (columnWidth + spacing)
+				let y = columnHeights[columnIndex]
+				let size = subview.sizeThatFits(.init(width: columnWidth, height: nil))
+				let height = size.height
+				frames.append(CGRect(x: x, y: y, width: columnWidth, height: height))
+				columnHeights[columnIndex] = y + height + spacing
+			}
+		}
 
-        return frames
-    }
+		return frames
+	}
 }
 
 enum PhotoGridInlineAdRules {
-    static let firstAdPhotoIndex = 8
-    static let adPhotoInterval = 12
+	static let firstAdPhotoIndex = 8
+	static let adPhotoInterval = 12
 
-    static func shouldShowInlineAd(
-        afterPhotoAt index: Int,
-        photoID: String,
-        showsInlineAds: Bool,
-        hiddenInlineAdPhotoIDs: Set<String>
-    ) -> Bool {
-        guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
-        guard !hiddenInlineAdPhotoIDs.contains(photoID) else { return false }
-        return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
-    }
+	static func shouldShowInlineAd(
+		afterPhotoAt index: Int,
+		photoID: String,
+		showsInlineAds: Bool,
+		hiddenInlineAdPhotoIDs: Set<String>
+	) -> Bool {
+		guard showsInlineAds, index >= firstAdPhotoIndex else { return false }
+		guard !hiddenInlineAdPhotoIDs.contains(photoID) else { return false }
+		return (index - firstAdPhotoIndex).isMultiple(of: adPhotoInterval)
+	}
 }
 
 struct PhotoGridView<Tile: View, InlineAd: View, Footer: View>: View {
-    let photos: [FeedPhoto]
-    let availableWidth: CGFloat
-    let availableHeight: CGFloat
-    let expandedPhotoID: String?
-    let showsInlineAds: Bool
-    let hiddenInlineAdPhotoIDs: Set<String>
-    let onTap: (FeedPhoto) -> Void
-    let onLoadMore: () -> Void
-    let tile: (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
-    let inlineAd: (FeedPhoto, CGFloat) -> InlineAd
-    let footer: () -> Footer
+	let photos: [FeedPhoto]
+	let availableWidth: CGFloat
+	let availableHeight: CGFloat
+	let expandedPhotoID: String?
+	let showsInlineAds: Bool
+	let hiddenInlineAdPhotoIDs: Set<String>
+	let onTap: (FeedPhoto) -> Void
+	let onLoadMore: () -> Void
+	let tile: (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
+	let inlineAd: (FeedPhoto, CGFloat) -> InlineAd
+	let footer: () -> Footer
 
-    private let spacing: CGFloat = 8
-    private let horizontalPadding: CGFloat = 12
-    private let loadMorePreloadDistance: CGFloat = 260
-    private let scrollCoordinateSpaceName = "photo-grid-scroll"
+	private let spacing: CGFloat = 8
+	private let horizontalPadding: CGFloat = 12
+	private let loadMorePreloadDistance: CGFloat = 260
+	private let scrollCoordinateSpaceName = "photo-grid-scroll"
 
-    init(
-        photos: [FeedPhoto],
-        availableWidth: CGFloat,
-        availableHeight: CGFloat,
-        expandedPhotoID: String? = nil,
-        showsInlineAds: Bool = false,
-        hiddenInlineAdPhotoIDs: Set<String> = [],
-        onTap: @escaping (FeedPhoto) -> Void,
-        onLoadMore: @escaping () -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
-        @ViewBuilder inlineAd: @escaping (FeedPhoto, CGFloat) -> InlineAd,
-        @ViewBuilder footer: @escaping () -> Footer
-    ) {
-        self.photos = photos
-        self.availableWidth = availableWidth
-        self.availableHeight = availableHeight
-        self.expandedPhotoID = expandedPhotoID
-        self.showsInlineAds = showsInlineAds
-        self.hiddenInlineAdPhotoIDs = hiddenInlineAdPhotoIDs
-        self.onTap = onTap
-        self.onLoadMore = onLoadMore
-        self.tile = tile
-        self.inlineAd = inlineAd
-        self.footer = footer
-    }
+	init(
+		photos: [FeedPhoto],
+		availableWidth: CGFloat,
+		availableHeight: CGFloat,
+		expandedPhotoID: String? = nil,
+		showsInlineAds: Bool = false,
+		hiddenInlineAdPhotoIDs: Set<String> = [],
+		onTap: @escaping (FeedPhoto) -> Void,
+		onLoadMore: @escaping () -> Void,
+		@ViewBuilder tile:
+			@escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) ->
+			Tile,
+		@ViewBuilder inlineAd: @escaping (FeedPhoto, CGFloat) -> InlineAd,
+		@ViewBuilder footer: @escaping () -> Footer
+	) {
+		self.photos = photos
+		self.availableWidth = availableWidth
+		self.availableHeight = availableHeight
+		self.expandedPhotoID = expandedPhotoID
+		self.showsInlineAds = showsInlineAds
+		self.hiddenInlineAdPhotoIDs = hiddenInlineAdPhotoIDs
+		self.onTap = onTap
+		self.onLoadMore = onLoadMore
+		self.tile = tile
+		self.inlineAd = inlineAd
+		self.footer = footer
+	}
 
-    var body: some View {
-        let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 3
-        let totalSpacing = spacing * CGFloat(columnCount - 1)
-        let contentWidth = availableWidth - (horizontalPadding * 2)
-        let columnWidth = max(80, (contentWidth - totalSpacing) / CGFloat(columnCount))
+	var body: some View {
+		let columnCount = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 3
+		let totalSpacing = spacing * CGFloat(columnCount - 1)
+		let contentWidth = availableWidth - (horizontalPadding * 2)
+		let columnWidth = max(
+			80,
+			(contentWidth - totalSpacing) / CGFloat(columnCount)
+		)
 
-        ScrollView {
-            MasonryGridLayout(columnCount: columnCount, spacing: spacing) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                    let isExpanded = expandedPhotoID == photo.id
-                    let onPhotoTap = { onTap(photo) }
-                    tile(
-                        photo,
-                        isExpanded ? contentWidth : columnWidth,
-                        displayAspectRatio(for: photo),
-                        isExpanded,
-                        onPhotoTap
-                    )
-                    .layoutValue(key: MasonryExpandedKey.self, value: isExpanded)
+		ScrollView {
+			MasonryGridLayout(columnCount: columnCount, spacing: spacing) {
+				ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+					let isExpanded = expandedPhotoID == photo.id
+					let onPhotoTap = { onTap(photo) }
+					tile(
+						photo,
+						isExpanded ? contentWidth : columnWidth,
+						displayAspectRatio(for: photo),
+						isExpanded,
+						onPhotoTap
+					)
+					.layoutValue(key: MasonryExpandedKey.self, value: isExpanded)
 
-                    if shouldShowInlineAd(afterPhotoAt: index) {
-                        inlineAd(photo, twoColumnWidth(columnWidth: columnWidth, contentWidth: contentWidth))
-                            .layoutValue(key: MasonryExpandedKey.self, value: false)
-                            .layoutValue(key: MasonryColumnSpanKey.self, value: 2)
-                    }
-                }
-            }
-            .padding(.horizontal, horizontalPadding)
-            .padding(.top, 2)
-            .padding(.bottom, 8)
+					if shouldShowInlineAd(afterPhotoAt: index) {
+						inlineAd(
+							photo,
+							twoColumnWidth(
+								columnWidth: columnWidth,
+								contentWidth: contentWidth
+							)
+						)
+						.layoutValue(key: MasonryExpandedKey.self, value: false)
+						.layoutValue(key: MasonryColumnSpanKey.self, value: 2)
+					}
+				}
+			}
+			.padding(.horizontal, horizontalPadding)
+			.padding(.top, 2)
+			.padding(.bottom, 8)
 
-            Color.clear
-                .frame(height: 1)
-                .background(
-                    GeometryReader { sentinelProxy in
-                        Color.clear.preference(
-                            key: LoadMoreSentinelKey.self,
-                            value: sentinelProxy.frame(in: .named(scrollCoordinateSpaceName)).minY
-                        )
-                    }
-                )
+			Color.clear
+				.frame(height: 1)
+				.background(
+					GeometryReader { sentinelProxy in
+						Color.clear.preference(
+							key: LoadMoreSentinelKey.self,
+							value: sentinelProxy.frame(in: .named(scrollCoordinateSpaceName))
+								.minY
+						)
+					}
+				)
 
-            footer()
-        }
-        .coordinateSpace(name: scrollCoordinateSpaceName)
-        .onPreferenceChange(LoadMoreSentinelKey.self) { sentinelMinY in
-            guard sentinelMinY <= availableHeight + loadMorePreloadDistance else { return }
-            onLoadMore()
-        }
-    }
+			footer()
+		}
+		.coordinateSpace(name: scrollCoordinateSpaceName)
+		.onPreferenceChange(LoadMoreSentinelKey.self) { sentinelMinY in
+			guard sentinelMinY <= availableHeight + loadMorePreloadDistance else {
+				return
+			}
+			onLoadMore()
+		}
+	}
 
-    private func displayAspectRatio(for photo: FeedPhoto) -> CGFloat {
-        CGFloat(photo.aspectRatio ?? 1.0)
-    }
+	private func displayAspectRatio(for photo: FeedPhoto) -> CGFloat {
+		CGFloat(photo.aspectRatio ?? 1.0)
+	}
 
-    private func shouldShowInlineAd(afterPhotoAt index: Int) -> Bool {
-        PhotoGridInlineAdRules.shouldShowInlineAd(
-            afterPhotoAt: index,
-            photoID: photos[index].id,
-            showsInlineAds: showsInlineAds,
-            hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs
-        )
-    }
+	private func shouldShowInlineAd(afterPhotoAt index: Int) -> Bool {
+		PhotoGridInlineAdRules.shouldShowInlineAd(
+			afterPhotoAt: index,
+			photoID: photos[index].id,
+			showsInlineAds: showsInlineAds,
+			hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs
+		)
+	}
 
-    private func twoColumnWidth(columnWidth: CGFloat, contentWidth: CGFloat) -> CGFloat {
-        min(columnWidth * 2 + spacing, contentWidth)
-    }
+	private func twoColumnWidth(columnWidth: CGFloat, contentWidth: CGFloat)
+		-> CGFloat
+	{
+		min(columnWidth * 2 + spacing, contentWidth)
+	}
 }
 
 extension PhotoGridView where InlineAd == EmptyView {
-    init(
-        photos: [FeedPhoto],
-        availableWidth: CGFloat,
-        availableHeight: CGFloat,
-        expandedPhotoID: String? = nil,
-        showsInlineAds: Bool = false,
-        hiddenInlineAdPhotoIDs: Set<String> = [],
-        onTap: @escaping (FeedPhoto) -> Void,
-        onLoadMore: @escaping () -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile,
-        @ViewBuilder footer: @escaping () -> Footer
-    ) {
-        self.init(
-            photos: photos,
-            availableWidth: availableWidth,
-            availableHeight: availableHeight,
-            expandedPhotoID: expandedPhotoID,
-            showsInlineAds: showsInlineAds,
-            hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs,
-            onTap: onTap,
-            onLoadMore: onLoadMore,
-            tile: tile,
-            inlineAd: { _, _ in EmptyView() },
-            footer: footer
-        )
-    }
+	init(
+		photos: [FeedPhoto],
+		availableWidth: CGFloat,
+		availableHeight: CGFloat,
+		expandedPhotoID: String? = nil,
+		showsInlineAds: Bool = false,
+		hiddenInlineAdPhotoIDs: Set<String> = [],
+		onTap: @escaping (FeedPhoto) -> Void,
+		onLoadMore: @escaping () -> Void,
+		@ViewBuilder tile:
+			@escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) ->
+			Tile,
+		@ViewBuilder footer: @escaping () -> Footer
+	) {
+		self.init(
+			photos: photos,
+			availableWidth: availableWidth,
+			availableHeight: availableHeight,
+			expandedPhotoID: expandedPhotoID,
+			showsInlineAds: showsInlineAds,
+			hiddenInlineAdPhotoIDs: hiddenInlineAdPhotoIDs,
+			onTap: onTap,
+			onLoadMore: onLoadMore,
+			tile: tile,
+			inlineAd: { _, _ in EmptyView() },
+			footer: footer
+		)
+	}
 }
 
 extension PhotoGridView where InlineAd == EmptyView, Footer == EmptyView {
-    init(
-        photos: [FeedPhoto],
-        availableWidth: CGFloat,
-        availableHeight: CGFloat,
-        expandedPhotoID: String? = nil,
-        showsInlineAds: Bool = false,
-        onTap: @escaping (FeedPhoto) -> Void,
-        onLoadMore: @escaping () -> Void,
-        @ViewBuilder tile: @escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) -> Tile
-    ) {
-        self.init(
-            photos: photos,
-            availableWidth: availableWidth,
-            availableHeight: availableHeight,
-            expandedPhotoID: expandedPhotoID,
-            showsInlineAds: showsInlineAds,
-            onTap: onTap,
-            onLoadMore: onLoadMore,
-            tile: tile,
-            inlineAd: { _, _ in EmptyView() },
-            footer: { EmptyView() }
-        )
-    }
+	init(
+		photos: [FeedPhoto],
+		availableWidth: CGFloat,
+		availableHeight: CGFloat,
+		expandedPhotoID: String? = nil,
+		showsInlineAds: Bool = false,
+		onTap: @escaping (FeedPhoto) -> Void,
+		onLoadMore: @escaping () -> Void,
+		@ViewBuilder tile:
+			@escaping (FeedPhoto, CGFloat, CGFloat, Bool, @escaping () -> Void) ->
+			Tile
+	) {
+		self.init(
+			photos: photos,
+			availableWidth: availableWidth,
+			availableHeight: availableHeight,
+			expandedPhotoID: expandedPhotoID,
+			showsInlineAds: showsInlineAds,
+			onTap: onTap,
+			onLoadMore: onLoadMore,
+			tile: tile,
+			inlineAd: { _, _ in EmptyView() },
+			footer: { EmptyView() }
+		)
+	}
 }

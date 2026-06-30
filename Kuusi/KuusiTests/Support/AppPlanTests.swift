@@ -1,102 +1,139 @@
 import Foundation
 import Testing
+
 @testable import Kuusi
 
 struct AppPlanTests {
-    @Test
-    func freePlanMatchesExpectedProductShape() {
-        #expect(AppPlan.free.quotaMB == 1024.0)
-        #expect(AppPlan.free.maxGroups == 3)
-        #expect(AppPlan.free.title == "Free")
-        #expect(AppPlan.free.priceLabel == nil)
-        #expect(AppPlan.free.productID == nil)
-        #expect(AppPlan.free.featureLines == [
-            "1GB storage",
-            "2-year previews",
-            "Up to 3 groups",
-            "Ads included"
-        ])
-    }
+	@Test
+	func freePlanMatchesExpectedProductShape() {
+		#expect(AppPlan.free.quotaMB == 1024.0)
+		#expect(AppPlan.free.maxGroups == 3)
+		#expect(AppPlan.free.title == "Free")
+		#expect(AppPlan.free.priceLabel == nil)
+		#expect(AppPlan.free.productID == nil)
+		#expect(
+			AppPlan.free.featureLines == [
+				"1GB storage",
+				"2-year previews",
+				"Up to 3 groups",
+				"Ads included",
+			]
+		)
+	}
 
-    @Test
-    func premiumPlanMatchesExpectedProductShape() {
-        #expect(AppPlan.premium.quotaMB == 30720.0)
-        #expect(AppPlan.premium.maxGroups == 10)
-        #expect(AppPlan.premium.title == "Premium")
-        #expect(AppPlan.premium.priceLabel == "£24.99 / year")
-        #expect(AppPlan.premium.productID == "com.swallace.kuusi.premium.annual")
-        #expect(AppPlan.premium.featureLines == [
-            "30GB storage",
-            "Full previews",
-            "Up to 10 groups",
-            "No ads"
-        ])
-    }
+	@Test
+	func premiumPlanMatchesExpectedProductShape() {
+		#expect(AppPlan.premium.quotaMB == 30720.0)
+		#expect(AppPlan.premium.maxGroups == 10)
+		#expect(AppPlan.premium.title == "Premium")
+		#expect(AppPlan.premium.priceLabel == "£24.99 / year")
+		#expect(AppPlan.premium.productID == "com.swallace.kuusi.premium.annual")
+		#expect(
+			AppPlan.premium.featureLines == [
+				"30GB storage",
+				"Full previews",
+				"Up to 10 groups",
+				"No ads",
+			]
+		)
+	}
 
-    @Test
-    func freePreviewExpiresOnSecondAnniversaryDate() {
-        let calendar = Calendar(identifier: .gregorian)
-        let createdAt = calendar.date(from: DateComponents(year: 2024, month: 4, day: 15, hour: 9))!
-        let beforeExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 8, minute: 59))!
-        let atExpiry = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15, hour: 9))!
+	@Test
+	func freePreviewExpiresOnSecondAnniversaryDate() {
+		let calendar = Calendar(identifier: .gregorian)
+		let createdAt = calendar.date(
+			from: DateComponents(year: 2024, month: 4, day: 15, hour: 9)
+		)!
+		let beforeExpiry = calendar.date(
+			from: DateComponents(year: 2026, month: 4, day: 15, hour: 8, minute: 59)
+		)!
+		let atExpiry = calendar.date(
+			from: DateComponents(year: 2026, month: 4, day: 15, hour: 9)
+		)!
 
-        expectFullAccess(
-            PlanAccessPolicy.previewAccess(
-                for: createdAt,
-                isPremiumActive: false,
-                now: beforeExpiry,
-                calendar: calendar
-            )
-        )
-        expectThumbnailOnlyAccess(
-            PlanAccessPolicy.previewAccess(
-                for: createdAt,
-                isPremiumActive: false,
-                now: atExpiry,
-                calendar: calendar
-            )
-        )
-    }
+		expectFullAccess(
+			PlanAccessPolicy.previewAccess(
+				for: createdAt,
+				isPremiumActive: false,
+				now: beforeExpiry,
+				calendar: calendar
+			)
+		)
+		expectThumbnailOnlyAccess(
+			PlanAccessPolicy.previewAccess(
+				for: createdAt,
+				isPremiumActive: false,
+				now: atExpiry,
+				calendar: calendar
+			)
+		)
+	}
 
-    @Test
-    func premiumKeepsFullPreviewForOlderPhotos() {
-        let calendar = Calendar(identifier: .gregorian)
-        let createdAt = calendar.date(from: DateComponents(year: 2021, month: 1, day: 1))!
-        let now = calendar.date(from: DateComponents(year: 2026, month: 4, day: 15))!
+	@Test
+	func premiumKeepsFullPreviewForOlderPhotos() {
+		let calendar = Calendar(identifier: .gregorian)
+		let createdAt = calendar.date(
+			from: DateComponents(year: 2021, month: 1, day: 1)
+		)!
+		let now = calendar.date(
+			from: DateComponents(year: 2026, month: 4, day: 15)
+		)!
 
-        expectFullAccess(
-            PlanAccessPolicy.previewAccess(
-                for: createdAt,
-                isPremiumActive: true,
-                now: now,
-                calendar: calendar
-            )
-        )
-    }
+		expectFullAccess(
+			PlanAccessPolicy.previewAccess(
+				for: createdAt,
+				isPremiumActive: true,
+				now: now,
+				calendar: calendar
+			)
+		)
+	}
 
-    @Test
-    func storageLimitChecksMatchPlanQuota() {
-        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 1024, isPremiumActive: false) == true)
-        #expect(PlanAccessPolicy.isStorageLimitReached(usageMB: 1023.99, isPremiumActive: false) == false)
-        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 1023, additionalUsageMB: 0.5, isPremiumActive: false) == true)
-        #expect(PlanAccessPolicy.canUpload(currentUsageMB: 1023, additionalUsageMB: 1.1, isPremiumActive: false) == false)
-    }
+	@Test
+	func storageLimitChecksMatchPlanQuota() {
+		#expect(
+			PlanAccessPolicy.isStorageLimitReached(
+				usageMB: 1024,
+				isPremiumActive: false
+			) == true
+		)
+		#expect(
+			PlanAccessPolicy.isStorageLimitReached(
+				usageMB: 1023.99,
+				isPremiumActive: false
+			) == false
+		)
+		#expect(
+			PlanAccessPolicy.canUpload(
+				currentUsageMB: 1023,
+				additionalUsageMB: 0.5,
+				isPremiumActive: false
+			) == true
+		)
+		#expect(
+			PlanAccessPolicy.canUpload(
+				currentUsageMB: 1023,
+				additionalUsageMB: 1.1,
+				isPremiumActive: false
+			) == false
+		)
+	}
 
-    private func expectFullAccess(_ access: PreviewAccess) {
-        switch access {
-        case .full:
-            break
-        case .thumbnailOnly:
-            Issue.record("Expected full preview access.")
-        }
-    }
+	private func expectFullAccess(_ access: PreviewAccess) {
+		switch access {
+		case .full:
+			break
+		case .thumbnailOnly:
+			Issue.record("Expected full preview access.")
+		}
+	}
 
-    private func expectThumbnailOnlyAccess(_ access: PreviewAccess) {
-        switch access {
-        case .thumbnailOnly:
-            break
-        case .full:
-            Issue.record("Expected thumbnail-only preview access.")
-        }
-    }
+	private func expectThumbnailOnlyAccess(_ access: PreviewAccess) {
+		switch access {
+		case .thumbnailOnly:
+			break
+		case .full:
+			Issue.record("Expected thumbnail-only preview access.")
+		}
+	}
 }
