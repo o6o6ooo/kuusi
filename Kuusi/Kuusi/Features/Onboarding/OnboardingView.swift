@@ -102,7 +102,6 @@ private struct OnboardingMediaView: View {
 				screenshotImage(name)
 			case let .loopingImages(names):
 				screenshotImage(names[safe: currentImageIndex] ?? names[0])
-					.animation(.easeInOut(duration: 0.22), value: currentImageIndex)
 					.task(id: reduceMotion) {
 						currentImageIndex = 0
 						guard !reduceMotion else { return }
