@@ -91,6 +91,38 @@ private enum UITestRouteOverride {
 	}
 }
 
+private enum AppInstallState {
+	static let installMarkerKey = "app_install_marker_v1"
+
+	static func prepareForLaunch(signOutService: SignOutServicing) {
+		let defaults = UserDefaults.standard
+		guard defaults.object(forKey: installMarkerKey) == nil else { return }
+
+		if !hasExistingAppDefaults(in: defaults) {
+			try? signOutService.signOut()
+		}
+		defaults.set(true, forKey: installMarkerKey)
+	}
+
+	private static func hasExistingAppDefaults(in defaults: UserDefaults) -> Bool {
+		let keys = defaults.dictionaryRepresentation().keys
+		return keys.contains("hasSeenOnboarding")
+			|| keys.contains(AppSettings.biometricsEnabledKey)
+			|| keys.contains(AppSettings.notificationDeviceIDKey)
+			|| keys.contains("app_version")
+			|| keys.contains("current_user_profile_cache_v1")
+			|| keys.contains(where: { $0.hasPrefix("groups_cache_v1_") })
+			|| keys.contains(where: { $0.hasPrefix("group_member_list_cache_v1_") })
+			|| keys.contains(where: { $0.hasPrefix("feed_photos_cache_v1_") })
+			|| keys.contains(where: {
+				$0.hasPrefix("feed_favourite_ids_cache_v1_")
+			})
+			|| keys.contains(where: {
+				$0.hasPrefix("feed_photo_counts_cache_v1_")
+			})
+	}
+}
+
 struct DebugAccount: Identifiable, Hashable {
 	let id: String
 	let email: String
@@ -196,6 +228,7 @@ final class AppState: ObservableObject {
 			return
 		}
 		if shouldObserveAuthState {
+			AppInstallState.prepareForLaunch(signOutService: self.signOutService)
 			route = .checkingAuth
 			self.observeAuthState()
 		}
