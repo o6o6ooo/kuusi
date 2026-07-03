@@ -24,10 +24,10 @@ struct OnboardingView: View {
 					)
 				)
 					.frame(maxWidth: .infinity)
-					.padding(.vertical, 14)
+					.padding(.vertical, 6)
 			}
 			.buttonStyle(.appPrimaryCapsule(font: .body.weight(.semibold)))
-			.padding(.horizontal, 24)
+			.padding(.horizontal, 72)
 			.padding(.top, 18)
 			.padding(.bottom, 24)
 			.accessibilityIdentifier("onboarding-primary-button")
