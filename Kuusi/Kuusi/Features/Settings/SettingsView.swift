@@ -14,6 +14,7 @@ struct SettingsView: View {
 	@State private var selectedQRCodePhoto: PhotosPickerItem?
 	@State private var appAlert: AppAlert?
 	@State private var isDeleteAccountReauthenticationPresented = false
+	@State private var isOnboardingPresented = false
 	@State private var privacyMessage: AppMessage?
 	@StateObject private var groupsViewModel = SettingsGroupsViewModel()
 	@StateObject private var profileViewModel = SettingsProfileViewModel()
@@ -44,6 +45,9 @@ struct SettingsView: View {
 					SubscriptionView(usageMB: profileViewModel.usageMB)
 					FooterView(
 						showsPrivacyChoices: consentStore.isPrivacyOptionsRequired,
+						onShowOnboarding: {
+							isOnboardingPresented = true
+						},
 						onPrivacyChoices: {
 							Task {
 								await presentPrivacyChoices()
@@ -168,6 +172,11 @@ struct SettingsView: View {
 				}
 				.presentationDetents([.height(260)])
 				.presentationDragIndicator(.visible)
+			}
+			.fullScreenCover(isPresented: $isOnboardingPresented) {
+				OnboardingView {
+					isOnboardingPresented = false
+				}
 			}
 			.onChange(of: groupsViewModel.isDeleteConfirmPresented) {
 				_,

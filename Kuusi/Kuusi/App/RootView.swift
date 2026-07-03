@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootView: View {
 	@EnvironmentObject private var appState: AppState
+	@AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+	@State private var isOnboardingPresented = false
 
 	var body: some View {
 		Group {
@@ -37,11 +39,28 @@ struct RootView: View {
 			appState.clearToastMessage()
 		}
 		.appToastHost()
+		.fullScreenCover(isPresented: $isOnboardingPresented) {
+			OnboardingView {
+				hasSeenOnboarding = true
+				isOnboardingPresented = false
+			}
+		}
+		.onAppear {
+			presentInitialOnboardingIfNeeded()
+		}
+		.onChange(of: appState.route) { _, _ in
+			presentInitialOnboardingIfNeeded()
+		}
 	}
 
 	private var signedInContent: some View {
 		FeedView()
 			.id(appState.signedInContentResetToken)
+	}
+
+	private func presentInitialOnboardingIfNeeded() {
+		guard appState.route == .signedIn, !hasSeenOnboarding else { return }
+		isOnboardingPresented = true
 	}
 
 	@ViewBuilder

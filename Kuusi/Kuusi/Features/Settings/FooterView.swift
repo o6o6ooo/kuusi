@@ -4,6 +4,7 @@ struct FooterView: View {
 	@Environment(\.openURL) private var openURL
 
 	var showsPrivacyChoices = false
+	let onShowOnboarding: () -> Void
 	let onPrivacyChoices: () -> Void
 	let onDeleteAccount: () -> Void
 
@@ -27,6 +28,12 @@ struct FooterView: View {
 					.appSecondaryTextLinkStyle()
 			}
 			.accessibilityIdentifier("settings-send-feedback-button")
+
+			Button(action: onShowOnboarding) {
+				Text("settings.footer.show_onboarding")
+					.appSecondaryTextLinkStyle()
+			}
+			.accessibilityIdentifier("settings-show-onboarding-button")
 
 			if showsPrivacyChoices {
 				Button(action: onPrivacyChoices) {

@@ -2540,6 +2540,168 @@
         }
       }
     },
+    "onboarding.feed.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start from the profile button in the top-right corner."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右上のユーザボタンから設定を開きます。"
+          }
+        }
+      }
+    },
+    "onboarding.feed.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open your settings"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定を開きましょう"
+          }
+        }
+      }
+    },
+    "onboarding.finish" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start using Kuusi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kuusiを始める"
+          }
+        }
+      }
+    },
+    "onboarding.groups.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the plus button in Groups to create a group or join one."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Groupsのプラスボタンから、グループを作成または参加できます。"
+          }
+        }
+      }
+    },
+    "onboarding.groups.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create or join a group"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループを準備しましょう"
+          }
+        }
+      }
+    },
+    "onboarding.next" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次へ"
+          }
+        }
+      }
+    },
+    "onboarding.profile.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap your icon to change the emoji, name, or background colour."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自分のアイコンを押すと、絵文字や名前、背景色を変更できます。"
+          }
+        }
+      }
+    },
+    "onboarding.profile.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set your icon"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アイコンを設定しましょう"
+          }
+        }
+      }
+    },
+    "onboarding.upload.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload photos from the feed and share them with your group."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フィードから写真をアップロードして、グループに共有できます。"
+          }
+        }
+      }
+    },
+    "onboarding.upload.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share your first photos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真を共有しましょう"
+          }
+        }
+      }
+    },
     "photo.caption.placeholder" : {
       "localizations" : {
         "en" : {
@@ -3163,6 +3325,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "フィードバックを送る"
+          }
+        }
+      }
+    },
+    "settings.footer.show_onboarding" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show onboarding again"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンボーディングをもう一度見る"
           }
         }
       }
