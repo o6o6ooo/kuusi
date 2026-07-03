@@ -15,7 +15,7 @@ struct OnboardingView: View {
 				}
 			}
 			.tabViewStyle(.page(indexDisplayMode: .always))
-			.indexViewStyle(.page(backgroundDisplayMode: .always))
+			.indexViewStyle(.page(backgroundDisplayMode: .never))
 
 			Button(action: handlePrimaryButton) {
 				Text(
@@ -23,11 +23,10 @@ struct OnboardingView: View {
 						isFinalSlide ? "onboarding.finish" : "onboarding.next"
 					)
 				)
-					.font(.headline.weight(.semibold))
 					.frame(maxWidth: .infinity)
 					.padding(.vertical, 14)
 			}
-			.buttonStyle(.borderedProminent)
+			.buttonStyle(.appPrimaryCapsule(font: .body.weight(.semibold)))
 			.padding(.horizontal, 24)
 			.padding(.top, 18)
 			.padding(.bottom, 24)

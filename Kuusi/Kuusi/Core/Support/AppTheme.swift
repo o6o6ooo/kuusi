@@ -380,9 +380,11 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
 	@Environment(\.colorScheme) private var colorScheme
 
 	let isLoading: Bool
+	let font: Font
 
-	init(isLoading: Bool = false) {
+	init(isLoading: Bool = false, font: Font = .footnote.weight(.semibold)) {
 		self.isLoading = isLoading
+		self.font = font
 	}
 
 	func makeBody(configuration: Configuration) -> some View {
@@ -398,7 +400,7 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
 		} label: {
 			ZStack {
 				configuration.label
-					.font(.footnote.weight(.semibold))
+					.font(font)
 					.padding(.horizontal, 4)
 					.padding(.vertical, 2)
 					.foregroundStyle(
@@ -419,9 +421,18 @@ struct AppPrimaryCapsuleButtonStyle: PrimitiveButtonStyle {
 
 extension PrimitiveButtonStyle where Self == AppPrimaryCapsuleButtonStyle {
 	static var appPrimaryCapsule: AppPrimaryCapsuleButtonStyle { .init() }
+	static func appPrimaryCapsule(font: Font) -> AppPrimaryCapsuleButtonStyle {
+		.init(font: font)
+	}
 	static func appPrimaryCapsule(isLoading: Bool) -> AppPrimaryCapsuleButtonStyle
 	{
 		.init(isLoading: isLoading)
+	}
+	static func appPrimaryCapsule(
+		isLoading: Bool,
+		font: Font
+	) -> AppPrimaryCapsuleButtonStyle {
+		.init(isLoading: isLoading, font: font)
 	}
 }
 
