@@ -2616,7 +2616,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "グループを準備しましょう"
+            "value" : "グループを作成または参加します"
           }
         }
       }
@@ -3334,13 +3334,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show onboarding again"
+            "value" : "Show tutorial again"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンボーディングをもう一度見る"
+            "value" : "チュートリアルをもう一度見る"
           }
         }
       }
