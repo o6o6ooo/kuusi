@@ -415,17 +415,7 @@ private struct AppToastHost: View {
 				.padding(.horizontal, 16)
 				.padding(.vertical, 12)
 				.frame(maxWidth: min(max(proxy.size.width - 24, 0), 420))
-				.background {
-					Capsule(style: .continuous)
-						.fill(.ultraThinMaterial)
-						.overlay {
-							Capsule(style: .continuous)
-								.strokeBorder(
-									Color.white.opacity(colorScheme == .dark ? 0.12 : 0.42),
-									lineWidth: 1
-								)
-						}
-				}
+				.glassEffect(.regular, in: .capsule)
 				.shadow(
 					color: .black.opacity(colorScheme == .dark ? 0.22 : 0.08),
 					radius: 18,
