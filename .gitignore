@@ -39,3 +39,7 @@ Kuusi/GoogleService-Info.plist
 
 # Firebase CLI debug logs
 firebase-debug*.log
+
+# Local documentation
+AGENTS.md
+docs/pre-release-notes.md
