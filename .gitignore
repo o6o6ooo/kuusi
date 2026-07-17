@@ -36,3 +36,6 @@ fastlane/test_output/
 
 # Firebase app config (keep local only)
 Kuusi/GoogleService-Info.plist
+
+# Firebase CLI debug logs
+firebase-debug*.log
