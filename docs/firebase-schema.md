@@ -57,19 +57,6 @@ Current Firebase usage in the SwiftUI app.
 - `posted_by: string`
 - `photo_count: number`
 
-### `admin_notifications/{notificationId}`
-- `title: string`
-- `body: string`
-- `target: "all"`
-- `deep_link: string`
-- `status: "draft" | "sent" | "failed"`
-- `failure_reason: string`
-- `sent_at: timestamp`
-- `updated_at: timestamp`
-- `delivery.mode: "topic"`
-- `delivery.topic: "announcements"`
-- `delivery.message_id: string`
-
 ### `email_logs/{logId}`
 - `user_id: string`
 - `email: string`
@@ -118,7 +105,6 @@ This is required for queries that filter photos by `group_id` and order the feed
 ## Notification flow
 
 - iOS devices store their current FCM token under `users/{uid}/devices/{deviceId}`
-- iOS devices subscribe to the FCM topic `announcements` after notification permission is granted
 - the iOS app uploads temporary Storage files, then calls `commitPhotoUploadBatch` to create `photos/{photoId}` documents and increment `users/{uid}.usage_mb`
 - Premium users sync their current StoreKit transaction through `syncSubscription` before upload so server-side quota checks use verified `users/{uid}.premium_expires_at`
 - Premium subscription sync also stores the verified auto-renew status and sends Resend emails for purchase, cancellation, and expiry events
@@ -127,5 +113,4 @@ This is required for queries that filter photos by `group_id` and order the feed
 - each committed upload operation stamps every created `photos/{photoId}` document with the same `upload_batch_id`
 - clients cannot create or delete `photos` documents directly; upload and delete cleanup runs through Cloud Functions
 - `photos/{photoId}` creation triggers a Cloud Function that reserves `photo_notification_batches/{uploadBatchId}` and sends at most one push notification for that upload batch
-- `admin_notifications/{notificationId}` creation triggers a Cloud Function that sends maintenance or announcement pushes to the `announcements` topic
 - Invalid or expired device tokens are deleted server-side during notification delivery cleanup

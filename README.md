@@ -20,7 +20,7 @@ Users sign in with Apple, join family groups, upload photos, import from Google 
 - Photo upload flow for private group sharing, including date and hashtag metadata
 - Feed browsing with grouped access, favourites, photo editing, and photo deletion
 - Optional Google account linking and Google Photos Picker import
-- Push notifications for new photo batches and app announcements
+- Push notifications for new photo batches
 - Free and Premium plan handling with StoreKit subscriptions and server-side entitlement verification
 - Transactional email for Premium and legal account updates
 - Native feed advertising for free users
@@ -189,7 +189,7 @@ Open `Kuusi/Kuusi.xcodeproj` in Xcode.
 Cloud Functions live in `functions/` and are documented in `docs/cloud-functions.md`.
 
 - Callable functions handle upload commits, group deletion, group leaving, photo deletion, member removal, current-user data deletion, and Premium subscription sync
-- Firestore triggers send photo-batch notifications, admin announcement notifications, and legal update emails
+- Firestore triggers send photo-batch notifications and legal update emails
 - Scheduled functions send Premium expiry emails
 - Firestore rules live in `firestore.rules`
 - Storage rules live in `storage.rules`

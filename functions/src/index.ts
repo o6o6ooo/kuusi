@@ -30,7 +30,6 @@ const maxUploadBatchPhotoCount = 10;
 const callableFunctionRegion = "europe-west2";
 const notificationFunctionRegion = "europe-west2";
 const emailFunctionRegion = "europe-west2";
-const announcementsTopic = "announcements";
 const inviteLifetimeHours = 24;
 const inviteLifetimeMs = inviteLifetimeHours * 60 * 60 * 1000;
 const freeQuotaMB = 1024;
@@ -122,14 +121,6 @@ type PushPayload = {
   title: string;
   body: string;
   data?: Record<string, string>;
-};
-
-type AdminNotificationData = {
-  title?: string;
-  body?: string;
-  target?: string;
-  deep_link?: string;
-  status?: string;
 };
 
 type LegalAnnouncementData = {
@@ -715,78 +706,6 @@ export const onPhotoCreated = onDocumentCreated({
     sentCount: delivery.sentCount,
     failedCount: delivery.failedCount
   });
-});
-
-export const onAdminNotificationCreated = onDocumentCreated({
-  document: "admin_notifications/{notificationId}",
-  region: notificationFunctionRegion
-}, async (event) => {
-  const snapshot = event.data;
-  if (!snapshot) {
-    return;
-  }
-
-  const notificationId = normalizeText(event.params.notificationId);
-  if (!notificationId) {
-    return;
-  }
-
-  const notificationRef = snapshot.ref;
-  const notificationData = snapshot.data() as AdminNotificationData;
-
-  if (notificationData.status === "draft") {
-    return;
-  }
-
-  const title = normalizeText(notificationData.title);
-  const body = normalizeText(notificationData.body);
-  if (!title || !body) {
-    await notificationRef.set({
-      status: "failed",
-      failure_reason: "title_and_body_required",
-      updated_at: FieldValue.serverTimestamp()
-    }, { merge: true });
-    return;
-  }
-
-  const target = normalizeText(notificationData.target) ?? "all";
-  if (target !== "all") {
-    await notificationRef.set({
-      status: "failed",
-      failure_reason: "unsupported_target",
-      updated_at: FieldValue.serverTimestamp()
-    }, { merge: true });
-    return;
-  }
-
-  try {
-    const messageId = await sendPushToTopic(announcementsTopic, {
-      title,
-      body,
-      data: {
-        type: "admin_announcement",
-        notification_id: notificationId,
-        deep_link: normalizeText(notificationData.deep_link) ?? "feed"
-      }
-    });
-
-    await notificationRef.set({
-      status: "sent",
-      sent_at: FieldValue.serverTimestamp(),
-      delivery: {
-        mode: "topic",
-        topic: announcementsTopic,
-        message_id: messageId
-      },
-      updated_at: FieldValue.serverTimestamp()
-    }, { merge: true });
-  } catch (error) {
-    await notificationRef.set({
-      status: "failed",
-      failure_reason: errorMessage(error),
-      updated_at: FieldValue.serverTimestamp()
-    }, { merge: true });
-  }
 });
 
 export const sendPremiumExpiryEmails = onSchedule({
@@ -1574,24 +1493,6 @@ async function sendPushToDeviceTargets(
     failedCount,
     tokenCount: dedupedTargets.length
   };
-}
-
-async function sendPushToTopic(topic: string, payload: PushPayload): Promise<string> {
-  return getMessaging().send({
-    topic,
-    notification: {
-      title: payload.title,
-      body: payload.body
-    },
-    data: payload.data,
-    apns: {
-      payload: {
-        aps: {
-          sound: "default"
-        }
-      }
-    }
-  });
 }
 
 function isObjectNotFoundError(error: unknown): boolean {

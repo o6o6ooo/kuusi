@@ -76,34 +76,11 @@ Callable functions are deployed in `europe-west2`.
   - Reads active device tokens from `users/{uid}/devices/{deviceId}`
   - Sends a push notification announcing the new photo or photo batch
   - Deletes stale tokens when FCM reports them invalid
-- `onAdminNotificationCreated`
-  - Triggers when `admin_notifications/{notificationId}` is created in `europe-west2`
-  - Supports `target = "all"` only
-  - Sends maintenance or announcement pushes to the FCM topic `announcements`
-  - Writes topic delivery metadata plus `status = sent` or `status = failed`
 - `onLegalAnnouncementCreated`
   - Triggers when `legal_announcements/{announcementId}` is created in `europe-west2`
   - Sends the announcement body as a legal update email through Resend
   - Sends at most 100 users per announcement for the current free-plan sending limit
   - Uses `email_logs` with the announcement ID as the dedupe key
-
-## Admin notification authoring
-
-Create a Firestore document in `admin_notifications` with at least:
-
-- `title`
-- `body`
-- `target`
-  - `"all"` to notify every signed-in device subscribed to the announcements topic
-
-Optional fields:
-
-- `deep_link`
-- `status`
-  - Use `"draft"` to save without sending
-  - Omit it, or use any non-draft value, to send immediately on create
-
-If `target` is set to anything other than `"all"`, the function marks the document as failed with `failure_reason = "unsupported_target"`.
 
 ## Legal announcement email authoring
 
@@ -167,7 +144,6 @@ For one-time admin data fixes, prefer local scripts over new deployed functions.
     - `users.groups` entries whose group ID no longer exists
     - expired or invalid `group_invites`
     - `photo_notification_batches` documents whose `created_at` is at least 7 days old
-    - `admin_notifications` documents with `status = sent` or `status = failed` whose newest timestamp is at least 30 days old
   - Defaults to dry-run mode
   - Add `-- --apply` to delete orphaned data and remove stale references
   - Requires Firebase Admin credentials, for example:

@@ -9,8 +9,6 @@ const path = require("path");
 const DEFAULT_BATCH_SIZE = 200;
 const MAX_BATCH_WRITES = 400;
 const MAX_GET_ALL_REFS = 300;
-const ADMIN_NOTIFICATION_RETENTION_DAYS = 30;
-const ADMIN_NOTIFICATION_RETENTION_MS = ADMIN_NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const NOTIFICATION_BATCH_RETENTION_DAYS = 7;
 const NOTIFICATION_BATCH_RETENTION_MS = NOTIFICATION_BATCH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const DEFAULT_GOOGLE_SERVICE_INFO_PATH = path.resolve(__dirname, "../../Kuusi/GoogleService-Info.plist");
@@ -99,7 +97,6 @@ Cleanup targets:
   - users.groups entries that do not point at existing groups documents
   - expired or invalid group_invites documents
   - photo_notification_batches documents older than 7 days
-  - sent or failed admin_notifications documents older than 30 days
 
 Authentication:
   - Set GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
@@ -585,55 +582,6 @@ async function cleanupPhotoNotificationBatches(db, options) {
   };
 }
 
-async function cleanupAdminNotifications(db, options) {
-  let scannedAdminNotifications = 0;
-  let expiredAdminNotifications = 0;
-  let skippedAdminNotifications = 0;
-  const cutoffMillis = Date.now() - ADMIN_NOTIFICATION_RETENTION_MS;
-  const operations = [];
-
-  await scanCollection(db, "admin_notifications", options.batchSize, async (snapshot) => {
-    scannedAdminNotifications += snapshot.docs.length;
-
-    for (const document of snapshot.docs) {
-      const data = document.data();
-      const status = normalisedString(data.status);
-      if (status !== "sent" && status !== "failed") {
-        skippedAdminNotifications += 1;
-        continue;
-      }
-
-      const referenceMillis =
-        timestampMillis(data.sent_at)
-        ?? timestampMillis(data.updated_at)
-        ?? timestampMillis(data.created_at)
-        ?? timestampMillis(document.createTime);
-
-      if (referenceMillis === null || referenceMillis > cutoffMillis) {
-        skippedAdminNotifications += 1;
-        continue;
-      }
-
-      expiredAdminNotifications += 1;
-
-      if (options.apply) {
-        operations.push((batch) => batch.delete(document.ref));
-      }
-    }
-  });
-
-  if (options.apply && operations.length > 0) {
-    await commitOperations(db, operations);
-  }
-
-  return {
-    scannedAdminNotifications,
-    expiredAdminNotifications,
-    skippedAdminNotifications,
-    deletedAdminNotifications: options.apply ? operations.length : 0,
-  };
-}
-
 async function deleteStoragePaths(bucket, storagePaths) {
   let deletedCount = 0;
 
@@ -705,14 +653,12 @@ async function run() {
   const userReferenceResult = await cleanupUserReferences(db, options);
   const inviteResult = await cleanupGroupInvites(db, options);
   const notificationBatchResult = await cleanupPhotoNotificationBatches(db, options);
-  const adminNotificationResult = await cleanupAdminNotifications(db, options);
 
   printSection("Photos with missing groups", orphanPhotoResult);
   printSection("Storage files with missing photos", orphanStorageResult);
   printSection("User references", userReferenceResult);
   printSection("Group invites", inviteResult);
   printSection("Photo notification batches", notificationBatchResult);
-  printSection("Admin notifications", adminNotificationResult);
 }
 
 run().catch((error) => {
