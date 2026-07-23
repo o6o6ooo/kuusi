@@ -10,6 +10,9 @@ struct FooterView: View {
 
 	private let feedbackEmail = "hi@kuusi.app"
 	private let feedbackSubject = "Kuusi Feedback"
+	private let appStoreReviewURL = URL(
+		string: "https://apps.apple.com/app/id6761270044?action=write-review"
+	)!
 	private let faqURL = URL(string: "https://kuusi.app/faq")!
 	private let privacyPolicyURL = URL(string: "https://kuusi.app/privacy")!
 	private let termsOfServiceURL = URL(string: "https://kuusi.app/terms")!
@@ -28,6 +31,10 @@ struct FooterView: View {
 					.appSecondaryTextLinkStyle()
 			}
 			.accessibilityIdentifier("settings-send-feedback-button")
+
+			Link("settings.footer.rate_app", destination: appStoreReviewURL)
+				.appSecondaryTextLinkStyle()
+				.accessibilityIdentifier("settings-rate-app-link")
 
 			Button(action: onShowOnboarding) {
 				Text("settings.footer.show_onboarding")

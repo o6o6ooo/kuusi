@@ -3313,6 +3313,22 @@
         }
       }
     },
+    "settings.footer.rate_app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review Kuusi on the App Store"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Storeでレビューを書く"
+          }
+        }
+      }
+    },
     "settings.footer.send_feedback" : {
       "localizations" : {
         "en" : {
