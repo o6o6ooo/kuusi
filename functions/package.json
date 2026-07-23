@@ -7,6 +7,11 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
+    "test:build": "tsc -p tsconfig.test.json",
+    "test": "npm run test:build && node --test .test-build/test/*.test.js",
+    "test:integration:build": "tsc -p tsconfig.integration.json",
+    "test:integration:run": "node --test --test-force-exit --test-concurrency=1 .integration-test-build/integration/*.test.js",
+    "test:integration": "npm run build && npm run test:integration:build && CHOKIDAR_USEPOLLING=true firebase emulators:exec --config ../firebase.json --project demo-kuusi --only auth,firestore,storage,functions \"npm run test:integration:run\"",
     "backfill:photo-storage-paths": "node scripts/backfill-photo-storage-paths.js",
     "cleanup:orphaned-data": "node scripts/cleanup-orphaned-data.js",
     "cleanup:legacy-photo-urls": "node scripts/remove-legacy-photo-urls.js",
@@ -22,6 +27,8 @@
     "firebase-functions": "^7.2.5"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "firebase": "^12.16.0",
     "firebase-tools": "15.24.0",
     "typescript": "^5.4.5"
   }

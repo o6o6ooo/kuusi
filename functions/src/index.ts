@@ -18,6 +18,24 @@ import {
   premiumExpiringEmail,
   premiumPurchasedEmail
 } from "./emailTemplates.js";
+import {
+  buildUsageMap,
+  chunked,
+  emailLogId,
+  errorMessage,
+  isAlreadyExistsError,
+  isObjectNotFoundError,
+  normalizeBatchCount,
+  normalizeCaption,
+  normalizeEmail,
+  normalizeHashtags,
+  normalizeText,
+  normalizeUploadBatchId,
+  normalizeUploadPhoto,
+  numericValue,
+  optionalNumber,
+  roundMegabytes
+} from "./functionLogic.js";
 
 initializeApp();
 
@@ -817,109 +835,6 @@ function normalizeGroupId(value: unknown): string | null {
   return normalizeText(value);
 }
 
-function normalizeText(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function normalizeUploadBatchId(value: unknown): string | null {
-  const text = normalizeText(value);
-  return text && /^[A-Za-z0-9_-]{1,128}$/.test(text) ? text : null;
-}
-
-function normalizeHashtags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const hashtags = value
-    .map((item) => normalizeText(item))
-    .filter((item): item is string => item !== null)
-    .map((item) => item.replace(/^#/, "").trim())
-    .filter((item) => item.length > 0 && item.length <= 40);
-
-  return Array.from(new Set(hashtags)).slice(0, 30);
-}
-
-function normalizeCaption(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.split(/\s+/u).filter(Boolean).join(" ").trim();
-  if (normalized.length === 0) {
-    return null;
-  }
-
-  return Array.from(normalized).slice(0, 140).join("");
-}
-
-function normalizeUploadPhoto(
-  value: unknown,
-  uid: string,
-  uploadBatchId: string
-): Omit<UploadCommitItem, "finalPreviewPath" | "finalThumbnailPath" | "ref" | "sizeMB"> {
-  if (!value || typeof value !== "object") {
-    throw new HttpsError("invalid-argument", "Each photo must be an object");
-  }
-
-  const data = value as Record<string, unknown>;
-  const id = normalizeUploadBatchId(data.id);
-  const previewPath = normalizeText(data.previewPath);
-  const thumbnailPath = normalizeText(data.thumbnailPath);
-  const aspectRatio = numericValue(data.aspectRatio);
-  const expectedPrefix = `photos/${uid}/upload_${uploadBatchId}_`;
-
-  if (!id || !previewPath || !thumbnailPath || aspectRatio === null) {
-    throw new HttpsError("invalid-argument", "Each photo requires id, paths, and aspectRatio");
-  }
-
-  if (
-    !Number.isFinite(aspectRatio)
-    || aspectRatio < 0.2
-    || aspectRatio > 10
-  ) {
-    throw new HttpsError("invalid-argument", "aspectRatio is invalid");
-  }
-
-  if (
-    !previewPath.startsWith(expectedPrefix)
-    || !previewPath.endsWith("_preview.jpg")
-    || !thumbnailPath.startsWith(expectedPrefix)
-    || !thumbnailPath.endsWith("_thumb.jpg")
-  ) {
-    throw new HttpsError("permission-denied", "Upload paths are invalid");
-  }
-
-  return {
-    aspectRatio,
-    id,
-    previewPath,
-    thumbnailPath
-  };
-}
-
-function normalizeBatchCount(value: unknown): number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1;
-}
-
-function numericValue(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function optionalNumber(value: unknown): number | undefined {
-  const parsed = numericValue(value);
-  return parsed !== null && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
-}
-
 async function verifyPremiumTransaction(signedTransactionInfo: string): Promise<JWSTransactionDecodedPayload> {
   const errors: string[] = [];
 
@@ -1063,11 +978,6 @@ async function loadUserEmail(uid: string): Promise<string | null> {
   }
 }
 
-function normalizeEmail(value: unknown): string | null {
-  const text = normalizeText(value);
-  return text && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text) ? text : null;
-}
-
 async function sendEmail(to: string, payload: EmailPayload): Promise<string> {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -1112,13 +1022,6 @@ function expirationDedupeKey(value: unknown): string {
   return "unknown_expiration";
 }
 
-function emailLogId(uid: string, type: EmailType, dedupeKey: string): string {
-  return [uid, type, dedupeKey]
-    .join("_")
-    .replace(/[^A-Za-z0-9_-]/g, "_")
-    .slice(0, 140);
-}
-
 async function storageFileSizeMB(bucket: StorageBucket, path: string): Promise<number> {
   try {
     const [metadata] = await bucket.file(path).getMetadata();
@@ -1133,10 +1036,6 @@ async function storageFileSizeMB(bucket: StorageBucket, path: string): Promise<n
     }
     throw new HttpsError("failed-precondition", `Upload file is missing: ${path}`);
   }
-}
-
-function roundMegabytes(sizeMB: number): number {
-  return Math.round(sizeMB * 100) / 100;
 }
 
 async function deleteStoragePaths(paths: string[]): Promise<void> {
@@ -1155,10 +1054,6 @@ async function deleteStoragePaths(paths: string[]): Promise<void> {
       }
     }
   }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message.length > 0 ? error.message : "unknown_error";
 }
 
 async function reservePhotoBatchNotification(
@@ -1337,19 +1232,6 @@ async function deletePhotosAndCleanup(
   return photoDocs.length;
 }
 
-function buildUsageMap(photos: Array<{ posted_by?: string; size_mb?: number }>): Record<string, number> {
-  const usageByUserID: Record<string, number> = {};
-
-  for (const photo of photos) {
-    if (!photo.posted_by || typeof photo.size_mb !== "number" || photo.size_mb <= 0) {
-      continue;
-    }
-    usageByUserID[photo.posted_by] = (usageByUserID[photo.posted_by] ?? 0) + photo.size_mb;
-  }
-
-  return usageByUserID;
-}
-
 async function loadFavouriteRemovals(photoIDs: string[]): Promise<Record<string, string[]>> {
   if (photoIDs.length === 0) {
     return {};
@@ -1495,26 +1377,6 @@ async function sendPushToDeviceTargets(
   };
 }
 
-function isObjectNotFoundError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const maybeCode = error as Error & { code?: number | string };
-  return maybeCode.code === 404 || maybeCode.code === "storage/object-not-found";
-}
-
-function isAlreadyExistsError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const maybeCode = error as Error & { code?: number | string };
-  return maybeCode.code === 6
-    || maybeCode.code === "already-exists"
-    || maybeCode.code === "firestore/already-exists";
-}
-
 async function commitOperations(
   operations: Array<(batch: WriteBatch) => void>
 ): Promise<void> {
@@ -1525,16 +1387,4 @@ async function commitOperations(
     }
     await batch.commit();
   }
-}
-
-function chunked<T>(items: T[], size: number): T[][] {
-  if (size <= 0) {
-    return [items];
-  }
-
-  const chunks: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
 }

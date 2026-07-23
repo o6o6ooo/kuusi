@@ -15,6 +15,23 @@ For Resend transactional email delivery, store the API key in Secret Manager:
 
 - `firebase functions:secrets:set RESEND_API_KEY`
 
+## Tests
+
+Run commands from `functions/`.
+
+- `npm test`
+  - Builds and runs the fast unit tests with Node's built-in test runner
+  - Does not start Firebase Emulator Suite
+- `npm run test:integration`
+  - Builds the Functions and integration tests
+  - Runs Auth, Firestore, Storage, and Functions emulators against the
+    isolated `demo-kuusi` project
+  - Runs integration tests serially and stops the emulators afterwards
+
+Unit tests live in `functions/test/`. Firebase integration tests live in
+`functions/integration/`. Both directories and their temporary build outputs
+are excluded from Functions deployment.
+
 ## Current functions
 
 Callable functions are deployed in `europe-west2`.

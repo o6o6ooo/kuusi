@@ -16,6 +16,8 @@ DerivedData/
 build/
 functions/lib/
 functions/node_modules/
+functions/.test-build/
+functions/.integration-test-build/
 .firebase/
 
 # Swift Package Manager
