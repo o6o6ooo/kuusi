@@ -104,16 +104,18 @@ struct FeedView: View {
 	}
 
 	private var shouldShowFeedAds: Bool {
-		FeedAdRules.shouldShowFeedAds(
-			isPremiumActive: subscriptionStore.isPremiumActive
-		)
+		AppAdConfiguration.adsEnabled
+			&& FeedAdRules.shouldShowFeedAds(
+				isPremiumActive: subscriptionStore.isPremiumActive
+			)
 	}
 
 	private var canLoadFeedAds: Bool {
-		FeedAdRules.canLoadFeedAds(
-			isPremiumActive: subscriptionStore.isPremiumActive,
-			canRequestAds: consentStore.canRequestAds
-		)
+		AppAdConfiguration.adsEnabled
+			&& FeedAdRules.canLoadFeedAds(
+				isPremiumActive: subscriptionStore.isPremiumActive,
+				canRequestAds: consentStore.canRequestAds
+			)
 	}
 
 	private var displayedPhotos: [FeedPhoto] {
@@ -500,7 +502,8 @@ struct FeedView: View {
 		trackingAuthorizationStatus = ATTrackingManager.trackingAuthorizationStatus
 
 		guard
-			FeedAdRules.shouldRequestTrackingAuthorization(
+			shouldShowFeedAds
+				&& FeedAdRules.shouldRequestTrackingAuthorization(
 				isPremiumActive: subscriptionStore.isPremiumActive,
 				scenePhase: scenePhase,
 				trackingAuthorizationStatus: trackingAuthorizationStatus,
@@ -529,7 +532,8 @@ struct FeedView: View {
 
 	private func gatherAdConsentIfNeeded() async {
 		guard
-			FeedAdRules.shouldGatherConsent(
+			shouldShowFeedAds
+				&& FeedAdRules.shouldGatherConsent(
 				isPremiumActive: subscriptionStore.isPremiumActive,
 				scenePhase: scenePhase
 			)

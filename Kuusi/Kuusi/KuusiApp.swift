@@ -54,9 +54,6 @@ struct KuusiApp: App {
 				_subscriptionStore = StateObject(wrappedValue: SubscriptionStore())
 			}
 
-			if !UITestEnvironment.isRunningUITests {
-				MobileAds.shared.start()
-			}
 		#else
 			_consentStore = StateObject(wrappedValue: ConsentStore())
 			_groupStore = StateObject(wrappedValue: GroupStore())
