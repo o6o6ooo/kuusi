@@ -2,6 +2,30 @@
 
 初回 App Store リリース以降の TestFlight ビルドと正式リリースの変更記録です。正式リリースには 🌟 を付け、App Store Connect のリリースノートを併記します。
 
+### 1.4 (19) - 23 Jul 2026 🌟  
+* 設定画面から Kuusi の App Store レビューを直接書けるリンクを追加  
+* トーストメッセージをアプリ全体のガラススタイルに合わせて調整  
+* 認証、グループ、写真のアップロードと削除、アカウント削除、データベース・ストレージルールを対象とした Functions の単体テストと統合テストを追加  
+* 未使用の管理者向け一斉通知機能と関連するデータ構造を削除  
+* Firebase Functions の開発環境と依存関係を Node.js 22 に更新  
+* Debug ビルドでは広告表示と広告関連の許可リクエストを行わないよう調整  
+  
+**App Store Connect Release Notes - English UK**  
+```
+You can now open Kuusi’s App Store review page directly from Settings.
+Toast messages now match the app’s glass-style design for a more consistent experience.
+This update also includes behind-the-scenes maintenance and broader reliability checks for photo sharing, groups, sign-in, and account management.
+
+```
+  
+**App Store Connect Release Notes - Japanese**  
+```
+設定画面から、KuusiのApp Storeレビューを直接書けるようになりました。
+トーストメッセージもアプリ全体のガラススタイルに合わせ、より統一感のある表示に調整しました。
+写真の共有、グループ、サインイン、アカウント管理をより安心して利用できるよう、内部メンテナンスと幅広い動作検証も行っています。
+
+```
+  
 ### 1.3 (18) - 3 Jul 2026 🌟  
 * App Store の共有リンクを正式な Kuusi ページに更新  
 * 主要ボタン、フィード操作、設定カード、プロフィールアバター、色スウォッチなどを glassEffect ベースのスタイルに整理  
